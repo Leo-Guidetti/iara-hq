@@ -1,5 +1,6 @@
 import { currentUser } from '@/lib/supabase/server'
 import { SignOut } from '@/components/SignOut'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { FUNCTIONS_URL } from '@/lib/env'
 import { ProfileForm, Tokens } from './client'
 
@@ -17,6 +18,10 @@ export default async function PerfilPage() {
   return (
     <div className="stack">
       <h1>Perfil</h1>
+      <section className="card stack" style={{ gap: 8 }}>
+        <h2 style={{ margin: 0 }}>Aparência</h2>
+        <ThemeToggle />
+      </section>
       <p className="small muted">{me.user.email}</p>
       <ProfileForm p={p!} />
       <Tokens tokens={tokens ?? []} endpoint={`${FUNCTIONS_URL}/claudia-ingest`} />

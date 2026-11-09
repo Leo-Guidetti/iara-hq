@@ -1,20 +1,50 @@
-/* IARA HQ · tokens "clinical calm" (inspirados no Apple Health), compartilhados por todos os módulos */
-:root {
+/* IARA HQ · tokens compartilhados. Neutros "clinical calm" + uma cor de destaque por app (data-app):
+   HQ lilás · ClaudIA verde · AIrton azul · IARA House dourado. Modo escuro e claro: segue o sistema,
+   ou data-theme="light" | "dark" no <html> (escolha salva no Perfil). */
+:root, :root[data-theme="dark"] {
   --bg: #0D1117;
   --surface: #1C2530;
   --surface-2: #243040;
   --line: #2E3B4C;
   --text: #E8EDF2;
   --muted: #8B98A8;
-  --progress: #4FD1A5;   /* jade: progresso */
   --ai: #8B7FF0;         /* violeta: só o que vem da IA */
   --alert: #E8A33D;      /* âmbar: alertas */
   --danger: #EF6F6C;
+  --hq: #B69CFF;       --hq-ink: #1A1033;
+  --claudia: #4FD1A5;  --claudia-ink: #062319;
+  --airton: #5AA9FF;   --airton-ink: #04182E;
+  --casa: #E2B547;     --casa-ink: #2A1E02;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #F5F6F8; --card-line: #E3E7ED; --surface: #FFFFFF; --surface-2: #EEF1F5; --line: #DCE1E8; --text: #10161F; --muted: #5A6575;
+    --ai: #6A5BD8; --alert: #B86E00; --danger: #C8423F;
+    --hq: #7353D6; --hq-ink: #FFFFFF; --claudia: #0F8F6A; --claudia-ink: #FFFFFF;
+    --airton: #1F6FD9; --airton-ink: #FFFFFF; --casa: #9A6B00; --casa-ink: #FFFFFF;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #F5F6F8; --card-line: #E3E7ED; --surface: #FFFFFF; --surface-2: #EEF1F5; --line: #DCE1E8; --text: #10161F; --muted: #5A6575;
+  --ai: #6A5BD8; --alert: #B86E00; --danger: #C8423F;
+  --hq: #7353D6; --hq-ink: #FFFFFF; --claudia: #0F8F6A; --claudia-ink: #FFFFFF;
+  --airton: #1F6FD9; --airton-ink: #FFFFFF; --casa: #9A6B00; --casa-ink: #FFFFFF;
+  color-scheme: light;
+}
+:root {
   --radius: 16px;
   --gutter: 16px;
   --font: 'Barlow Semi Condensed', system-ui, -apple-system, sans-serif;
-  color-scheme: dark;
+  --accent: var(--hq); --on-accent: var(--hq-ink);
 }
+/* --progress = cor de destaque do app em que se está (botões, abas, foco, tags, gráficos). */
+:root, [data-app] { --progress: var(--accent); }
+[data-app="hq"] { --accent: var(--hq); --on-accent: var(--hq-ink); }
+[data-app="claudia"] { --accent: var(--claudia); --on-accent: var(--claudia-ink); }
+[data-app="airton"] { --accent: var(--airton); --on-accent: var(--airton-ink); }
+[data-app="casa"] { --accent: var(--casa); --on-accent: var(--casa-ink); }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 17px; -webkit-font-smoothing: antialiased; }
 body { min-height: 100dvh; }
@@ -32,7 +62,7 @@ h2 { font-size: 1.15rem; font-weight: 600; margin: 0 0 12px; }
 .between { justify-content: space-between; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-.card { background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid transparent; }
+.card { background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid var(--card-line, transparent); }
 .card.ai { border-color: color-mix(in srgb, var(--ai) 45%, transparent); }
 .card.alert { border-color: color-mix(in srgb, var(--alert) 55%, transparent); }
 .kpi { font-size: 2rem; font-weight: 600; line-height: 1.1; }
@@ -45,8 +75,8 @@ h2 { font-size: 1.15rem; font-weight: 600; margin: 0 0 12px; }
 label { display: grid; gap: 6px; font-size: .85rem; color: var(--muted); }
 input, select, textarea { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 1rem; width: 100%; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--progress); outline-offset: 1px; }
-.btn { background: var(--progress); color: #062319; border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 600; cursor: pointer; min-height: 44px; }
-.btn.ai { background: var(--ai); color: #120f2b; }
+.btn { background: var(--progress); color: var(--on-accent); border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 600; cursor: pointer; min-height: 44px; }
+.btn.ai { background: var(--ai); color: var(--bg); }
 .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
 .btn:disabled { opacity: .55; cursor: default; }
 .error { color: var(--danger); font-size: .9rem; }
@@ -62,3 +92,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--progress); 
 .nav svg { width: 22px; height: 22px; }
 
 .disclaimer { font-size: .78rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; margin-top: 12px; }
+
+/* Tela Hoje: um bloco por app, com a cor dele. */
+.module { border-left: 4px solid var(--accent); display: grid; gap: 10px; }
+.module .tag { color: var(--accent); }
+.module ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.module .go { color: var(--accent); font-weight: 600; font-size: .9rem; }
+.app { min-height: 100dvh; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.seg button { background: transparent; border: 0; padding: 8px 12px; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); font-weight: 600; }
