@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // AIrton — notificações push. O pg_cron chama a cada 15 min; aqui decide se é hora da
 // diária (padrão 22h) ou da semanal (padrão domingo 19h) e manda para os aparelhos inscritos.
 // Ações do app: vapid (chave pública) | test {kind} | preview {kind}.

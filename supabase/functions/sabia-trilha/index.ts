@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // SabIA · trilha do dia no padrão "planeja grande, executa pequeno".
 //   1. Plano determinístico: minutos por tema pelos pesos (sem IA).
 //   2. Workers, um por tema, em paralelo. Primeiro os feeds RSS das fontes (grátis) com o Haiku escolhendo

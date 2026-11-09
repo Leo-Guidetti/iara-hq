@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // ClaudIA · utilidades de treino compartilhadas pelas funções claudia-coach*, -checkin e -strava.
 import { addDays, weekStart } from './common.ts';
 import { arr, num, obj, oneOf, optNum, optStr, str } from './validate.ts';

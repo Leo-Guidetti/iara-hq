@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // claudia-coach-session · conversa sobre UMA sessão do plano e mudanças pontuais nela.
 //   POST { action: 'chat', session_id, message, history?: [{role, content}] } → { reply, change|null }   (Sonnet 5.5)
 //   POST { action: 'apply', session_id, change }                              → aplica a mudança (sem IA) e registra em plan_changes

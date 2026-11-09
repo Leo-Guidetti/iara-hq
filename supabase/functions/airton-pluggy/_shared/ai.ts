@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // Cliente de IA do AIrton (chaves só no servidor). Toda chamada passa por aqui:
 // registra tokens, cache, buscas e custo em airton.ai_usage e respeita os tetos mensais.
 import { admin } from './common.ts';

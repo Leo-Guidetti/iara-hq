@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // claudia-ingest · entrada de dados pelo Atalho do iPhone (Shortcuts). Autentica pelo token de ingestão
 // (cla_…, criado no Perfil), enviado em `Authorization: Bearer cla_…` ou `x-claudia-token`. Publicada com verify_jwt = false.
 //   POST { weight_kg: 82.4 | "82,4", measured_at?: ISO, source?: 'shortcut'|'apple_health' }       → ingest_weight

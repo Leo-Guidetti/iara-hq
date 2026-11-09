@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // Validação mínima sem dependências: lança Error com o caminho do campo inválido.
 export function obj(v, path = 'raiz') {
   if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error(`${path}: esperado objeto`);

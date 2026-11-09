@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // IARA · orquestradora. Junta o briefing de cada agent (core.coletar_briefings) e a rotina do dia,
 // e escreve o briefing da manhã ou o fechamento da noite em core.briefings.
 import { agoraSP, authenticate, CORS, DIAS, fecharRun, iniciarRun, json, perfis, sql } from './_shared/common.ts';

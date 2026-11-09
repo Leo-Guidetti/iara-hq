@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // ClaudIA · cliente de IA (padrão AIrton): tiers, chave e teto por funcionalidade, log em claudia.ai_usage.
 import { sql } from './common.ts';
 export const MODELS = {

@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // claudia-strava · integração com o Strava. Secrets: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET.
 //   POST { action: 'status' }                         → strava_status()
 //   POST { action: 'connect', redirect_uri, state }   → { url } de autorização (o callback volta para o app)

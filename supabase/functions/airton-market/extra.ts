@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // AIrton — mercado (parte 2): IPCA, histórico de investimentos do Open Finance e plano da carteira por IA.
 import { admin, spDate } from './common.ts';
 import { anthropic, MODELS, textOf } from './ai.ts';

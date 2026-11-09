@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // Classificação de lançamentos novos: estrutural → regra → histórico → IA.
 // Nunca toca lançamento já revisado (decisão sua).
 import { admin } from './common.ts';

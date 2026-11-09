@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // claudia-food-parse · texto livre de refeição -> itens com macros. Não grava em food_logs: o app confirma e salva.
 //   POST { text: string, meal?: MEAL, date?: 'YYYY-MM-DD' }
 //   200  { items: [{ description, meal, protein_g, kcal, carbs_g, fat_g }], totals, local_date, model, prompt_version }

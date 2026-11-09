@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // AIrton — IA no servidor (chaves ficam no Supabase, não no aparelho).
 // Ações: chat {message} | categorize (classifica pendentes) | reset_chat.
 import { addDays, admin, authenticate, CORS, json, spDate } from './_shared/common.ts';

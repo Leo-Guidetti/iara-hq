@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // claudia-coach · cria ou ajusta o plano de treino e materializa as sessões.
 //   POST { action: 'plan', instruction?: string, start_date?: 'YYYY-MM-DD' }  → IA (Sonnet 5.5), novo workout_plans
 //   POST { action: 'extend', days?: number }                                → sem IA: estende a semana-modelo ativa

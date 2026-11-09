@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // Utilidades comuns das Edge Functions do AIrton (schema `airton` no projeto ClaudIA).
 import { createClient } from 'npm:@supabase/supabase-js@2.46.1';
 export const SUPABASE_URL = Deno.env.get('SUPABASE_URL');

@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // IARA HQ · cliente de IA (mesmo padrão do AIrton): tiers, chave e teto por funcionalidade,
 // log de toda chamada em core.ai_usage com o run e o papel (orquestrador | worker).
 import { sql } from './common.ts';

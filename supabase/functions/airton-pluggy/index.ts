@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // AIrton — Open Finance (Meu Pluggy) rodando no servidor.
 // Ações: connect_token | add_item | remove_item | sync. O pg_cron chama `sync` 2x por dia
 // para todos os membros; o app chama ao abrir (se o último sync tiver mais de 3 h) e no botão.

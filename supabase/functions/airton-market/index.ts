@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // AIrton — mercado: curva diária das ações (B3 e EUA), câmbio, quantidade estimada e alertas.
 // Ações: refresh (cron em dias úteis e botão do app) | news (dom, qua e sex) | plan (domingo) | history.
 import { admin, authenticate, CORS, json, kvGet, memberIds, spDate } from './common.ts';

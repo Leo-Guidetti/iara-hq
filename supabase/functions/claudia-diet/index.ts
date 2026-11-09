@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // claudia-diet · TDEE (fórmula ou adaptativo), metas de kcal e proteína e orientação prática.
 //   POST {}  →  200 { recommendation: linha de public.diet_recommendations }
 // O TDEE e os limites das metas são calculados aqui, de forma determinística; a IA escolhe dentro

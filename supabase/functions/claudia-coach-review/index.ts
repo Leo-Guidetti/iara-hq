@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // claudia-coach-review · revisão semanal do treino com propostas de ajuste.
 //   POST { action: 'review', week_start?: 'YYYY-MM-DD', trigger?: 'manual'|'auto' } → IA (Sonnet 5.5), grava coach_reviews (1 por semana)
 //   POST { action: 'apply', review_id, index, decision: 'accept'|'reject' }         → sem IA: aplica ou descarta a proposta

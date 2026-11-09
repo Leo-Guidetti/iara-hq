@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // claudia-photo-review · compara fotos de espelho (baseline x atual) e estima uma faixa de gordura corporal.
 //   POST { baseline_date?: 'YYYY-MM-DD', current_date?: 'YYYY-MM-DD' }
 //   200  { review: linha de public.photo_reviews }

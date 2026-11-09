@@ -1,3 +1,4 @@
+// @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // claudia-checkin · check-in semanal com nota de 0 a 100.
 //   POST { week_start?: 'YYYY-MM-DD' } → { checkin }   (Sonnet 5.5; 1 por semana em weekly_checkins, refaz se pedir de novo)
 // A nota é determinística (pesagens, proteína, treinos, registro alimentar, medidas/fotos); a IA escreve o texto.
