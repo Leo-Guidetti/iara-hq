@@ -10,6 +10,9 @@ Diagnóstico (09/11): o acesso ao GitHub é fixado quando a sessão começa. Nes
 API dá 403 ("GitHub access to this repository is not enabled for this session"), e o git da VM do PC não
 tem credencial. Saída: nova sessão com o repo `Leo-Guidetti/iara-hq` como fonte, ou o Leo dá o push
 pelo terminal do Windows. Strava (Etapa 1.2) não bloqueia a Etapa 0.
+**Decisão (09/11):** a execução autônoma passa para sessões de **Claude Code na nuvem** (claude.ai/code com o
+repo `Leo-Guidetti/iara-hq`), que têm push, PR e auto-merge. A fonte da verdade é o GitHub, não a pasta local.
+O Leo dá o push inicial da `chore/base-ci`; a sessão de Code continua dela.
 
 ## Como trabalhar cada entrega
 1. Branch `<tipo>/<tema>` → commits pequenos.
