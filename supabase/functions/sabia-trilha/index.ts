@@ -319,14 +319,18 @@ Responda só com o JSON dentro de <trilha></trilha>:
 {"resumo":"fio condutor do dia em 1 frase","itens":[{"tema":"ia","titulo":"...","fonte":"...","url":"https://...","formato":"artigo","idioma":"pt","minutos":5,"por_que":"...","takeaway":"..."}]}`;
   const r = await anthropic({
     model: MODELS.smart,
-    max_tokens: 2500,
+    max_tokens: 4000,
     system: SABIA_SYSTEM,
     messages: [
       {
         role: 'user',
         content: prompt
       }
-    ]
+    ],
+    // Sem effort o Sonnet 5.5 pensa no padrão e o pensamento (cobrado como saída) esgotava o max_tokens antes do JSON.
+    output_config: {
+      effort: 'low'
+    }
   }, {
     run,
     feature: 'trilha-orquestrador',
@@ -377,14 +381,17 @@ Responda só com o JSON dentro de <trilha></trilha>:
 {"resumo":"...","itens":[{"tema":"recap","titulo":"Recap da semana","formato":"recap","minutos":10,"por_que":"...","corpo":"..."},{"tema":"livros","titulo":"...","formato":"livro","minutos":15,"por_que":"...","corpo":"..."}]}`;
   const r = await anthropic({
     model: MODELS.smart,
-    max_tokens: 3000,
+    max_tokens: 5000,
     system: SABIA_SYSTEM,
     messages: [
       {
         role: 'user',
         content: prompt
       }
-    ]
+    ],
+    output_config: {
+      effort: 'low'
+    }
   }, {
     run,
     feature: 'trilha-recap',

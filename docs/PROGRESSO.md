@@ -3,10 +3,10 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo:** depois do merge do PR `chore/sincroniza-producao` (etapa 0.1), conferir o run do
-`deploy-supabase` (db push só reaplica `20261109120000_claudia_is_member`, idêntica à de produção; as 15
-funções são republicadas com o mesmo código + um comentário `@ts-nocheck`), `list_edge_functions` (versões
-subiram, todas ACTIVE) e logs das funções. Depois: 0.2 (tirar `@ts-nocheck` aos poucos) e 0.5.
+**Próximo passo:** depois do merge do PR `fix/sabia-trilha-effort`, conferir o run do `deploy-supabase` (deve
+publicar só a `sabia-trilha`, v7 → v8; é o 1º deploy de função pelo CI) e fazer uma chamada real
+(`core_private.call_function('sabia-trilha', ...)` como o cron) para gerar a trilha de 09/11, que falhou;
+conferir `core.agent_runs` e o custo em `core.ai_usage`. Depois: 0.5 (custo semanal) e 0.2 (tipar aos poucos).
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
 obrigatórios já estão configurados (o PR fica `blocked` até o CI ficar verde).
@@ -37,7 +37,8 @@ não depende disso enquanto espera.
       `sincroniza-producao`, script `check:functions` e `supabase/functions/deno.json` (iguais aos do PR #2,
       para o merge dele não conflitar). Validado na nuvem em 09/11: `pnpm install --frozen-lockfile`,
       `turbo typecheck build` e `check:functions` verdes na main e na claudia-v2.
-- [ ] 1. **09/11: workflow rodou verde; PR aberto (ver Registro).** Sincronizar produção → repo: baixar todas as Edge Functions no ar (airton-*, sabia-trilha,
+- [x] 1. **09/11, PR #5.** O merge aplicou a `20261109120000_claudia_is_member` (sem efeito, igual à do ar).
+      Sincronizar produção → repo: baixar todas as Edge Functions no ar (airton-*, sabia-trilha,
       iara-briefing, claudia-*) e o schema; produção vence nas divergências; migration de baseline
       que não altera nada. PR `chore/sincroniza-producao`.
       **Como (decidido em 09/11):** pelo workflow `sincroniza-producao` (workflow_dispatch, só leitura), que
@@ -55,8 +56,8 @@ não depende disso enquanto espera.
 - [ ] 2. CI (`.github/workflows/ci.yml`): ajustar à estrutura real (scripts do pnpm, nomes dos
       pacotes) até ficar verde numa branch de teste. **09/11:** verde nos PRs #3 e #4. O fonte baixado
       da produção vem sem tipos (o Supabase guarda transpilado) e dava 646 erros no `deno check` estrito;
-      os 35 arquivos levam `// @ts-nocheck` na 1ª linha. Falta: tipar e tirar a marca, função por função,
-      quando cada uma for editada. As 9 `claudia-*` têm a versão tipada no PR #2 (claudia-v2): no rebase
+      os 35 arquivos levam `// @ts-nocheck` na 1ª linha. Falta: tipar e tirar a marca, função por função
+      (tarefa própria; correção pequena numa função não precisa esperar por isso). As 9 `claudia-*` têm a versão tipada no PR #2 (claudia-v2): no rebase
       dele, ficar com a tipada se for equivalente à do ar.
 - [ ] 3. Deploy (`deploy-supabase.yml`) conferido contra `supabase/` real e validado com um deploy de verdade.
       **09/11:** secrets do Actions, auto-merge e proteção da `main` (checks obrigatórios, sem revisão) já
@@ -106,4 +107,6 @@ não depende disso enquanto espera.
 | 09/11 | 0.0–0.4 | — (sem push) | ANTHROPIC_API_KEY voltou: `briefing_noite` de 08/11 00:30 UTC ok (US$ 0,0111) | Branch local `chore/base-ci`; pedido único ao Leo: acesso de push, secrets do Actions, auto-merge, ruleset, bucket, Strava |
 | 09/11 | 0.0 | #3 | CI verde; deploy do merge falhou no `db push` (flag da v3), nada aplicado | Secrets do Actions e ruleset da `main` confirmados |
 | 09/11 | 0.3 | #4 | só `.github/`, sem deploy | CLI fixo na 3.0.0, `--remote`/`--yes` |
-| 09/11 | 0.1 | `chore/sincroniza-producao` | — (conferir após o merge) | 15 funções, 48 migrations de histórico, `schema/producao.sql`; sem conflitos em `_shared` |
+| 09/11 | 0.1 | #5 | `list_migrations` com `20261109120000`; funções não publicadas (faltava `--yes`, nada mudou) | 15 funções, 48 migrations de histórico, `schema/producao.sql`; sem conflitos em `_shared` |
+| 09/11 | 0.3 | #6 | só `.github/`, sem deploy | `--yes` no `functions deploy` |
+| 09/11 | extra | `fix/sabia-trilha-effort` | — (conferir após o merge) | Trilha de 09/11 falhou ("Resposta sem <trilha>"): orquestrador Sonnet sem `effort` esgotava os 2.500 tokens pensando. `effort: low` e teto maior no orquestrador e no recap |
