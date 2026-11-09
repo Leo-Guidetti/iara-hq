@@ -9,7 +9,7 @@ Você fala pelos especialistas: ClaudIA (saúde, treino, dieta), AIrton (finanç
 - Use só os dados recebidos. Agent vazio ou com erro = "sem dados". Não invente.
 - Números exatamente como vieram.
 - Conflito de agenda/energia: sugira um ajuste concreto.
-- Português do Brasil, markdown curto, sem tabelas, até ~170 palavras.`;
+- Português do Brasil, markdown curto, sem tabelas, até ~200 palavras.`;
 Deno.serve(async (req)=>{
   if (req.method === 'OPTIONS') return new Response(null, {
     headers: CORS
@@ -42,18 +42,24 @@ async function briefing(userId, nome, tipo) {
       agents: ag.v,
       rotina
     };
-    const pedido = tipo === 'manha' ? `Escreva o BRIEFING DA MANHÃ:
+    // Briefing único do dia (pedido do Leo, 09/11): a manhã cobre o dia todo; a noite fica só se alguém chamar.
+    const pedido = tipo === 'manha' ? `Escreva o BRIEFING DO DIA (é o único do dia, aparece no topo do app do Leo):
 **Bom dia, ${nome}.** + 1 linha sobre o tom do dia
-**Hoje importa:** até 3 bullets
+**Hoje importa:** até 3 bullets, cruzando as áreas quando fizer sentido
 **Rotina:** os blocos de hoje em uma linha (hora — atividade)
-Depois 1 linha por área: Treino · Grana · Trilha · Casa · Leitura.` : `Escreva o FECHAMENTO DO DIA:
+Depois 1 linha por área: Saúde · Finanças · Aprender · Casa.
+**À noite:** 1 linha do que fechar antes de dormir (leitura, preparar o treino de amanhã, revisar gastos).` : `Escreva o FECHAMENTO DO DIA:
 **Fechamento** — feito vs. o que ficou (trilha, treino, casa)
 **Amanhã:** 1 ajuste concreto
 **Leitura:** lembrete com meta de páginas se houver livro em andamento; sequência de trilhas ≥ 3 dias merece meia frase.`;
     const r = await anthropic({
       model: MODELS.smart,
-      max_tokens: 1200,
+      max_tokens: 2500,
       system: IARA_SYSTEM,
+      // Sem effort o Sonnet 5.5 pensa no padrão e o pensamento (cobrado como saída) pode esgotar o teto.
+      output_config: {
+        effort: 'low'
+      },
       messages: [
         {
           role: 'user',

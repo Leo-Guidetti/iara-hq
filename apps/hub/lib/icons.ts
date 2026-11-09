@@ -4,6 +4,7 @@ export const ICON = {
   saude: 'M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z',
   financas: 'M3 7h18v12H3zM3 11h18M7 15h4M16 4l-4 3-4-3',
   casa: 'M3 11l9-7 9 7M5 10v10h14V10M10 20v-6h4v6',
+  aprender: 'M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 5v16M9 7h6M9 11h4',
   peso: 'M5 20h14l-2-12H7zM9 8a3 3 0 016 0',
   corpo: 'M12 4a2 2 0 110 4 2 2 0 010-4zM8 10h8l-1 5h-2l-1 5-1-5H9z',
   treino: 'M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12',

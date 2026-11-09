@@ -4,15 +4,19 @@ import { currentUser } from '@/lib/supabase/server'
 import { dailyAlerts } from '@/lib/alerts'
 import { spDate } from '@/lib/dates'
 
+import { ICON } from '@/lib/icons'
+import { Md } from '@/lib/md'
+
 export const dynamic = 'force-dynamic'
 
-import { ICON } from '@/lib/icons'
-
 type Linha = { texto: string; destaque?: boolean }
-type IaraResumo = {
-  briefing: { tipo: string; data: string; texto: string | null; lido: boolean } | null
-  itens_pendentes: number
-  itens: { origem: string; titulo: string; minutos: number | null }[]
+type CasaResumo = {
+  briefings: { id: number; tipo: string; data: string; texto: string | null; lido: boolean }[]
+  itens: { origem: string; titulo: string; minutos: number | null; status: string }[]
+} | null
+type SabiaResumo = {
+  trilha: { tipo: string; minutos: number; hoje: boolean } | null
+  itens: { titulo: string; minutos: number; status: string }[]
 } | null
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: Math.abs(v) >= 1000 ? 0 : 2 })
@@ -32,12 +36,13 @@ export default async function Hoje() {
   const me = (await currentUser())!
   const raw = me.sb as unknown as SupabaseClient
   const today = spDate()
-  const [sessoes, alertas, pend, mes, iara] = await Promise.all([
+  const [sessoes, alertas, pend, mes, iara, sab] = await Promise.all([
     seguro(me.sb.from('plan_sessions').select('title, status, duration_min').eq('local_date', today).order('id')),
     dailyAlerts(me.sb).then((r) => r.alerts).catch(() => 'erro' as const),
     seguro(raw.schema('airton').rpc('review_counts', { p_user: me.user.id })),
     seguro(raw.schema('airton').rpc('month_plan', { p_user: me.user.id })),
-    seguro(raw.rpc('hub_resumo_iara')),
+    seguro(raw.rpc('hub_casa')),
+    seguro(raw.rpc('hub_sabia')),
   ])
 
   // ClaudIA: treino do dia e alertas determinísticos (sem IA).
@@ -64,14 +69,21 @@ export default async function Hoje() {
       : { texto: `Passou do livre do mês em ${brl(-livre)}`, destaque: true })
   }
 
-  // IARA House: briefing do dia e a fila de itens (trilha da SabIA etc.).
-  const casa: Linha[] = []
-  const r = iara && iara !== 'erro' ? (iara as IaraResumo) : null
-  if (r?.briefing) {
-    const quando = r.briefing.tipo === 'noite' ? 'da noite' : 'da manhã'
-    casa.push({ texto: `Briefing ${quando}${r.briefing.lido ? '' : ' (não lido)'}${r.briefing.texto ? `: ${r.briefing.texto.split('\n')[0].slice(0, 140)}` : ''}`, destaque: !r.briefing.lido })
+  // Briefing único do dia (IARA, todas as áreas) e IARA House só com o que é da casa.
+  const c = iara && iara !== 'erro' ? (iara as CasaResumo) : null
+  const briefing = c?.briefings.find((b) => b.tipo === 'manha') ?? c?.briefings[0] ?? null
+  const casa: Linha[] = (c?.itens ?? []).filter((i) => i.origem === 'iara').map((i) => ({ texto: i.titulo, destaque: true }))
+
+  // SabIA: a trilha do dia.
+  const sabia: Linha[] = []
+  const sb = sab && sab !== 'erro' ? (sab as SabiaResumo) : null
+  if (sb?.trilha?.hoje) {
+    const faltam = sb.itens.filter((i) => i.status === 'pendente')
+    sabia.push(faltam.length
+      ? { texto: `Trilha do dia: ${plural(faltam.length, 'item', 'itens')} · ${faltam.reduce((n, i) => n + i.minutos, 0)} min`, destaque: true }
+      : { texto: '✓ Trilha do dia concluída' })
+    for (const i of faltam.slice(0, 2)) sabia.push({ texto: `${i.titulo} · ${i.minutos} min` })
   }
-  for (const i of r?.itens ?? []) casa.push({ texto: `${i.titulo}${i.minutos && !i.titulo.includes('min') ? ` · ${i.minutos} min` : ''}` })
 
   const data = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' }).format(new Date())
   const hora = Number(new Intl.DateTimeFormat('pt-BR', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Sao_Paulo' }).format(new Date()))
@@ -81,8 +93,9 @@ export default async function Hoje() {
   const conta = (l: Linha[]) => l.filter((x) => x.destaque).length
   const planetas = [
     { app: 'claudia' as const, nome: 'ClaudIA', href: '/saude', icon: ICON.saude, n: conta(claudia), x: 50, y: 0 },
-    { app: 'airton' as const, nome: 'AIrton', href: '/financas', icon: ICON.financas, n: conta(airton), x: 93.3, y: 75 },
-    { app: 'casa' as const, nome: 'IARA House', href: '/casa', icon: ICON.casa, n: conta(casa), x: 6.7, y: 75 },
+    { app: 'airton' as const, nome: 'AIrton', href: '/financas', icon: ICON.financas, n: conta(airton), x: 100, y: 50 },
+    { app: 'sabia' as const, nome: 'SabIA', href: '/aprender', icon: ICON.aprender, n: conta(sabia), x: 50, y: 100 },
+    { app: 'casa' as const, nome: 'IARA House', href: '/casa', icon: ICON.casa, n: conta(casa), x: 0, y: 50 },
   ]
   const total = planetas.reduce((s, p) => s + p.n, 0)
 
@@ -93,6 +106,18 @@ export default async function Hoje() {
         <h1>{saudacao}, {nome}</h1>
         <p className="muted small" style={{ margin: 0 }}>{total ? `${plural(total, 'missão pede', 'missões pedem')} você hoje.` : 'Tudo em órbita: nada pendente agora.'}</p>
       </div>
+
+      <section className="card ai">
+        <span className="tag ai">Briefing do dia · IARA</span>
+        {briefing?.texto ? (
+          <>
+            <Md texto={briefing.texto.split('\n').slice(0, 6).join('\n')} />
+            {briefing.texto.split('\n').length > 6 && (
+              <details className="brief"><summary>Ver o briefing inteiro</summary><Md texto={briefing.texto.split('\n').slice(6).join('\n')} /></details>
+            )}
+          </>
+        ) : <p className="small muted" style={{ margin: '6px 0 0' }}>O briefing sai todo dia às 07:00.</p>}
+      </section>
 
       <div className="orbit" aria-label="Seus apps">
         <div className="ring" />
@@ -115,14 +140,16 @@ export default async function Hoje() {
         linhas={claudia} falhou={sessoes === 'erro' && alertas === 'erro'} vazio="Tudo em dia na saúde." />
       <Bloco app="airton" nome="AIrton" papel="Finanças" href="/financas" rotulo="Abrir o AIrton"
         linhas={airton} falhou={pend === 'erro' && mes === 'erro'} vazio="Nada pendente nas finanças." />
-      <Bloco app="casa" nome="IARA House" papel="Casa e rotina" href="/casa" rotulo="Abrir a IARA House"
-        linhas={casa} falhou={iara === 'erro'} vazio="Nenhuma pendência da IARA hoje." />
+      <Bloco app="sabia" nome="SabIA" papel="Aprender" href="/aprender" rotulo="Abrir a SabIA"
+        linhas={sabia} falhou={sab === 'erro'} vazio="A trilha de hoje ainda não saiu." />
+      <Bloco app="casa" nome="IARA House" papel="Casa" href="/casa" rotulo="Abrir a IARA House"
+        linhas={casa} falhou={iara === 'erro'} vazio="Nenhuma tarefa da casa hoje." />
     </div>
   )
 }
 
 function Bloco({ app, nome, papel, href, rotulo, linhas, falhou, vazio }: {
-  app: 'claudia' | 'airton' | 'casa'; nome: string; papel: string; href: string; rotulo: string
+  app: 'claudia' | 'airton' | 'sabia' | 'casa'; nome: string; papel: string; href: string; rotulo: string
   linhas: Linha[]; falhou: boolean; vazio: string
 }) {
   const pend = linhas.filter((l) => l.destaque).length

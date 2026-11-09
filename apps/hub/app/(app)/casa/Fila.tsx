@@ -7,15 +7,15 @@ import { supabaseBrowser } from '@/lib/supabase/client'
 export type Item = { id: number; origem: string; tipo: string; titulo: string; detalhe: string | null; data: string; minutos: number | null; acao: { url?: string; rotulo?: string; externo?: string }; status: string; prioridade: string }
 
 const ORIGEM: Record<string, { nome: string; app: string }> = {
-  sabia: { nome: 'SabIA', app: 'hq' }, iara: { nome: 'IARA', app: 'casa' }, airton: { nome: 'AIrton', app: 'airton' },
+  sabia: { nome: 'SabIA', app: 'sabia' }, iara: { nome: 'IARA', app: 'casa' }, airton: { nome: 'AIrton', app: 'airton' },
   claudia: { nome: 'ClaudIA', app: 'claudia' }, gmail: { nome: 'Gmail', app: 'hq' }, agenda: { nome: 'Agenda', app: 'hq' },
 }
 
-// Rotas que já existem no hub (o /aprender da SabIA ainda não veio para cá).
-const ROTAS = ['/hoje', '/saude', '/financas', '/casa', '/perfil']
+// Rotas que existem no hub.
+const ROTAS = ['/hoje', '/saude', '/financas', '/aprender', '/casa', '/perfil']
 
 /** Fila do dia (core.itens) com as ações feito / amanhã / ignorar, via public.hub_item_status. */
-export function Fila({ itens }: { itens: Item[] }) {
+export function Fila({ itens, vazio = 'Fila vazia: nada pendente hoje.' }: { itens: Item[]; vazio?: string }) {
   const router = useRouter()
   const [busy, setBusy] = useState<number | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -28,7 +28,7 @@ export function Fila({ itens }: { itens: Item[] }) {
     else router.refresh()
   }
 
-  if (!itens.length) return <section className="card"><p className="small muted" style={{ margin: 0 }}>Fila vazia: nada pendente hoje.</p></section>
+  if (!itens.length) return <section className="card"><p className="small muted" style={{ margin: 0 }}>{vazio}</p></section>
   return (
     <div className="stack" style={{ gap: 12 }}>
       {erro && <p className="error">{erro}</p>}
