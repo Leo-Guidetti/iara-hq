@@ -41,7 +41,17 @@ abrir no módulo), um único canal de push com limite diário de interrupções,
 Google Calendar (eventos e horários livres), digest do Gmail (só o que pede ação), Home
 Assistant quando a casa estiver montada.
 
-## Fase 5 — Orquestração da IARA
+## Fase 5 — Planejamento da semana (pedido do Leo, 09/11) e orquestração da IARA
+O Leo planeja a semana **aos domingos à noite**. A IARA HQ prepara o rascunho e ele revisa no hub.
+
+| Quando (SP) | O quê |
+| --- | --- |
+| Domingo 18:00 | IARA monta o rascunho do **Plano da semana** (`core.planos_semana` + itens por dia) cruzando: **treinos** (sessões do plano da ClaudIA, dias e duração), **dieta** (metas de kcal/proteína, refeições-chave), **estudos** (temas da SabIA, imersão de sábado, meta de páginas do livro), **gastos e contas previstas** (parcelas, contas e livre por semana do AIrton), **lista de compras da casa** (IARA House; depende da migração do Supabase antigo) e **agenda** (Google Calendar, Fase 4). Push "Plano da semana pronto". |
+| Domingo 20:00 | O Leo revisa em `/semana` (bloco "Planejamento da semana" na rotina): aceita, move ou tira itens; ao confirmar, os itens viram cartões em `core.itens` nos dias certos e aparecem na Hoje e na órbita. |
+| Todo dia 07:00 | Briefing único do dia (já no ar desde 09/11), agora lendo também o plano da semana. |
+Custo estimado: 1 chamada Sonnet 5.5 por semana (~US$ 0,05) + o briefing diário (~US$ 0,01/dia).
+
+## Fase 5b — Orquestração da IARA (antiga Fase 5)
 | Quando | O quê |
 | --- | --- |
 | Todo dia 07:00 | plano do dia: prioriza e encaixa nos horários livres |

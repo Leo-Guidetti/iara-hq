@@ -181,3 +181,18 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--progress); 
 details.brief summary { cursor: pointer; color: var(--accent); font-size: .85rem; font-weight: 600; list-style: none; margin-top: 6px; }
 details.brief summary::-webkit-details-marker { display: none; }
 details.brief[open] summary { display: none; }
+
+/* Linha do tempo "Seu dia" no briefing (09/11). */
+.timeline { list-style: none; margin: 8px 0 4px; padding: 0; display: grid; gap: 0; }
+.timeline li { display: grid; grid-template-columns: 46px 14px 1fr; align-items: start; gap: 8px; position: relative; padding: 5px 0; }
+.timeline li::after { content: ""; position: absolute; left: 59px; top: 20px; bottom: -6px; width: 1px; background: var(--edge); }
+.timeline li:last-child::after { display: none; }
+.timeline .h { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: .78rem; color: var(--muted); padding-top: 2px; }
+.timeline .dot { width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.timeline .t { font-size: .92rem; }
+.timeline .t small { color: var(--muted); }
+.timeline li.passou { opacity: .5; }
+.timeline li.passou .dot { box-shadow: none; }
+.timeline li.agora .t { font-weight: 600; }
+.timeline li.agora .h { color: var(--accent); }
+.timeline .feito { color: var(--accent); font-size: .78rem; margin-left: 6px; }
