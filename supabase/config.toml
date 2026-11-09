@@ -46,3 +46,6 @@ verify_jwt = false   # como está em produção
 
 [functions.claudia-checkin]
 verify_jwt = false   # como está em produção
+
+[functions.hub-senha]
+verify_jwt = false   # autentica sozinha: só o e-mail do Leo + código do secret HUB_CADASTRO_CODIGO

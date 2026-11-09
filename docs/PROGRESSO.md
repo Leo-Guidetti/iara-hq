@@ -13,14 +13,14 @@ o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 3. Domingo 15/11, 20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
 4. Etapa 1 espera o Leo (pedido de 09/11, ver "Pedido aberto ao Leo" abaixo).
 
-**Pedido aberto ao Leo (09/11, revisto):** Strava fica para depois (decisão do Leo). Bucket `airton-deploy`
-apagado pelo Leo (conferido). Domínio `iara-agents-hq.vercel.app` adicionado ao projeto `hub` a pedido do Leo
-(responde 200 em `/login`). **Falta:** o login por link mágico cai em `localhost` porque o Supabase Auth só
-redireciona para URLs da lista permitida e, fora dela, usa a Site URL (`localhost`). O Leo precisa, em
-Authentication → URL Configuration, pôr Site URL = `https://iara-agents-hq.vercel.app` e adicionar
-`https://iara-agents-hq.vercel.app/**` e `https://hub-gilt-two.vercel.app/**` em Redirect URLs. Depois disso: ele
-testa as telas de `/saude` (1.3). Na 1.4 não precisa mais mover domínio: depois do merge do PR #2 basta trocar o
-Production Branch do projeto `hub` de `claudia-v2` para `main`.
+**Pedido aberto ao Leo (09/11, revisto 2):** Strava fica para depois. Bucket apagado. Domínio
+`iara-agents-hq.vercel.app` no projeto `hub`. **Login (decisão do Leo):** sem link por e-mail; e-mail e senha, só
+para `leonardoguidettic@gmail.com`. A conta dele já existe (com os dados), então a senha é definida pela função
+`hub-senha` (PR `feat/hub-senha`), que só aceita o e-mail dele e o código do secret `HUB_CADASTRO_CODIGO`, que o
+Leo cria no painel. No hub (branch `claudia-v2`, PR #2): tela de entrar com senha, `/cadastro` e o middleware
+barrando qualquer outro e-mail. **Falta o Leo:** criar o secret, cadastrar a senha em `/cadastro`, apagar o
+secret e testar as telas de `/saude` (1.3). Na 1.4: depois do merge do PR #2, trocar o Production Branch
+do projeto `hub` de `claudia-v2` para `main` (nada a fazer com domínio).
 
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
