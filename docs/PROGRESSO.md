@@ -3,10 +3,20 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo:** depois do merge de `feat/core-itens`, conferir em produção (`core.itens` existe, RLS
-ligada, `publicar_item` sem execute para anon/authenticated) e fazer a SabIA publicar cada item da trilha
-(`tipo` leitura, `chave_origem` = `trilha:<data>:<url normalizada>`, `acao.externo` = URL). Domingo 15/11
-20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
+**Próximo passo (parada segura em 09/11, 12:40 UTC):**
+1. **10/11 depois das 09:30 UTC:** conferir o 1º cartão publicado pela SabIA (PR #11, `sabia-trilha` v9):
+   `select * from core.itens where origem = 'sabia' order by id desc limit 1;` e, no run do dia,
+   `core.agent_runs.output->>'item_id'` preenchido e `erro_item` nulo. Se `erro_item` vier preenchido,
+   corrigir a chamada em `sabia-trilha/index.ts` (bloco "Núcleo de itens").
+2. Etapa 2, próximo publicador: `iara-briefing` (manhã/noite → cartão `lembrete`, chave `briefing:<data>:<tipo>`),
+   depois AIrton (plano semanal, contas a vencer) e ClaudIA (treino do dia, pesagem).
+3. Domingo 15/11, 20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
+4. Etapa 1 espera o Leo (pedido de 09/11, ver "Pedido aberto ao Leo" abaixo).
+
+**Pedido aberto ao Leo (09/11):** (a) Strava: app + callback + secrets `STRAVA_CLIENT_ID`/`STRAVA_CLIENT_SECRET`;
+(b) testar as telas de `/saude` em https://hub-gilt-two.vercel.app; (c) virada de domínio e branch de produção
+do projeto `hub` para `main` depois do merge do PR #2; (d) apagar o bucket público `airton-deploy` (8 arquivos;
+o `deploy-bundles` já foi apagado).
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
 obrigatórios já estão configurados (o PR fica `blocked` até o CI ficar verde).
@@ -89,7 +99,7 @@ não depende disso enquanto espera.
       foi mergeada na `claudia-v2` (merge, sem rebase), ficando as versões tipadas; build, typecheck e
       `check:functions` verdes. Logs de 24 h: nenhum 5xx; cada `claudia-*` com 200 e 401 só sem login.
       Testar com usuário logado fica na 1.3 (precisa do login do Leo).
-- [ ] 2. Pedir ao Leo: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET (secrets) e a URL de callback no app da Strava.
+- [ ] 2. **Pedido em 09/11.** Pedir ao Leo: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET (secrets) e a URL de callback no app da Strava.
 - [ ] 3. Testar todas as telas de `/saude` no preview; uma linha por função de IA em `claudia.v_ai_cost_month`.
 - [ ] 4. Merge do PR #2 (claudia-v2) e virada do domínio para o projeto `hub` (reversível).
 - [ ] 5. Sete dias depois: pedir ao Leo a limpeza (apagar Vercel `claudia` e `claudia-v2`,
@@ -130,3 +140,4 @@ não depende disso enquanto espera.
 | 09/11 | extra | #7 | `sabia-trilha` v8 publicada pelo CI; chamada real (como o cron): run 5 `ok`, 5 itens, US$ 0,0232 (orquestrador 1.322 tokens de saída) | Trilha de 09/11 falhou ("Resposta sem <trilha>"): orquestrador Sonnet sem `effort` esgotava os 2.500 tokens pensando. `effort: low` e teto maior no orquestrador e no recap |
 | 09/11 | 0.5 | #8 | migration `20261109130000` aplicada; `ai_cost_report(7)` = semana US$ 0,37; `airton-notify` v9 | Custo do mês até 09/11: US$ 0,35 (AIrton 0,30; SabIA 0,03; IARA 0,02) |
 | 09/11 | 1.1 | merge da `main` na `claudia-v2` (PR #2) | logs 24 h sem 5xx | 12/13 idênticos ao ar; `claudia-strava` só muda a rota do callback |
+| 09/11 | 2 | #10, #11 | `core.itens` com RLS e 2 policies; `publicar_item` sem execute p/ anon/authenticated; `sabia-trilha` v9 | 1º cartão real sai no cron de 10/11 09:30 UTC |
