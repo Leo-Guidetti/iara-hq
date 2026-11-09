@@ -6,9 +6,7 @@ import { spDate } from '@/lib/dates'
 
 export const dynamic = 'force-dynamic'
 
-// Apps que ainda vivem fora do hub: o bloco leva para a experiência atual de cada um.
-const AIRTON_URL = 'https://airton-gray.vercel.app'
-const CASA_URL = 'https://iara-rho.vercel.app'
+import { ICON } from '@/lib/icons'
 
 type Linha = { texto: string; destaque?: boolean }
 type IaraResumo = {
@@ -76,27 +74,55 @@ export default async function Hoje() {
   for (const i of r?.itens ?? []) casa.push({ texto: `${i.titulo}${i.minutos && !i.titulo.includes('min') ? ` · ${i.minutos} min` : ''}` })
 
   const data = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' }).format(new Date())
+  const hora = Number(new Intl.DateTimeFormat('pt-BR', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Sao_Paulo' }).format(new Date()))
+  const saudacao = hora < 5 ? 'Boa madrugada' : hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite'
+  const nome = (me.user.user_metadata?.name as string | undefined)?.split(' ')[0] ?? 'Leo'
+
+  const conta = (l: Linha[]) => l.filter((x) => x.destaque).length
+  const planetas = [
+    { app: 'claudia' as const, nome: 'ClaudIA', href: '/saude', icon: ICON.saude, n: conta(claudia), x: 50, y: 0 },
+    { app: 'airton' as const, nome: 'AIrton', href: '/financas', icon: ICON.financas, n: conta(airton), x: 93.3, y: 75 },
+    { app: 'casa' as const, nome: 'IARA House', href: '/casa', icon: ICON.casa, n: conta(casa), x: 6.7, y: 75 },
+  ]
+  const total = planetas.reduce((s, p) => s + p.n, 0)
 
   return (
     <div className="stack">
-      <div>
-        <span className="tag progress">IARA HQ</span>
-        <h1>Hoje</h1>
-        <p className="muted small" style={{ margin: 0 }}>{data}</p>
+      <div className="hello">
+        <span className="tag progress">IARA HQ · {data}</span>
+        <h1>{saudacao}, {nome}</h1>
+        <p className="muted small" style={{ margin: 0 }}>{total ? `${plural(total, 'missão pede', 'missões pedem')} você hoje.` : 'Tudo em órbita: nada pendente agora.'}</p>
+      </div>
+
+      <div className="orbit" aria-label="Seus apps">
+        <div className="ring" />
+        <div className="ring inner" />
+        <div className="core"><div><b>{total}</b><small>{total === 1 ? 'pendência' : 'pendências'}</small></div></div>
+        <div className="spin">
+          {planetas.map((p) => (
+            <div key={p.app} className="planet" data-app={p.app} style={{ left: `${p.x}%`, top: `${p.y}%` }}>
+              <Link href={p.href} aria-label={`${p.nome}: ${plural(p.n, 'pendência', 'pendências')}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={p.icon} /></svg>
+                {p.n > 0 && <span className="badge">{p.n}</span>}
+                <span className="name">{p.nome}</span>
+              </Link>
+            </div>
+          ))}
+        </div>
       </div>
 
       <Bloco app="claudia" nome="ClaudIA" papel="Saúde" href="/saude" rotulo="Abrir a ClaudIA"
         linhas={claudia} falhou={sessoes === 'erro' && alertas === 'erro'} vazio="Tudo em dia na saúde." />
-      <Bloco app="airton" nome="AIrton" papel="Finanças" href={AIRTON_URL} externo rotulo="Abrir o AIrton"
+      <Bloco app="airton" nome="AIrton" papel="Finanças" href="/financas" rotulo="Abrir o AIrton"
         linhas={airton} falhou={pend === 'erro' && mes === 'erro'} vazio="Nada pendente nas finanças." />
-      <Bloco app="casa" nome="IARA House" papel="Casa e rotina" href={CASA_URL} externo rotulo="Abrir a IARA House"
+      <Bloco app="casa" nome="IARA House" papel="Casa e rotina" href="/casa" rotulo="Abrir a IARA House"
         linhas={casa} falhou={iara === 'erro'} vazio="Nenhuma pendência da IARA hoje." />
     </div>
   )
 }
 
-function Bloco({ app, nome, papel, href, externo, rotulo, linhas, falhou, vazio }: {
-  app: 'claudia' | 'airton' | 'casa'; nome: string; papel: string; href: string; externo?: boolean; rotulo: string
+function Bloco({ app, nome, papel, href, rotulo, linhas, falhou, vazio }: {
+  app: 'claudia' | 'airton' | 'casa'; nome: string; papel: string; href: string; rotulo: string
   linhas: Linha[]; falhou: boolean; vazio: string
 }) {
   const pend = linhas.filter((l) => l.destaque).length
@@ -107,11 +133,9 @@ function Bloco({ app, nome, papel, href, externo, rotulo, linhas, falhou, vazio 
         <span className="small muted">{papel}{pend ? ` · ${plural(pend, 'pendência', 'pendências')}` : ''}</span>
       </div>
       {falhou ? <p className="small muted" style={{ margin: 0 }}>Não consegui carregar agora.</p>
-        : linhas.length ? <ul className="small">{linhas.map((l, i) => <li key={i} style={l.destaque ? { fontWeight: 600 } : undefined}>{l.texto}</li>)}</ul>
+        : linhas.length ? <div className="stack small" style={{ gap: 6 }}>{linhas.map((l, i) => <div key={i} className={`missao${l.texto.startsWith('✓') ? ' feita' : ''}`} style={l.destaque ? { fontWeight: 600 } : undefined}>{l.texto.replace(/^✓ /, '')}</div>)}</div>
         : <p className="small muted" style={{ margin: 0 }}>{vazio}</p>}
-      {externo
-        ? <a className="go" href={href} target="_blank" rel="noreferrer">{rotulo} ↗</a>
-        : <Link className="go" href={href}>{rotulo} →</Link>}
+      <Link className="go" href={href}>{rotulo} →</Link>
     </section>
   )
 }
