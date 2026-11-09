@@ -52,7 +52,7 @@ jobs:
           for f in $FUNCS; do
             if [ -d "supabase/functions/$f" ]; then
               echo "Publicando $f"
-              supabase functions deploy "$f" --remote="$PROJECT_REF" --no-verify-jwt --use-api
+              supabase functions deploy "$f" --remote="$PROJECT_REF" --no-verify-jwt --use-api --yes
             fi
           done
 
