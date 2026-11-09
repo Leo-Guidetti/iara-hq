@@ -3,7 +3,9 @@ import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/lib/database.types'
 import { SUPABASE_KEY, SUPABASE_URL } from '@/lib/env'
 
-const PUBLIC = ['/login', '/auth/callback', '/sem-acesso']
+const PUBLIC = ['/login', '/cadastro', '/auth/callback', '/sem-acesso']
+// Pedido do Leo (09/11): o hub inteiro é só dele.
+const PERMITIDO = 'leonardoguidettic@gmail.com'
 
 export async function middleware(req: NextRequest) {
   let res = NextResponse.next({ request: req })
@@ -26,6 +28,14 @@ export async function middleware(req: NextRequest) {
     if (isPublic) return res
     const url = req.nextUrl.clone()
     url.pathname = '/login'
+    url.search = ''
+    return NextResponse.redirect(url)
+  }
+
+  // qualquer outra conta logada vai para /sem-acesso (lá só há o botão de sair)
+  if (data.user.email?.toLowerCase() !== PERMITIDO && !path.startsWith('/sem-acesso')) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/sem-acesso'
     url.search = ''
     return NextResponse.redirect(url)
   }

@@ -7,7 +7,7 @@ export default function LoginPage() {
         <div>
           <span className="tag progress">IARA HQ</span>
           <h1>Entrar</h1>
-          <p className="muted">Acesso restrito. Enviamos um link e um código para o seu e-mail.</p>
+          <p className="muted">Acesso restrito. Entre com e-mail e senha.</p>
         </div>
         <LoginForm />
       </div>
