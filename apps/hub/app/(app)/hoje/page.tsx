@@ -122,7 +122,7 @@ export default async function Hoje() {
       <div className="orbit" aria-label="Seus apps">
         <div className="ring" />
         <div className="ring inner" />
-        <div className="core" aria-hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={ICON.hoje} /></svg></div>
+        <div className="core" title="IARA HQ: o centro que junta tudo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={ICON.hq} /></svg></div>
         <div className="spin">
           {planetas.map((p) => (
             <div key={p.app} className="planet" data-app={p.app} style={{ left: `${p.x}%`, top: `${p.y}%` }}>
