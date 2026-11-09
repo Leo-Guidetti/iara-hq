@@ -3,16 +3,15 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo:** Etapa 0, item 0 — dar push da branch local `chore/base-ci` (já commitada no PC do Leo),
-abrir o PR e ligar o auto-merge. **Bloqueado:** a sessão não tem permissão de push no GitHub (pedido ao
-Leo em 09/11, junto com os itens 0.3, 0.4 e 1.2). Assim que houver acesso: `git push -u origin chore/base-ci`.
-Diagnóstico (09/11): o acesso ao GitHub é fixado quando a sessão começa. Nesta sessão até a leitura pela
-API dá 403 ("GitHub access to this repository is not enabled for this session"), e o git da VM do PC não
-tem credencial. Saída: nova sessão com o repo `Leo-Guidetti/iara-hq` como fonte, ou o Leo dá o push
-pelo terminal do Windows. Strava (Etapa 1.2) não bloqueia a Etapa 0.
-**Decisão (09/11):** a execução autônoma passa para sessões de **Claude Code na nuvem** (claude.ai/code com o
-repo `Leo-Guidetti/iara-hq`), que têm push, PR e auto-merge. A fonte da verdade é o GitHub, não a pasta local.
-O Leo dá o push inicial da `chore/base-ci`; a sessão de Code continua dela.
+**Próximo passo:** depois do merge do PR `chore/sincroniza-producao` (etapa 0.1), conferir o run do
+`deploy-supabase` (db push só reaplica `20261109120000_claudia_is_member`, idêntica à de produção; as 15
+funções são republicadas com o mesmo código + um comentário `@ts-nocheck`), `list_edge_functions` (versões
+subiram, todas ACTIVE) e logs das funções. Depois: 0.2 (tirar `@ts-nocheck` aos poucos) e 0.5.
+**Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
+auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
+obrigatórios já estão configurados (o PR fica `blocked` até o CI ficar verde).
+**CLI do Supabase:** fixo na 3.0.0 nos workflows (PR #4). Na v3 todo comando de banco precisa de
+`--remote` (sem ele, mira o banco local) e mudança em projeto hospedado exige `--yes`.
 
 ## Como trabalhar cada entrega
 1. Branch `<tipo>/<tema>` → commits pequenos.
@@ -33,12 +32,12 @@ não depende disso enquanto espera.
 - Algo que exige quebrar um guardrail.
 
 ## Etapa 0 — Base (uma vez)
-- [ ] 0. PR `chore/base-ci` (pronto localmente, falta push): CLAUDE.md, docs/, `.gitattributes` (LF; o checkout
+- [x] 0. **09/11, PR #3.** PR `chore/base-ci`: CLAUDE.md, docs/, `.gitattributes` (LF; o checkout
       no Windows deixava 46 arquivos "modificados" só por CRLF), workflows `ci`, `deploy-supabase` e
       `sincroniza-producao`, script `check:functions` e `supabase/functions/deno.json` (iguais aos do PR #2,
       para o merge dele não conflitar). Validado na nuvem em 09/11: `pnpm install --frozen-lockfile`,
       `turbo typecheck build` e `check:functions` verdes na main e na claudia-v2.
-- [ ] 1. Sincronizar produção → repo: baixar todas as Edge Functions no ar (airton-*, sabia-trilha,
+- [ ] 1. **09/11: workflow rodou verde; PR aberto (ver Registro).** Sincronizar produção → repo: baixar todas as Edge Functions no ar (airton-*, sabia-trilha,
       iara-briefing, claudia-*) e o schema; produção vence nas divergências; migration de baseline
       que não altera nada. PR `chore/sincroniza-producao`.
       **Como (decidido em 09/11):** pelo workflow `sincroniza-producao` (workflow_dispatch, só leitura), que
@@ -54,10 +53,15 @@ não depende disso enquanto espera.
       mesmas de produção (`20261109012945` e `20261109031226`) com outra versão; são `create or replace`,
       então o `db push` reaplica sem efeito.
 - [ ] 2. CI (`.github/workflows/ci.yml`): ajustar à estrutura real (scripts do pnpm, nomes dos
-      pacotes) até ficar verde numa branch de teste.
-- [ ] 3. Deploy (`deploy-supabase.yml`): conferir contra `supabase/` real. Pedir ao Leo os secrets
-      SUPABASE_ACCESS_TOKEN e SUPABASE_DB_PASSWORD no GitHub, auto-merge ligado e a proteção da
-      main com os checks do CI obrigatórios (sem exigir revisão). Validar com um PR inofensivo.
+      pacotes) até ficar verde numa branch de teste. **09/11:** verde nos PRs #3 e #4. O fonte baixado
+      da produção vem sem tipos (o Supabase guarda transpilado) e dava 646 erros no `deno check` estrito;
+      os 35 arquivos levam `// @ts-nocheck` na 1ª linha. Falta: tipar e tirar a marca, função por função,
+      quando cada uma for editada. As 9 `claudia-*` têm a versão tipada no PR #2 (claudia-v2): no rebase
+      dele, ficar com a tipada se for equivalente à do ar.
+- [ ] 3. Deploy (`deploy-supabase.yml`) conferido contra `supabase/` real e validado com um deploy de verdade.
+      **09/11:** secrets do Actions, auto-merge e proteção da `main` (checks obrigatórios, sem revisão) já
+      existem: o `link` passou no run do merge do #3. O `db push` falhou só pela mudança da v3 do CLI, sem
+      aplicar nada; corrigido no PR #4. Falta o deploy real: o merge da 0.1 é esse teste.
 - [ ] 4. Bucket `airton-deploy` (público): listar o conteúdo e pedir ao Leo para torná-lo privado
       ou apagar. **09/11:** listado (8 .tgz de 02–03/11: `airton-web-v24/25/26` e 5 `bundle-*`); pedido ao
       Leo para apagar os arquivos e o bucket (e o `deploy-bundles`, privado e vazio). Falta ele confirmar.
@@ -100,3 +104,6 @@ não depende disso enquanto espera.
 | Data | Etapa | PR | Conferido em produção | Observações |
 | --- | --- | --- | --- | --- |
 | 09/11 | 0.0–0.4 | — (sem push) | ANTHROPIC_API_KEY voltou: `briefing_noite` de 08/11 00:30 UTC ok (US$ 0,0111) | Branch local `chore/base-ci`; pedido único ao Leo: acesso de push, secrets do Actions, auto-merge, ruleset, bucket, Strava |
+| 09/11 | 0.0 | #3 | CI verde; deploy do merge falhou no `db push` (flag da v3), nada aplicado | Secrets do Actions e ruleset da `main` confirmados |
+| 09/11 | 0.3 | #4 | só `.github/`, sem deploy | CLI fixo na 3.0.0, `--remote`/`--yes` |
+| 09/11 | 0.1 | `chore/sincroniza-producao` | — (conferir após o merge) | 15 funções, 48 migrations de histórico, `schema/producao.sql`; sem conflitos em `_shared` |
