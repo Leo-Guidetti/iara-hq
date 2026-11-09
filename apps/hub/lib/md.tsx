@@ -1,8 +1,15 @@
 import { Fragment } from 'react'
 
-/** Markdown mínimo do briefing: parágrafos, bullets (- ou •) e **negrito**. Sem HTML do modelo. */
+/** Markdown mínimo (briefing, pílulas da SabIA): parágrafos, bullets, **negrito** e [links](https://…).
+ *  Sem HTML do modelo; link só com https. */
+function negrito(t: string, k: string) {
+  return t.split(/(\*\*[^*]+\*\*)/g).map((p, i) => p.startsWith('**') && p.endsWith('**') ? <strong key={`${k}${i}`}>{p.slice(2, -2)}</strong> : <Fragment key={`${k}${i}`}>{p}</Fragment>)
+}
 function inline(t: string) {
-  return t.split(/(\*\*[^*]+\*\*)/g).map((p, i) => p.startsWith('**') && p.endsWith('**') ? <strong key={i}>{p.slice(2, -2)}</strong> : <Fragment key={i}>{p}</Fragment>)
+  return t.split(/(\[[^\]]+\]\(https:\/\/[^)\s]+\))/g).map((p, i) => {
+    const m = p.match(/^\[([^\]]+)\]\((https:\/\/[^)\s]+)\)$/)
+    return m ? <a key={i} href={m[2]} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>{m[1]}</a> : <Fragment key={i}>{negrito(p, `${i}-`)}</Fragment>
+  })
 }
 export function Md({ texto }: { texto: string }) {
   const blocos: React.ReactNode[] = []

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabaseBrowser } from '@/lib/supabase/client'
+import { Md } from '@/lib/md'
 
 export type ItemTrilha = { id: number; ordem: number; tema: string | null; titulo: string; fonte: string | null; url: string | null; formato: string; minutos: number; por_que: string | null; takeaway: string | null; corpo: string | null; status: string; reacao: number | null }
 
@@ -36,7 +37,7 @@ export function Trilha({ itens }: { itens: ItemTrilha[] }) {
           {i.fonte && <span className="small muted">{i.fonte}</span>}
           {i.por_que && <p className="small" style={{ margin: 0 }}>{i.por_que}</p>}
           {i.takeaway && <p className="small muted" style={{ margin: 0 }}>💡 {i.takeaway}</p>}
-          {i.corpo && <p className="small" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{i.corpo}</p>}
+          {i.corpo && <div className="small"><Md texto={i.corpo} /></div>}
           <div className="chips">
             {i.url && <a className="chip on" href={i.url} target="_blank" rel="noreferrer">Abrir ↗</a>}
             {i.status === 'pendente' ? (
