@@ -70,3 +70,60 @@ export function extrairJson<T>(text: string, tag: string): T {
   if (!m) throw new Error(`Resposta sem <${tag}>`)
   return JSON.parse(m[1].trim().replace(/^```(?:json)?|```$/g, '').trim()) as T
 }
+
+/** Regras comuns a todo system prompt da ClaudIA (fixas, entram no cache). */
+export const BASE_RULES = `Você é a ClaudIA, assistente de nutrição e treino de uso individual. O foco é distinguir perda de gordura de perda de massa magra usando peso (média de 7 dias), fita métrica e fotos de espelho; a balança é comum, sem bioimpedância.
+Regras fixas:
+- Apoie recomendações em referências acadêmicas reconhecidas (ex.: ISSN position stands, ACSM, Helms et al., Morton et al. 2018, Hall et al.) e cite-as de forma curta no campo "refs".
+- Seja conservador com déficit calórico e com volume de treino; priorize proteína e treino de força para preservar massa magra, especialmente com uso de agonistas de GLP-1 (tirzepatida, semaglutida).
+- Nunca prescreva nem ajuste medicação. Sinais de alerta (perda > 1% do peso por semana por semanas seguidas, tontura, dor, sintomas gastrointestinais fortes) viram recomendação de procurar o médico.
+- Escreva em português do Brasil, direto e sem jargão desnecessário.
+- Você organiza o processo; não é aconselhamento médico.
+- Responda apenas com JSON válido dentro da tag pedida, sem texto fora dela.`
+
+export type Block = { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }
+
+/** System em dois blocos fixos (regras + instruções da feature) com cache no último. */
+export function system(featureRules: string): Block[] {
+  return [
+    { type: 'text', text: BASE_RULES },
+    { type: 'text', text: featureRules, cache_control: { type: 'ephemeral' } },
+  ]
+}
+
+/**
+ * Chama o modelo, extrai <tag>JSON</tag> e valida. Se a validação falhar, tenta
+ * uma vez mais mostrando o erro ao modelo.
+ */
+export async function callJson<T>(opts: {
+  model: string
+  maxTokens: number
+  system: Block[]
+  content: string | Record<string, unknown>[]
+  tag: string
+  validate: (v: unknown) => T
+  feature: string
+  userId: string
+  effort?: 'low' | 'medium' | 'high'
+}): Promise<{ data: T; usage: AResponse['usage'] }> {
+  const messages: { role: 'user' | 'assistant'; content: unknown }[] = [{ role: 'user', content: opts.content }]
+  let lastErr = ''
+  for (let i = 0; i < 2; i++) {
+    const r = await anthropic({
+      model: opts.model,
+      max_tokens: opts.maxTokens,
+      system: opts.system,
+      messages,
+      ...(opts.effort ? { output_config: { effort: opts.effort } } : {}),
+    }, { feature: opts.feature, userId: opts.userId })
+    const text = textOf(r.content)
+    try {
+      return { data: opts.validate(extrairJson<unknown>(text, opts.tag)), usage: r.usage }
+    } catch (e) {
+      lastErr = (e as Error).message
+      messages.push({ role: 'assistant', content: text })
+      messages.push({ role: 'user', content: `Sua resposta não passou na validação: ${lastErr}. Responda de novo, só com <${opts.tag}>JSON</${opts.tag}> no formato pedido.` })
+    }
+  }
+  throw new Error(`Resposta da IA inválida: ${lastErr}`)
+}
