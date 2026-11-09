@@ -5,6 +5,30 @@ project_id = "iara-hq"
 [functions.claudia-food-parse]
 verify_jwt = false   # autentica sozinha (JWT + claudia.members) em _shared/common.ts
 
+[functions.claudia-ingest]
+verify_jwt = false   # autentica pelo token de ingestão (ingest_tokens)
+
+[functions.claudia-photo-review]
+verify_jwt = false   # JWT + claudia.members em _shared/claudia/common.ts
+
+[functions.claudia-diet]
+verify_jwt = false   # JWT + claudia.members em _shared/claudia/common.ts
+
+[functions.claudia-coach]
+verify_jwt = false   # JWT + claudia.members em _shared/claudia/common.ts
+
+[functions.claudia-coach-session]
+verify_jwt = false   # JWT + claudia.members em _shared/claudia/common.ts
+
+[functions.claudia-coach-review]
+verify_jwt = false   # JWT + claudia.members em _shared/claudia/common.ts
+
+[functions.claudia-checkin]
+verify_jwt = false   # JWT + claudia.members em _shared/claudia/common.ts
+
+[functions.claudia-strava]
+verify_jwt = false   # JWT + claudia.members em _shared/claudia/common.ts
+
 [functions.airton-notify]
 verify_jwt = false   # como está em produção
 
@@ -21,30 +45,6 @@ verify_jwt = false   # como está em produção
 verify_jwt = false   # como está em produção
 
 [functions.sabia-trilha]
-verify_jwt = false   # como está em produção
-
-[functions.claudia-ingest]
-verify_jwt = false   # como está em produção
-
-[functions.claudia-strava]
-verify_jwt = false   # como está em produção
-
-[functions.claudia-diet]
-verify_jwt = false   # como está em produção
-
-[functions.claudia-photo-review]
-verify_jwt = false   # como está em produção
-
-[functions.claudia-coach]
-verify_jwt = false   # como está em produção
-
-[functions.claudia-coach-session]
-verify_jwt = false   # como está em produção
-
-[functions.claudia-coach-review]
-verify_jwt = false   # como está em produção
-
-[functions.claudia-checkin]
 verify_jwt = false   # como está em produção
 
 [functions.hub-senha]

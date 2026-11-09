@@ -24,7 +24,7 @@ Como começar: `docs/cowork/GUIA.md`. Estado e próximos passos: `docs/PROGRESSO
 | --- | --- |
 | Código (tudo) | GitHub `Leo-Guidetti/iara-hq` — pnpm workspaces + turbo |
 | App único | `apps/hub` (Next.js 15) → projeto Vercel `hub`. Módulos: `/saude` (ClaudIA), depois `/financas` (AIrton), `/aprender` (SabIA), `/casa` (IARA), e `/hoje` |
-| Design | `packages/ui` — tokens "clinical calm": fundo #0D1117, superfícies #1C2530, jade #4FD1A5 progresso, violeta #8B7FF0 só IA, âmbar #E8A33D alertas, Barlow Semi Condensed |
+| Design | `packages/ui` — neutros "clinical calm" (escuro #0D1117 / claro #F5F6F8, segue o sistema ou a escolha no Perfil) e uma cor por app via `data-app`: HQ lilás, ClaudIA verde, AIrton azul, IARA House dourado; violeta #8B7FF0 só IA, âmbar alertas, Barlow Semi Condensed. `/hoje` é o menu: um bloco de pendências por app |
 | Banco, IA, crons, chaves | Supabase `wrtrhdrohabspbaxpbeu` — schemas `airton`, `claudia`, `sabia`, `core` (+ tabelas antigas da ClaudIA em `public`) |
 | Edge Functions | `supabase/functions/<app>-<função>` — publicadas SÓ a partir do repo |
 | Migrations | `supabase/migrations` — SÓ aditivas |

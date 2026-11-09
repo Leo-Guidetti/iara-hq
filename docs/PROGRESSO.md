@@ -149,3 +149,4 @@ não depende disso enquanto espera.
 | 09/11 | 0.5 | #8 | migration `20261109130000` aplicada; `ai_cost_report(7)` = semana US$ 0,37; `airton-notify` v9 | Custo do mês até 09/11: US$ 0,35 (AIrton 0,30; SabIA 0,03; IARA 0,02) |
 | 09/11 | 1.1 | merge da `main` na `claudia-v2` (PR #2) | logs 24 h sem 5xx | 12/13 idênticos ao ar; `claudia-strava` só muda a rota do callback |
 | 09/11 | 2 | #10, #11 | `core.itens` com RLS e 2 policies; `publicar_item` sem execute p/ anon/authenticated; `sabia-trilha` v9 | 1º cartão real sai no cron de 10/11 09:30 UTC |
+| 09/11 | UX (pedido do Leo) | `feat/hub-menu-temas` | — (conferir após o merge) | `/hoje` vira menu com blocos ClaudIA/AIrton/IARA House; paleta por app (`data-app`) + modo claro/escuro (Perfil → Aparência); `/saude/treino` corrigido (patch nulo na revisão de 26/10) |
