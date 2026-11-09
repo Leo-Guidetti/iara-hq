@@ -2,12 +2,15 @@
   "name": "iara-hq",
   "private": true,
   "packageManager": "pnpm@10.28.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "check:functions": "cd supabase/functions && DENO_NO_PACKAGE_JSON=1 npx -y deno@2 check --config deno.json */index.ts"
   },
   "devDependencies": {
     "turbo": "^2.5.0"
