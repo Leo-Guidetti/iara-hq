@@ -128,6 +128,7 @@ export type Database = {
     }
     Functions: {
       claudia_is_member: { Args: never; Returns: boolean }
+      claudia_ai_cost: { Args: { p_months?: number }; Returns: { mes: string; feature: string; model: string; chamadas: number; input_tokens: number; cache_read_tokens: number; output_tokens: number; custo_usd: number }[] }
       create_ingest_token: { Args: { p_label?: string }; Returns: string }
       ingest_health: { Args: { p_activities?: Json; p_daily?: Json; p_token: string }; Returns: Json }
       ingest_weight: { Args: { p_measured_at?: string; p_source?: string; p_token: string; p_weight_kg: number }; Returns: Json }
