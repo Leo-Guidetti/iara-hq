@@ -1,0 +1,113 @@
+# Etapa 0.1 do docs/PROGRESSO.md: traz a produção do Supabase para o repo SEM alterar a produção.
+# Só leitura: baixa as Edge Functions no ar, o histórico de migrations e um dump do schema (sem dados),
+# e publica tudo na branch chore/sincroniza-producao, criada a partir da main. O agente abre o PR.
+# Pode rodar de novo a qualquer momento: a branch é recriada do zero.
+name: sincroniza-producao
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sincroniza-producao
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: wrtrhdrohabspbaxpbeu
+      BRANCH: chore/sincroniza-producao
+      REPORT: supabase/SINCRONIZACAO.md
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, fetch-depth: 0 }
+
+      - uses: supabase/setup-cli@v1
+        with: { version: 3.0.0 }   # fixo: a v3 mudou os alvos para --remote
+
+      - name: Branch
+        run: git checkout -B "$BRANCH"
+
+      - name: Link
+        run: supabase link --project-ref "$PROJECT_REF"
+
+      - name: Edge Functions no ar
+        run: |
+          supabase functions list --remote="$PROJECT_REF" -o json > /tmp/funcs.json
+          RAW=/tmp/raw; mkdir -p "$RAW"; : > /tmp/written; : > /tmp/conflicts
+          for slug in $(jq -r '.[].slug' /tmp/funcs.json); do
+            d="$RAW/$slug"; mkdir -p "$d/supabase"
+            supabase functions download "$slug" --remote="$PROJECT_REF" --workdir "$d" \
+              || supabase functions download "$slug" --remote="$PROJECT_REF" --workdir "$d" --use-api
+            src="$d/supabase/functions"
+            [ -f "$src/$slug/index.ts" ] || { echo "::error::$slug: index.ts fora do lugar esperado"; find "$d" -type f; exit 1; }
+            (cd "$src" && find . -type f | sed 's|^\./||') | while read -r f; do
+              dst="supabase/functions/$f"
+              if grep -qxF "$f" /tmp/written; then
+                # mesmo arquivo compartilhado já veio de outra função nesta execução
+                if ! cmp -s "$src/$f" "$dst"; then
+                  mkdir -p "$(dirname "supabase/_conflitos/$slug/$f")"
+                  cp "$src/$f" "supabase/_conflitos/$slug/$f"
+                  echo "$slug: $f" >> /tmp/conflicts
+                fi
+              else
+                mkdir -p "$(dirname "$dst")"; cp "$src/$f" "$dst"; echo "$f" >> /tmp/written
+              fi
+            done
+          done
+          # verify_jwt de produção no config.toml (só acrescenta o que falta)
+          jq -r '.[] | "\(.slug) \(.verify_jwt)"' /tmp/funcs.json | while read -r slug vj; do
+            grep -q "^\[functions\.$slug\]" supabase/config.toml || printf '\n[functions.%s]\nverify_jwt = %s   # como está em produção\n' "$slug" "$vj" >> supabase/config.toml
+          done
+
+      - name: Histórico de migrations
+        run: |
+          printf "y\ny\n" | supabase migration fetch --remote --yes
+          # migrations que já estavam no repo não podem mudar nem sumir (o CI bloqueia)
+          git checkout main -- supabase/migrations
+
+      - name: Schema de referência (sem dados)
+        run: |
+          mkdir -p supabase/schema
+          supabase db dump --remote --password "$SUPABASE_DB_PASSWORD" -f supabase/schema/producao.sql
+
+      - name: Relatório
+        run: |
+          {
+            echo "# Sincronização produção → repo"
+            echo
+            echo "Gerado por .github/workflows/sincroniza-producao.yml em $(date -u +%FT%TZ). Produção vence."
+            echo
+            echo "## Funções"
+            jq -r '.[] | "- `\(.slug)` v\(.version), verify_jwt=\(.verify_jwt)"' /tmp/funcs.json
+            echo
+            echo "## Arquivos compartilhados divergentes entre funções"
+            if [ -s /tmp/conflicts ]; then
+              echo "A versão de outra função ficou em \`supabase/_conflitos/<função>/\`. Resolver antes do merge."
+              sed 's/^/- /' /tmp/conflicts
+            else
+              echo "Nenhum."
+            fi
+            echo
+            echo "## Diferenças em relação à main"
+            git add -A supabase
+            git diff --cached --stat main -- supabase | sed 's/^/    /'
+          } > "$REPORT"
+          cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A supabase
+          git commit -m "chore: sincroniza produção do Supabase (funções, histórico de migrations, schema)"
+          git push -f origin "$BRANCH"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: downloads-brutos, path: /tmp/raw, retention-days: 7 }

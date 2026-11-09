@@ -1,0 +1,60 @@
+# Revisado na etapa 0.3 do docs/PROGRESSO.md. Pré-requisito: o histórico de migrations da produção
+# no repo (etapa 0.1), senão o `db push` recusa por versões remotas ausentes.
+# Único caminho para produção do Supabase: merge na main.
+name: deploy-supabase
+
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-supabase
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: wrtrhdrohabspbaxpbeu
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0   # fixo: a v3 (02/11) mudou os alvos (--remote) e quebrou o `latest`
+
+      - name: Link
+        run: supabase link --project-ref "$PROJECT_REF"
+
+      - name: Migrations (só aditivas, revisadas no PR)
+        run: supabase db push --remote --password "$SUPABASE_DB_PASSWORD" --yes
+
+      - name: Edge Functions alteradas
+        run: |
+          BASE="${{ github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then BASE="HEAD~1"; fi
+          CHANGED=$(git diff --name-only "$BASE" "${{ github.sha }}" -- supabase/functions)
+          FUNCS=$(echo "$CHANGED" | cut -d/ -f3 | grep -v '^_' | sort -u)
+          # _shared/<app>/ mudou: publica as funções <app>-*. Arquivo solto em _shared/: publica todas.
+          for app in $(echo "$CHANGED" | grep '^supabase/functions/_shared/[^/]*/' | cut -d/ -f4 | sort -u); do
+            FUNCS="$FUNCS $(ls supabase/functions | grep "^$app-" || true)"
+          done
+          if echo "$CHANGED" | grep -qE '^supabase/functions/_shared/[^/]+$'; then
+            FUNCS=$(ls supabase/functions | grep -v '^_')
+          fi
+          FUNCS=$(echo $FUNCS | tr ' ' '\n' | grep -v '^deno\.' | sort -u)
+          for f in $FUNCS; do
+            if [ -d "supabase/functions/$f" ]; then
+              echo "Publicando $f"
+              supabase functions deploy "$f" --remote="$PROJECT_REF" --no-verify-jwt --use-api --yes
+            fi
+          done
+
+      - name: Conferir funções no ar
+        run: supabase functions list --remote="$PROJECT_REF"

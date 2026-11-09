@@ -28,3 +28,21 @@ verify_jwt = false   # JWT + claudia.members em _shared/claudia/common.ts
 
 [functions.claudia-strava]
 verify_jwt = false   # JWT + claudia.members em _shared/claudia/common.ts
+
+[functions.airton-notify]
+verify_jwt = false   # como está em produção
+
+[functions.airton-pluggy]
+verify_jwt = false   # como está em produção
+
+[functions.airton-ai]
+verify_jwt = false   # como está em produção
+
+[functions.airton-market]
+verify_jwt = false   # como está em produção
+
+[functions.iara-briefing]
+verify_jwt = false   # como está em produção
+
+[functions.sabia-trilha]
+verify_jwt = false   # como está em produção
