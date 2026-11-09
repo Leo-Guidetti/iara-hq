@@ -45,9 +45,8 @@ async function briefing(userId, nome, tipo) {
     // Briefing único do dia (pedido do Leo, 09/11): a manhã cobre o dia todo; a noite fica só se alguém chamar.
     const pedido = tipo === 'manha' ? `Escreva o BRIEFING DO DIA (é o único do dia, aparece no topo do app do Leo):
 **Bom dia, ${nome}.** + 1 linha sobre o tom do dia
-**Hoje importa:** até 3 bullets, cruzando as áreas quando fizer sentido
-**Rotina:** os blocos de hoje em uma linha (hora — atividade)
-Depois 1 linha por área: Saúde · Finanças · Aprender · Casa.
+**Hoje importa:** até 3 bullets, cruzando as áreas quando fizer sentido (use a rotina para sugerir encaixes, mas NÃO liste a agenda: o app já mostra a linha do tempo do dia)
+Depois 1 linha por área, só com o que é acionável hoje: **Saúde** · **Finanças** (livre no mês, por dia e contas dos próximos dias) · **Aprender** · **Casa**. Área sem dados: omita a linha.
 **À noite:** 1 linha do que fechar antes de dormir (leitura, preparar o treino de amanhã, revisar gastos).` : `Escreva o FECHAMENTO DO DIA:
 **Fechamento** — feito vs. o que ficou (trilha, treino, casa)
 **Amanhã:** 1 ajuste concreto

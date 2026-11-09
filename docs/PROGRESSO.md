@@ -115,8 +115,15 @@ não depende disso enquanto espera.
 ## Etapa 4 — Fontes externas (Fase 4)
 - [ ] Google Calendar e digest do Gmail como itens.
 
-## Etapa 5 — Orquestração da IARA (Fase 5)
-- [ ] Manhã 07:00, noite 21:00, domingo (plano da semana).
+## Etapa 5 — Planejamento da semana (domingo à noite) e orquestração da IARA (Fase 5)
+- [ ] **Próxima grande entrega (pedido do Leo, 09/11).** Planejamento semanal aos domingos à noite, ver ROADMAP Fase 5:
+      1. Migration `core.planos_semana` (semana, status rascunho/confirmado, insumos, texto) + itens do plano (dia, área, título, minutos, valor).
+      2. Função `iara-semana` (Sonnet, `effort: low`): junta ClaudIA (plano de treino da semana, metas de dieta), SabIA (temas, imersão,
+         livro), AIrton (`month_plan.upcoming` da semana, livre por semana), Casa (quando migrar) e agenda (Fase 4). Cron domingo 21:00 UTC (18:00 SP).
+      3. Hub `/semana`: revisar, mover e confirmar; confirmar publica em `core.itens` por dia (`chave_origem` = `semana:<data>:<n>`).
+      4. Push "Plano da semana pronto" pelo `airton-notify` (tipo novo `semana`).
+      5. Briefing diário passa a ler o plano da semana.
+- [x] Briefing único da manhã (09/11, #21) com linha do tempo "Seu dia" (`hub_dia`) e insumo real do AIrton (`briefing_airton` lendo `month_plan`).
 
 ## Etapa 6 — Módulos no hub (Fase 6)
 - [ ] `/financas`, `/aprender`, `/casa`; IARA migrada; aposentar Vercel `airton`, `iara`, `shyrlai`
@@ -148,3 +155,4 @@ não depende disso enquanto espera.
 | 09/11 | 6 (superapp) | `feat/hub-superapp` | — (conferir após o merge) | Pedido do Leo: briefing único do dia na Hoje (sai o job `iara-noite`; manhã cobre o dia, `effort: low`); SabIA na órbita (vermelho) e `/aprender`; IARA House só com a casa; barra fixa + abas por módulo. Para trazer casa/compras: precisa do Supabase antigo da IARA reativado (pedido ao Leo) |
 | 09/11 | 6 (superapp) | #21 + `feat/hub-orbe-cerebro` | deploy do #21 ok | Centro da órbita: orbe de vidro neutro com ícone de cérebro (IARA HQ centralizando), sem contador nem cor (pedido do Leo) |
 | 09/11 | SabIA (pedido do Leo) | `feat/sabia-pilulas` | — (conferir após o merge e na trilha de 10/11) | Trilha diária ~40 min (5–7 itens; migration ajusta `core.perfil.config.minutos_trilha`), pílula de 120–180 palavras por item + "Para ir além" com até 2 links extras (URLs só dos workers), workers devolvem 3–5 candidatos; sábado vira imersão de ~60 min no tema mais quente da semana, com síntese de 250–400 palavras. Conferir custo em `core.ai_usage` (feature `trilha-orquestrador`) |
+| 09/11 | 5 (início) | `feat/hub-dia-semana` | — (conferir após o merge e no briefing de 10/11) | Linha do tempo "Seu dia" no topo do briefing (rotina + treino + contas do dia); `core.briefing_airton` lê `month_plan` (antes vinha vazio); rotina: sem fechamento da noite, trilha 40 min, imersão 60 min, "Planejamento da semana (IARA)" dom 20:00; prompt da IARA não repete a agenda. Planejamento semanal desenhado no ROADMAP Fase 5 |

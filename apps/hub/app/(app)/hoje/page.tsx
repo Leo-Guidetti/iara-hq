@@ -6,6 +6,7 @@ import { spDate } from '@/lib/dates'
 
 import { ICON } from '@/lib/icons'
 import { Md } from '@/lib/md'
+import { SeuDia, appDoAgent, type Bloco } from '@/components/SeuDia'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,13 +37,14 @@ export default async function Hoje() {
   const me = (await currentUser())!
   const raw = me.sb as unknown as SupabaseClient
   const today = spDate()
-  const [sessoes, alertas, pend, mes, iara, sab] = await Promise.all([
+  const [sessoes, alertas, pend, mes, iara, sab, dia] = await Promise.all([
     seguro(me.sb.from('plan_sessions').select('title, status, duration_min').eq('local_date', today).order('id')),
     dailyAlerts(me.sb).then((r) => r.alerts).catch(() => 'erro' as const),
     seguro(raw.schema('airton').rpc('review_counts', { p_user: me.user.id })),
     seguro(raw.schema('airton').rpc('month_plan', { p_user: me.user.id })),
     seguro(raw.rpc('hub_casa')),
     seguro(raw.rpc('hub_sabia')),
+    seguro(raw.rpc('hub_dia')),
   ])
 
   // ClaudIA: treino do dia e alertas determinísticos (sem IA).
@@ -85,6 +87,23 @@ export default async function Hoje() {
     for (const i of faltam.slice(0, 2)) sabia.push({ texto: `${i.titulo} · ${i.minutos} min` })
   }
 
+  // Seu dia: rotina com horário + treino e contas de hoje (sem hora marcada).
+  const blocos: Bloco[] = []
+  const trilhaFeita = !!sb?.trilha?.hoje && !!sb.itens.length && sb.itens.every((i) => i.status !== 'pendente')
+  if (Array.isArray(dia)) {
+    for (const r of dia as { hora: string; minutos: number | null; atividade: string; agent: string }[]) {
+      const ehTrilha = r.agent === 'sabia' && /trilha|imers/i.test(r.atividade)
+      blocos.push({ hora: r.hora, minutos: ehTrilha && sb?.trilha?.hoje ? sb.trilha.minutos : r.minutos, texto: r.atividade, app: appDoAgent(r.agent), feito: ehTrilha && trilhaFeita })
+    }
+  }
+  if (Array.isArray(sessoes)) for (const s of sessoes) blocos.push({ hora: null, minutos: s.duration_min, texto: `Treino: ${s.title}`, app: 'claudia', feito: s.status === 'done' })
+  if (mes && mes !== 'erro') {
+    for (const u of ((mes as { upcoming?: { date: string; label: string; amount: number }[] }).upcoming ?? []).filter((u) => u.date === today)) {
+      blocos.push({ hora: null, texto: `${Number(u.amount) < 0 ? 'Conta' : 'Entrada'}: ${u.label} · ${brl(Math.abs(Number(u.amount)))}`, app: 'airton' })
+    }
+  }
+  const agoraHHMM = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'America/Sao_Paulo' }).format(new Date())
+
   const data = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' }).format(new Date())
   const hora = Number(new Intl.DateTimeFormat('pt-BR', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Sao_Paulo' }).format(new Date()))
   const saudacao = hora < 5 ? 'Boa madrugada' : hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite'
@@ -109,14 +128,17 @@ export default async function Hoje() {
 
       <section className="card ai">
         <span className="tag ai">Briefing do dia · IARA</span>
+        <h2 style={{ margin: '10px 0 0', fontSize: '1rem' }}>Seu dia</h2>
+        {blocos.length ? <SeuDia blocos={blocos} agora={agoraHHMM} /> : <p className="small muted" style={{ margin: '4px 0 0' }}>Nada agendado hoje.</p>}
+        <h2 style={{ margin: '12px 0 4px', fontSize: '1rem' }}>O que importa</h2>
         {briefing?.texto ? (
           <>
-            <Md texto={briefing.texto.split('\n').slice(0, 6).join('\n')} />
-            {briefing.texto.split('\n').length > 6 && (
-              <details className="brief"><summary>Ver o briefing inteiro</summary><Md texto={briefing.texto.split('\n').slice(6).join('\n')} /></details>
+            <Md texto={briefing.texto.split('\n').slice(0, 7).join('\n')} />
+            {briefing.texto.split('\n').length > 7 && (
+              <details className="brief"><summary>Ver o briefing inteiro</summary><Md texto={briefing.texto.split('\n').slice(7).join('\n')} /></details>
             )}
           </>
-        ) : <p className="small muted" style={{ margin: '6px 0 0' }}>O briefing sai todo dia às 07:00.</p>}
+        ) : <p className="small muted" style={{ margin: 0 }}>O briefing sai todo dia às 07:00.</p>}
       </section>
 
       <div className="orbit" aria-label="Seus apps">
