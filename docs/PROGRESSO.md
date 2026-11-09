@@ -3,27 +3,12 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (parada segura em 09/11, 12:40 UTC):**
-1. **10/11 depois das 09:30 UTC:** conferir o 1º cartão publicado pela SabIA (PR #11, `sabia-trilha` v9):
-   `select * from core.itens where origem = 'sabia' order by id desc limit 1;` e, no run do dia,
-   `core.agent_runs.output->>'item_id'` preenchido e `erro_item` nulo. Se `erro_item` vier preenchido,
-   corrigir a chamada em `sabia-trilha/index.ts` (bloco "Núcleo de itens").
-2. Etapa 2, próximo publicador: `iara-briefing` (manhã/noite → cartão `lembrete`, chave `briefing:<data>:<tipo>`),
-   depois AIrton (plano semanal, contas a vencer) e ClaudIA (treino do dia, pesagem).
+**Próximo passo (09/11, 19:00 UTC):**
+1. **10/11 depois das 09:30 UTC:** conferir o 1º cartão da SabIA em `core.itens` (`origem = 'sabia'`) e o run do dia
+   em `core.agent_runs` (`output.item_id` preenchido, `erro_item` nulo). O bloco "IARA House" da tela Hoje deve mostrá-lo.
+2. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`, chave `briefing:<data>:<tipo>`); depois AIrton e ClaudIA.
 3. Domingo 15/11, 20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
-4. Etapa 1 espera o Leo (pedido de 09/11, ver "Pedido aberto ao Leo" abaixo).
-
-**Pedido aberto ao Leo (09/11, revisto 2):** Strava fica para depois. Bucket apagado. Domínio
-`iara-agents-hq.vercel.app` no projeto `hub`. **Login (decisão do Leo):** sem link por e-mail; e-mail e senha, só
-para `leonardoguidettic@gmail.com`. A conta dele já existe (com os dados), então a senha é definida pela função
-`hub-senha` (PR `feat/hub-senha`), que só aceita o e-mail dele e o código do secret `HUB_CADASTRO_CODIGO`, que o
-Leo cria no painel. No hub (branch `claudia-v2`, PR #2): tela de entrar com senha, `/cadastro` e o middleware
-barrando qualquer outro e-mail. **Falta o Leo:** criar o secret, cadastrar a senha em `/cadastro`, apagar o
-secret e testar as telas de `/saude` (1.3). Na 1.4: depois do merge do PR #2, trocar o Production Branch
-do projeto `hub` de `claudia-v2` para `main` (nada a fazer com domínio). **09/11 13:05 UTC:** `hub-senha` no ar (sem o secret, responde
-"Cadastro fechado"). O `iara-agents-hq.vercel.app` foi apontado à mão (alias, a pedido do Leo) para o preview
-`dpl_MuQwrFSEBVCiuWShP5oNMsiRuEjY` da `claudia-v2` (commit `d4b1fbb`, login com senha), porque o Vercel recusou
-promover o preview (422). O próximo deploy de produção do `hub` retoma o domínio sozinho.
+4. Esperar o retorno do Leo sobre a nova experiência (Hoje como menu, cores por app, claro/escuro) e ajustar.
 
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
@@ -109,7 +94,10 @@ não depende disso enquanto espera.
       Testar com usuário logado fica na 1.3 (precisa do login do Leo).
 - [ ] 2. **Adiado pelo Leo em 09/11.** Pedir ao Leo: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET (secrets) e a URL de callback no app da Strava.
 - [ ] 3. Testar todas as telas de `/saude` no preview; uma linha por função de IA em `claudia.v_ai_cost_month`.
-- [ ] 4. Merge do PR #2 (claudia-v2) e virada do domínio para o projeto `hub` (reversível).
+- [x] 4. Merge do PR #2 (claudia-v2) e virada do domínio para o projeto `hub` (reversível).
+      **09/11:** o conteúdo do #2 entrou pelo #17 (o #2 foi fechado como incorporado). O hub publica da `main` em
+      `iara-agents-hq.vercel.app` (login com senha, só o Leo). As 9 `claudia-*` foram republicadas a partir do repo:
+      7 pelo deploy do #17 e `claudia-photo-review`/`claudia-strava` pelo disparo manual com `funcoes` (#18).
 - [ ] 5. Sete dias depois: pedir ao Leo a limpeza (apagar Vercel `claudia` e `claudia-v2`,
       `ANTHROPIC_API_KEY` antiga, chave `claudia-provisoria`).
 
@@ -151,3 +139,4 @@ não depende disso enquanto espera.
 | 09/11 | 2 | #10, #11 | `core.itens` com RLS e 2 policies; `publicar_item` sem execute p/ anon/authenticated; `sabia-trilha` v9 | 1º cartão real sai no cron de 10/11 09:30 UTC |
 | 09/11 | UX (pedido do Leo) | `feat/hub-menu-temas` | — (conferir após o merge) | `/hoje` vira menu com blocos ClaudIA/AIrton/IARA House; paleta por app (`data-app`) + modo claro/escuro (Perfil → Aparência); `/saude/treino` corrigido (patch nulo na revisão de 26/10) |
 | 09/11 | 1.4 | #17 (inclui o #2, fechado como incorporado), #16 | hub em produção pela `main` (`iara-agents-hq.vercel.app`, tema novo); migrations `20261109150000` e `20261109190000` aplicadas; 7 `claudia-*` republicadas, `claudia-photo-review` e `claudia-strava` pendentes (502 da API do Supabase) | Republicar pelo disparo manual do `deploy-supabase` com `funcoes` (PR `ci/deploy-funcoes`) |
+| 09/11 | 1.4 | #18 + disparo manual | `claudia-photo-review` v4 e `claudia-strava` v4 publicadas do repo; hub em produção com o tema novo | GitHub teve "Partial System Outage" ~18:15 UTC e a API do Supabase deu 502 ~18:53 UTC: reruns resolveram |
