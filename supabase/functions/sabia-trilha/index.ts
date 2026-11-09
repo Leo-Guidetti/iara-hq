@@ -45,7 +45,8 @@ Deno.serve(async (req)=>{
 async function gerar(userId, config, force) {
   const { data, dow } = agoraSP();
   const tipo = dow === 6 ? 'deep_dive' : dow === 0 ? 'recap' : 'diaria';
-  const minutos = Number(config.minutos_trilha ?? 25);
+  // Pedido do Leo (09/11): até 40 min por dia; a imersão do sábado tem ~60 min no tema mais quente da semana.
+  const minutos = tipo === 'deep_dive' ? 60 : Number(config.minutos_trilha ?? 40);
   const [existente] = await sql`select id from sabia.trilhas where user_id = ${userId} and data = ${data} and tipo = ${tipo}`;
   if (existente && !force) return;
   const run = await iniciarRun('sabia', userId, `trilha_${tipo}`, {
@@ -70,7 +71,7 @@ async function gerar(userId, config, force) {
     // Núcleo de itens (Etapa 2): um cartão por trilha na fila comum. Falha aqui não derruba a trilha.
     let item_id = null, erro_item = null;
     try {
-      const titulo = tipo === 'recap' ? 'Recap da semana' : tipo === 'deep_dive' ? 'Deep dive do sábado' : 'Trilha do dia';
+      const titulo = tipo === 'recap' ? 'Recap da semana' : tipo === 'deep_dive' ? `Imersão do sábado${r.tema_hot ? ` · ${r.tema_hot}` : ''}` : 'Trilha do dia';
       const [p] = await sql`select core.publicar_item(${JSON.stringify({
         user_id: userId,
         origem: 'sabia',
@@ -234,7 +235,7 @@ A trilha terá ~${minutosTema} min deste tema.
 Itens recentes dos feeds das fontes preferidas:
 ${lista}
 
-Escolha de 2 a 4 itens, do mais relevante ao menos, que valem a leitura dentro do escopo. Se nenhum servir, devolva [].
+Escolha de 3 a 5 itens, do mais relevante ao menos, que valem a leitura dentro do escopo. Se nenhum servir, devolva [].
 Responda só dentro de <candidatos></candidatos>:
 [{"i":0,"formato":"artigo|newsletter|podcast|video|paper","minutos":5,"resumo":"o que diz, em 1-2 frases factuais"}]`;
     try {
@@ -287,7 +288,7 @@ Não repita: ${[
     ...ctx.urlsRecentes
   ].slice(0, 30).join(' ') || 'nada'}
 
-Faça até 2 buscas e devolva de 3 a 4 candidatos, do mais relevante ao menos, dentro de <candidatos></candidatos>:
+Faça até 2 buscas e devolva de 3 a 5 candidatos, do mais relevante ao menos, dentro de <candidatos></candidatos>:
 [{"titulo":"...","fonte":"...","url":"https://...","formato":"artigo|newsletter|podcast|video|paper","idioma":"pt|en","minutos":5,"publicado":"aaaa-mm-dd ou ?","resumo":"o que diz, em 1-2 frases factuais"}]`;
   if (hasGemini('trilha-search')) {
     try {
@@ -321,7 +322,7 @@ Faça até 2 buscas e devolva de 3 a 4 candidatos, do mais relevante ao menos, d
 }
 async function curadoria(run, ctx, tipo, minutos, data, dow, perfil) {
   const orc = alocar(ctx.temas, minutos);
-  const alvo = tipo === 'deep_dive' ? ctx.temas.filter((t)=>t.slug === 'ia' || t.slug === 'negocios') : ctx.temas;
+  const alvo = ctx.temas;
   const recencia = (t)=>tipo === 'deep_dive' ? 'última semana; prefira peças longas (análise, ensaio, podcast, palestra)' : t.slug === 'ia' || t.slug === 'politica' ? 'últimas 48h' : 'últimos 7 dias';
   const horas = (t)=>tipo !== 'deep_dive' && (t.slug === 'ia' || t.slug === 'politica') ? 48 : 168;
   // Workers em paralelo; um tema que falhar não derruba a trilha.
@@ -332,7 +333,10 @@ async function curadoria(run, ctx, tipo, minutos, data, dow, perfil) {
   const nCands = Object.values(porTema).reduce((s, c)=>s + c.length, 0);
   if (nCands < 3) throw new Error(`Poucos candidatos (${nCands}). Falhas: ${falhas.join(' | ')}`);
   const candTxt = Object.entries(porTema).map(([slug, cs])=>`## ${slug} (~${orc[slug]} min)\n` + cs.map((c)=>`- ${c.titulo} | ${c.fonte ?? ''} | ${c.formato} | ${c.idioma ?? ''} | ${c.minutos} min | ${c.publicado ?? '?'} | ${c.url}\n  ${c.resumo ?? ''}`).join('\n')).join('\n\n');
-  const pedido = tipo === 'deep_dive' ? `Hoje é sábado: monte o DEEP DIVE (~${minutos} min): 1 peça longa (~20 min) + 1 complemento curto (~5 min) com outro ângulo. Continuidade com a semana, sem repetir: ${ctx.semana.map((i)=>i.titulo).join(' | ') || 'nada registrado'}` : `Monte a trilha diária (${minutos} min, aceitável 20–30): 4 a 6 itens, pelo menos 1 por tema com candidatos; IA pode ter 2. Respeite o orçamento por tema.`;
+  const pedido = tipo === 'deep_dive' ? `Hoje é sábado: monte a IMERSÃO DO FIM DE SEMANA (~${minutos} min) no tema mais QUENTE da semana.
+Escolha o tema com mais momento entre os candidatos (várias fontes falando, novidade relevante, impacto no contexto do Leo) e diga qual em "tema_hot" (nome curto).
+Monte 3 a 5 peças desse tema que se completam (uma longa de 20–30 min, as outras de 5–15), sem repetir o que ele já viu: ${ctx.semana.map((i)=>i.titulo).join(' | ') || 'nada registrado'}.
+Em "resumo", escreva a síntese do tema em 250–400 palavras (markdown com **negrito** e bullets): o que aconteceu, por que importa, o que observar nas próximas semanas.` : `Monte a trilha diária (~${minutos} min, aceitável ${minutos - 5}–${minutos + 5}): 5 a 7 itens, pelo menos 1 por tema com candidatos; IA pode ter 2. Respeite o orçamento por tema.`;
   const prompt = `Hoje é ${DIAS[dow]}, ${data}. Quem é o Leo: ${perfil}
 
 Candidatos pesquisados pelos workers (use SÓ estes, com a URL exata):
@@ -342,12 +346,12 @@ ${pedido}
 Ele gostou de: ${ctx.gostou.slice(0, 10).join(' | ') || 'sem sinal ainda'}
 Ele não gostou de: ${ctx.naoGostou.slice(0, 10).join(' | ') || 'sem sinal ainda'}
 
-Para cada item: "por_que" liga ao contexto do Leo em 1 frase; "takeaway" é a ideia central em 1 frase.
+Para cada item: "por_que" liga ao contexto do Leo em 1 frase; "takeaway" é a ideia central em 1 frase; "pilula" é uma pílula de conhecimento de 120–180 palavras (markdown com bullets): o contexto e os conceitos por trás do assunto, por que importa e o que observar. Use o resumo do candidato e conhecimento consolidado; não invente fatos, números ou citações do texto.
 Responda só com o JSON dentro de <trilha></trilha>:
-{"resumo":"fio condutor do dia em 1 frase","itens":[{"tema":"ia","titulo":"...","fonte":"...","url":"https://...","formato":"artigo","idioma":"pt","minutos":5,"por_que":"...","takeaway":"..."}]}`;
+{"resumo":"fio condutor","tema_hot":"(só na imersão)","itens":[{"tema":"ia","titulo":"...","fonte":"...","url":"https://...","formato":"artigo","idioma":"pt","minutos":5,"por_que":"...","takeaway":"...","pilula":"..."}]}`;
   const r = await anthropic({
     model: MODELS.smart,
-    max_tokens: 4000,
+    max_tokens: 9000,
     system: SABIA_SYSTEM,
     messages: [
       {
@@ -376,12 +380,22 @@ Responda só com o JSON dentro de <trilha></trilha>:
     vistos.add(u);
     i.url = u;
     i.tema = validas.get(u);
-    i.minutos = Math.min(30, Math.max(1, Math.round(Number(i.minutos) || 5)));
+    i.minutos = Math.min(40, Math.max(1, Math.round(Number(i.minutos) || 5)));
     return true;
   });
+  // Mais referências: a pílula + até 2 candidatos do mesmo tema que não entraram (URLs só dos workers, nunca do modelo).
+  for (const i of itens){
+    const extra = (porTema[i.tema] ?? []).filter((c)=>!vistos.has(c.url)).slice(0, 2);
+    const partes = [];
+    if (typeof i.pilula === 'string' && i.pilula.trim()) partes.push(i.pilula.trim().slice(0, 2500));
+    if (extra.length) partes.push('**Para ir além**\n' + extra.map((c)=>`- [${String(c.titulo).replace(/[\[\]]/g, '')}](${c.url})${c.fonte ? ` — ${c.fonte}` : ''}`).join('\n'));
+    if (partes.length) i.corpo = partes.join('\n\n');
+    delete i.pilula;
+  }
   if (itens.length < (tipo === 'deep_dive' ? 1 : 3)) throw new Error(`Poucos itens válidos (${itens.length})`);
   return {
-    resumo: saida.resumo,
+    resumo: typeof saida.resumo === 'string' ? saida.resumo.slice(0, 4000) : null,
+    tema_hot: tipo === 'deep_dive' && typeof saida.tema_hot === 'string' ? saida.tema_hot.slice(0, 60) : null,
     itens,
     stats: {
       candidatos: nCands,

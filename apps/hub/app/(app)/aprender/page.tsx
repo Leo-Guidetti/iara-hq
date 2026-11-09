@@ -1,11 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { currentUser } from '@/lib/supabase/server'
 import { Trilha, type ItemTrilha } from './Trilha'
+import { Md } from '@/lib/md'
 
 export const dynamic = 'force-dynamic'
 
 type Sabia = { trilha: { id: number; data: string; tipo: string; minutos: number; resumo: string | null; status: string; hoje: boolean } | null; itens: ItemTrilha[] } | null
-const TIPO: Record<string, string> = { diaria: 'Trilha do dia', deep_dive: 'Deep dive do sábado', recap: 'Recap da semana', hobby: 'Hobby' }
+const TIPO: Record<string, string> = { diaria: 'Trilha do dia', deep_dive: 'Imersão do fim de semana', recap: 'Recap da semana', hobby: 'Hobby' }
 
 export default async function Aprender() {
   const me = (await currentUser())!
@@ -23,7 +24,7 @@ export default async function Aprender() {
         </p>
       </div>
       {error && <div className="card alert"><p className="small">Não consegui carregar a trilha agora.</p></div>}
-      {t?.resumo && <section className="card ai"><span className="tag ai">Fio condutor</span><p style={{ margin: '6px 0 0' }}>{t.resumo}</p></section>}
+      {t?.resumo && <section className="card ai"><span className="tag ai">{t.tipo === 'deep_dive' ? 'Síntese do tema' : 'Fio condutor'}</span><div style={{ marginTop: 6 }}><Md texto={t.resumo} /></div></section>}
       <Trilha itens={s?.itens ?? []} />
     </div>
   )

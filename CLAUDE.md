@@ -77,7 +77,7 @@ pelo workflow `sincroniza-producao` (só leitura).
 | --- | --- |
 | Plano semanal do AIrton (Sonnet 5.5) | US$ 0,0375 por execução |
 | News do AIrton (Haiku 5.5 + 4 buscas) | US$ 0,047 por execução (~US$ 0,60/mês) |
-| Trilha da SabIA (feeds + Sonnet) | estimado ~US$ 0,75/mês — conferir em `core.ai_usage` |
+| Trilha da SabIA (feeds + Sonnet) | US$ 0,023 por trilha de 25 min (09/11). Com pílulas e 40 min (10/11 em diante): estimado US$ 0,04–0,07/dia (~US$ 1,5–2/mês) — conferir em `core.ai_usage` |
 
 ## Crons (UTC; São Paulo = UTC−3)
 
