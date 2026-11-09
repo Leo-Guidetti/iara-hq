@@ -3,10 +3,10 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo:** Etapa 2 (núcleo de itens), enquanto a Etapa 1 espera o Leo (Strava, teste das telas
-no preview e virada do domínio; pedido feito em 09/11). Começar por uma migration com `core.itens` +
-`core.publicar_item()` e depois a SabIA publicando a trilha do dia. Domingo 15/11 às 20:00 SP: conferir o
-1º push de custo (`airton.notify_log`, kind `custo`).
+**Próximo passo:** depois do merge de `feat/core-itens`, conferir em produção (`core.itens` existe, RLS
+ligada, `publicar_item` sem execute para anon/authenticated) e fazer a SabIA publicar cada item da trilha
+(`tipo` leitura, `chave_origem` = `trilha:<data>:<url normalizada>`, `acao.externo` = URL). Domingo 15/11
+20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
 obrigatórios já estão configurados (o PR fica `blocked` até o CI ficar verde).
@@ -97,6 +97,11 @@ não depende disso enquanto espera.
 
 ## Etapa 2 — Núcleo de itens (Fase 2)
 - [ ] `core.itens` + `core.publicar_item()`; AIrton, SabIA, ClaudIA e briefing da IARA publicando.
+      **09/11:** migration `20261109140000_core_itens` em PR (`feat/core-itens`): tabela `core.itens`
+      (origem, tipo, titulo, detalhe, data/hora/janela, prioridade, minutos, acao, status, adiado_para,
+      retorno, chave_origem; único por user+origem+chave), RLS (dono lê; muda só status/adiado_para/retorno)
+      e `core.publicar_item(jsonb)` (service role; idempotente e nunca desfaz o status escolhido pelo Leo).
+      Testada em PGlite. Ordem dos publicadores: SabIA (trilha) → IARA (briefing) → AIrton → ClaudIA.
 
 ## Etapa 3 — Tela Hoje (Fase 3)
 - [ ] Linha do tempo, caixa, ações rápidas, push único com limite diário, PWA.
