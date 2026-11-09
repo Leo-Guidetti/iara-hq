@@ -1,0 +1,53 @@
+# Portões automáticos: todo PR para a main precisa passar aqui para o auto-merge acontecer.
+# Checks obrigatórios da main: migrations-aditivas, segredos, build.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  migrations-aditivas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Bloquear migration destrutiva
+        run: |
+          # Histórico trazido da produção (versões <= BASELINE, já aplicadas antes do repo) não é revalidado.
+          BASELINE=20261109031226
+          FILES=""
+          for f in $(git diff --name-only --diff-filter=AM origin/${{ github.base_ref }}...HEAD -- 'supabase/migrations/*.sql'); do
+            v=$(basename "$f" | cut -d_ -f1)
+            if [[ "$v" =~ ^[0-9]{14}$ ]] && [ "$v" -le "$BASELINE" ]; then echo "histórico de produção: $f"; continue; fi
+            FILES="$FILES $f"
+          done
+          [ -z "$FILES" ] && { echo "sem migrations novas"; exit 0; }
+          if grep -nEi '\b(drop[[:space:]]+(table|column|schema|view|function|policy|index|trigger|type)|rename[[:space:]]+(to|column)|truncate|delete[[:space:]]+from)\b' $FILES; then
+            echo "::error::Migration não aditiva. Só é permitido adicionar."; exit 1
+          fi
+      - name: Migrations antigas não podem ser editadas
+        run: |
+          if git diff --name-only --diff-filter=MD origin/${{ github.base_ref }}...HEAD -- 'supabase/migrations/*.sql' | grep .; then
+            echo "::error::Migration existente alterada ou apagada. Crie uma nova."; exit 1
+          fi
+
+  segredos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run typecheck build
+      - run: pnpm check:functions   # deno check das Edge Functions (deno via npx)
