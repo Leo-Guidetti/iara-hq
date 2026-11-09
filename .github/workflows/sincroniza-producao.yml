@@ -28,22 +28,22 @@ jobs:
         with: { ref: main, fetch-depth: 0 }
 
       - uses: supabase/setup-cli@v1
-        with: { version: latest }
+        with: { version: 3.0.0 }   # fixo: a v3 mudou os alvos para --remote
 
       - name: Branch
         run: git checkout -B "$BRANCH"
 
       - name: Link
-        run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+        run: supabase link --project-ref "$PROJECT_REF"
 
       - name: Edge Functions no ar
         run: |
-          supabase functions list --project-ref "$PROJECT_REF" -o json > /tmp/funcs.json
+          supabase functions list --remote="$PROJECT_REF" -o json > /tmp/funcs.json
           RAW=/tmp/raw; mkdir -p "$RAW"; : > /tmp/written; : > /tmp/conflicts
           for slug in $(jq -r '.[].slug' /tmp/funcs.json); do
             d="$RAW/$slug"; mkdir -p "$d/supabase"
-            supabase functions download "$slug" --project-ref "$PROJECT_REF" --workdir "$d" \
-              || supabase functions download "$slug" --project-ref "$PROJECT_REF" --workdir "$d" --use-api
+            supabase functions download "$slug" --remote="$PROJECT_REF" --workdir "$d" \
+              || supabase functions download "$slug" --remote="$PROJECT_REF" --workdir "$d" --use-api
             src="$d/supabase/functions"
             [ -f "$src/$slug/index.ts" ] || { echo "::error::$slug: index.ts fora do lugar esperado"; find "$d" -type f; exit 1; }
             (cd "$src" && find . -type f | sed 's|^\./||') | while read -r f; do
@@ -67,14 +67,14 @@ jobs:
 
       - name: Histórico de migrations
         run: |
-          printf "y\ny\n" | supabase migration fetch --linked || printf "y\ny\n" | supabase migration fetch
+          printf "y\ny\n" | supabase migration fetch --remote --yes
           # migrations que já estavam no repo não podem mudar nem sumir (o CI bloqueia)
           git checkout main -- supabase/migrations
 
       - name: Schema de referência (sem dados)
         run: |
           mkdir -p supabase/schema
-          supabase db dump --linked -f supabase/schema/producao.sql
+          supabase db dump --remote --password "$SUPABASE_DB_PASSWORD" -f supabase/schema/producao.sql
 
       - name: Relatório
         run: |
