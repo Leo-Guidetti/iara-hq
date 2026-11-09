@@ -20,7 +20,10 @@ para `leonardoguidettic@gmail.com`. A conta dele já existe (com os dados), ent�
 Leo cria no painel. No hub (branch `claudia-v2`, PR #2): tela de entrar com senha, `/cadastro` e o middleware
 barrando qualquer outro e-mail. **Falta o Leo:** criar o secret, cadastrar a senha em `/cadastro`, apagar o
 secret e testar as telas de `/saude` (1.3). Na 1.4: depois do merge do PR #2, trocar o Production Branch
-do projeto `hub` de `claudia-v2` para `main` (nada a fazer com domínio).
+do projeto `hub` de `claudia-v2` para `main` (nada a fazer com domínio). **09/11 13:05 UTC:** `hub-senha` no ar (sem o secret, responde
+"Cadastro fechado"). O `iara-agents-hq.vercel.app` foi apontado à mão (alias, a pedido do Leo) para o preview
+`dpl_MuQwrFSEBVCiuWShP5oNMsiRuEjY` da `claudia-v2` (commit `d4b1fbb`, login com senha), porque o Vercel recusou
+promover o preview (422). O próximo deploy de produção do `hub` retoma o domínio sozinho.
 
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
