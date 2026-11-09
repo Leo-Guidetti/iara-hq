@@ -56,6 +56,11 @@ não depende disso enquanto espera.
       Leo para apagar os arquivos e o bucket (e o `deploy-bundles`, privado e vazio). Falta ele confirmar.
 - [ ] 5. Tarefa semanal de custo (domingo 20:00): cron no Supabase que soma os `ai_usage` e manda
       push (via migration + Edge Function, pelo fluxo normal).
+      **Notas de 09/11:** fontes de custo: `airton.ai_usage`, `claudia.ai_usage`, `core.ai_usage` e a view
+      `core.v_ai_cost_all`. O push existe só no AIrton (`airton.push_subscriptions` + `airton.notify_log`,
+      job `airton-notify-tick` a cada 15 min chamando `airton_private.call_function('airton-notify')`).
+      Fazer depois do item 1, lendo o `airton-notify` já no repo para reaproveitar o envio, em vez de
+      adivinhar a API dele. Domingo 20:00 SP = `0 23 * * 0` UTC.
 
 ## Etapa 1 — Fechar a ClaudIA v2 (Fase 1 do ROADMAP)
 - [ ] 1. Conferir as 9 `claudia-*` contra o repo (feito na etapa 0) e testar cada uma.
