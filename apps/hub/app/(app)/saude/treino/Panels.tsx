@@ -47,7 +47,7 @@ export function CoachPanel({ plan }: { plan: { name: string; rationale: string |
   )
 }
 
-type Proposal = { kind: 'session' | 'template'; session_id?: number; strength_day_index?: number; why: string; patch: { title?: string; duration_min?: number; notes?: string; exercises?: { name: string; sets: number; reps: string; load_kg?: number | null }[] } }
+type Proposal = { kind: 'session' | 'template'; session_id?: number; strength_day_index?: number; why: string; patch: null | { title?: string; duration_min?: number; notes?: string; exercises?: { name: string; sets: number; reps: string; load_kg?: number | null }[] } }
 export type ReviewRow = { id: number; week_start: string; payload: { summary?: string; signals?: { area: string; level: string; text: string }[]; proposals?: Proposal[]; refs?: string[] }; decisions: Record<string, { decision: string } | undefined> }
 
 export function ReviewPanel({ review }: { review: ReviewRow | null }) {
@@ -65,9 +65,9 @@ export function ReviewPanel({ review }: { review: ReviewRow | null }) {
               <div key={i} className="card" style={{ background: 'var(--surface-2)', marginTop: 8 }}>
                 <span className="tag ai">{pr.kind === 'session' ? `Sessão #${pr.session_id}` : `Modelo: dia de força ${(pr.strength_day_index ?? 0) + 1}`}</span>
                 <p className="small">{pr.why}</p>
-                {pr.patch.exercises && <ul className="small muted">{pr.patch.exercises.map((e) => <li key={e.name}>{e.name} {e.sets}×{e.reps}{e.load_kg ? ` · ${e.load_kg} kg` : ''}</li>)}</ul>}
-                {pr.patch.title && <p className="small muted">Título: {pr.patch.title}{pr.patch.duration_min ? ` · ${pr.patch.duration_min} min` : ''}</p>}
-                {d ? <span className={`tag ${d === 'accept' ? 'progress' : ''}`}>{d === 'accept' ? '✓ aplicada' : 'descartada'}</span> : (
+                {pr.patch?.exercises && <ul className="small muted">{pr.patch.exercises.map((e) => <li key={e.name}>{e.name} {e.sets}×{e.reps}{e.load_kg ? ` · ${e.load_kg} kg` : ''}</li>)}</ul>}
+                {pr.patch?.title && <p className="small muted">Título: {pr.patch.title}{pr.patch.duration_min ? ` · ${pr.patch.duration_min} min` : ''}</p>}
+                {d ? <span className={`tag ${d === 'accept' ? 'progress' : ''}`}>{d === 'accept' ? '✓ aplicada' : 'descartada'}</span> : !pr.patch ? <span className="small muted">Sem alteração proposta.</span> : (
                   <div className="grid2">
                     <button className="btn" disabled={!!busy} onClick={() => run(`a${i}`, 'claudia-coach-review', { action: 'apply', review_id: review.id, index: i, decision: 'accept' })}>{busy === `a${i}` ? 'Aplicando…' : 'Aplicar'}</button>
                     <button className="btn ghost" disabled={!!busy} onClick={() => run(`r${i}`, 'claudia-coach-review', { action: 'apply', review_id: review.id, index: i, decision: 'reject' })}>Descartar</button>
