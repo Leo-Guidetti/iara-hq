@@ -3,10 +3,10 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo:** depois do merge do PR `fix/sabia-trilha-effort`, conferir o run do `deploy-supabase` (deve
-publicar só a `sabia-trilha`, v7 → v8; é o 1º deploy de função pelo CI) e fazer uma chamada real
-(`core_private.call_function('sabia-trilha', ...)` como o cron) para gerar a trilha de 09/11, que falhou;
-conferir `core.agent_runs` e o custo em `core.ai_usage`. Depois: 0.5 (custo semanal) e 0.2 (tipar aos poucos).
+**Próximo passo:** depois do merge do PR `feat/custo-semanal` (0.5), conferir o deploy (`db push` aplica
+`20261109130000_ai_cost_report`; publica só a `airton-notify`, v8 → v9), rodar
+`select airton.ai_cost_report(7)` pelo conector e conferir o 1º push de custo no domingo 15/11 às 20:00 SP
+(`airton.notify_log`, kind `custo`). Em seguida: Etapa 1, item 1 (as 9 `claudia-*` contra o PR #2).
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
 obrigatórios já estão configurados (o PR fica `blocked` até o CI ficar verde).
@@ -59,20 +59,27 @@ não depende disso enquanto espera.
       os 35 arquivos levam `// @ts-nocheck` na 1ª linha. Falta: tipar e tirar a marca, função por função
       (tarefa própria; correção pequena numa função não precisa esperar por isso). As 9 `claudia-*` têm a versão tipada no PR #2 (claudia-v2): no rebase
       dele, ficar com a tipada se for equivalente à do ar.
-- [ ] 3. Deploy (`deploy-supabase.yml`) conferido contra `supabase/` real e validado com um deploy de verdade.
+- [x] 3. **09/11, PRs #4, #6 e #7.** Deploy (`deploy-supabase.yml`) conferido contra `supabase/` real e validado com um deploy de verdade:
+      o merge do #7 publicou só a `sabia-trilha` (v7 → v8) e a chamada real deu `ok`.
       **09/11:** secrets do Actions, auto-merge e proteção da `main` (checks obrigatórios, sem revisão) já
       existem: o `link` passou no run do merge do #3. O `db push` falhou só pela mudança da v3 do CLI, sem
       aplicar nada; corrigido no PR #4. Falta o deploy real: o merge da 0.1 é esse teste.
 - [ ] 4. Bucket `airton-deploy` (público): listar o conteúdo e pedir ao Leo para torná-lo privado
       ou apagar. **09/11:** listado (8 .tgz de 02–03/11: `airton-web-v24/25/26` e 5 `bundle-*`); pedido ao
       Leo para apagar os arquivos e o bucket (e o `deploy-bundles`, privado e vazio). Falta ele confirmar.
-- [ ] 5. Tarefa semanal de custo (domingo 20:00): cron no Supabase que soma os `ai_usage` e manda
+- [ ] 5. **09/11: em PR (`feat/custo-semanal`).** Tarefa semanal de custo (domingo 20:00): cron no Supabase que soma os `ai_usage` e manda
       push (via migration + Edge Function, pelo fluxo normal).
       **Notas de 09/11:** fontes de custo: `airton.ai_usage`, `claudia.ai_usage`, `core.ai_usage` e a view
       `core.v_ai_cost_all`. O push existe só no AIrton (`airton.push_subscriptions` + `airton.notify_log`,
       job `airton-notify-tick` a cada 15 min chamando `airton_private.call_function('airton-notify')`).
       Fazer depois do item 1, lendo o `airton-notify` já no repo para reaproveitar o envio, em vez de
       adivinhar a API dele. Domingo 20:00 SP = `0 23 * * 0` UTC.
+      **Feito assim:** sem cron novo. O `airton-notify` (tick de 15 min) ganhou o tipo `custo`
+      (domingo 20:00 SP; `costEnabled/costDow/costTime` em `airton.settings` → `notify`), com dados de
+      `airton.ai_cost_report(p_dias)` (security definer, só service role) sobre a view nova
+      `core.v_ai_usage_all` (airton + claudia + core). O push traz semana, mês, projeção, custo por app, a
+      maior funcionalidade e um alerta quando a projeção passa do teto (`AIRTON_`, `CLAUDIA_`, `IARA_AI_BUDGET_USD`).
+      Prévia pelo app: `airton-notify` com `{action:'preview', kind:'custo'}`.
 
 ## Etapa 1 — Fechar a ClaudIA v2 (Fase 1 do ROADMAP)
 - [ ] 1. Conferir as 9 `claudia-*` contra o repo (feito na etapa 0) e testar cada uma.
@@ -109,4 +116,5 @@ não depende disso enquanto espera.
 | 09/11 | 0.3 | #4 | só `.github/`, sem deploy | CLI fixo na 3.0.0, `--remote`/`--yes` |
 | 09/11 | 0.1 | #5 | `list_migrations` com `20261109120000`; funções não publicadas (faltava `--yes`, nada mudou) | 15 funções, 48 migrations de histórico, `schema/producao.sql`; sem conflitos em `_shared` |
 | 09/11 | 0.3 | #6 | só `.github/`, sem deploy | `--yes` no `functions deploy` |
-| 09/11 | extra | `fix/sabia-trilha-effort` | — (conferir após o merge) | Trilha de 09/11 falhou ("Resposta sem <trilha>"): orquestrador Sonnet sem `effort` esgotava os 2.500 tokens pensando. `effort: low` e teto maior no orquestrador e no recap |
+| 09/11 | extra | #7 | `sabia-trilha` v8 publicada pelo CI; chamada real (como o cron): run 5 `ok`, 5 itens, US$ 0,0232 (orquestrador 1.322 tokens de saída) | Trilha de 09/11 falhou ("Resposta sem <trilha>"): orquestrador Sonnet sem `effort` esgotava os 2.500 tokens pensando. `effort: low` e teto maior no orquestrador e no recap |
+| 09/11 | 0.5 | `feat/custo-semanal` | — (conferir após o merge) | Custo do mês até 09/11: US$ 0,35 (AIrton 0,30; SabIA 0,03; IARA 0,02) |

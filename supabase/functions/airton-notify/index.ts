@@ -9,7 +9,11 @@ const DEFAULT = {
   dailyTime: '22:00',
   weeklyEnabled: true,
   weeklyDow: 0,
-  weeklyTime: '19:00'
+  weeklyTime: '19:00',
+  // Resumo de custo de IA de todos os apps (PROGRESSO 0.5): domingo 20:00 SP.
+  costEnabled: true,
+  costDow: 0,
+  costTime: '20:00'
 };
 async function vapid() {
   const k = await kvGet('vapid');
@@ -127,6 +131,61 @@ export async function composeWeekly(userId) {
     badge: undefined
   };
 }
+const APP_NOME = {
+  airton: 'AIrton',
+  claudia: 'ClaudIA',
+  sabia: 'SabIA',
+  iara: 'IARA',
+  core: 'HQ'
+};
+// Teto mensal de cada app (o mesmo que o cliente de IA de cada um usa). SabIA e IARA dividem o IARA_*.
+const TETO = {
+  airton: ['AIRTON', 10],
+  claudia: ['CLAUDIA', 5],
+  sabia: ['IARA', 10],
+  iara: ['IARA', 10],
+  core: ['IARA', 10]
+};
+const usd = (v)=>`US$ ${Number(v).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+export async function composeCost() {
+  const r = await rpc('ai_cost_report', {
+    p_dias: 7
+  });
+  const fator = Number(r.dias_no_mes) / Math.max(1, Number(r.dia_do_mes));
+  const apps = r.por_app ?? [];
+  const semana = apps.filter((a)=>Number(a.semana_usd) >= 0.005).map((a)=>`${APP_NOME[a.app] ?? a.app} ${usd(a.semana_usd)}`);
+  const lines = [
+    `Mês até agora: ${usd(r.mes_usd)} · projeção ${usd(Number(r.mes_usd) * fator)}.`,
+    semana.length ? semana.join(' · ') : 'Nenhum custo de IA na semana.'
+  ];
+  const top = (r.top_semana ?? [])[0];
+  if (top && Number(top.usd) >= 0.005) lines.push(`Maior: ${APP_NOME[top.app] ?? top.app} / ${top.feature} (${usd(top.usd)}).`);
+  // Projeção por teto (SabIA, IARA e HQ somados no IARA_AI_BUDGET_USD).
+  const porTeto = {};
+  for (const a of apps){
+    const [pref, padrao] = TETO[a.app] ?? [
+      'IARA',
+      10
+    ];
+    porTeto[pref] ??= {
+      gasto: 0,
+      teto: Number(Deno.env.get(`${pref}_AI_BUDGET_USD`) ?? padrao)
+    };
+    porTeto[pref].gasto += Number(a.mes_usd);
+  }
+  const acima = Object.entries(porTeto).filter(([, v])=>v.gasto * fator > v.teto).map(([k, v])=>`${k} ${usd(v.gasto * fator)} / teto ${usd(v.teto)}`);
+  if (acima.length) lines.unshift(`Atenção: projeção acima do teto (${acima.join('; ')}).`);
+  return {
+    title: `IA na semana: ${usd(r.semana_usd)}`,
+    body: lines.slice(0, 4).join('\n'),
+    url: '/',
+    tag: 'custo',
+    badge: undefined
+  };
+}
 async function send(userId, msg, ttl = 6 * 3600) {
   const db = admin();
   const { data: subs } = await db.from('push_subscriptions').select('*').eq('user_id', userId);
@@ -180,6 +239,10 @@ async function tick() {
       [
         'weekly',
         cfg.weeklyEnabled && now.dow === cfg.weeklyDow && due(now.minutes, cfg.weeklyTime)
+      ],
+      [
+        'custo',
+        cfg.costEnabled && now.dow === cfg.costDow && due(now.minutes, cfg.costTime)
       ]
     ];
     for (const [kind, isDue] of jobs){
@@ -192,7 +255,7 @@ async function tick() {
       });
       if (error) continue;
       try {
-        const msg = kind === 'daily' ? await composeDaily(uid) : await composeWeekly(uid);
+        const msg = kind === 'daily' ? await composeDaily(uid) : kind === 'custo' ? await composeCost() : await composeWeekly(uid);
         const r = await send(uid, msg, kind === 'daily' ? 6 * 3600 : 24 * 3600);
         await admin().from('notify_log').update({
           title: msg.title,
@@ -224,7 +287,7 @@ Deno.serve(async (req)=>{
     if (body.action === 'vapid') return json(200, {
       publicKey: (await vapid()).publicKey
     });
-    const msg = body.kind === 'weekly' ? await composeWeekly(caller.userId) : body.kind === 'daily' ? await composeDaily(caller.userId) : {
+    const msg = body.kind === 'weekly' ? await composeWeekly(caller.userId) : body.kind === 'daily' ? await composeDaily(caller.userId) : body.kind === 'custo' ? await composeCost() : {
       title: 'AIrton',
       body: 'Notificações funcionando neste aparelho.',
       url: '/',
