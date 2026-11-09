@@ -6,6 +6,10 @@ o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 **Próximo passo:** Etapa 0, item 0 — dar push da branch local `chore/base-ci` (já commitada no PC do Leo),
 abrir o PR e ligar o auto-merge. **Bloqueado:** a sessão não tem permissão de push no GitHub (pedido ao
 Leo em 09/11, junto com os itens 0.3, 0.4 e 1.2). Assim que houver acesso: `git push -u origin chore/base-ci`.
+Diagnóstico (09/11): o acesso ao GitHub é fixado quando a sessão começa. Nesta sessão até a leitura pela
+API dá 403 ("GitHub access to this repository is not enabled for this session"), e o git da VM do PC não
+tem credencial. Saída: nova sessão com o repo `Leo-Guidetti/iara-hq` como fonte, ou o Leo dá o push
+pelo terminal do Windows. Strava (Etapa 1.2) não bloqueia a Etapa 0.
 
 ## Como trabalhar cada entrega
 1. Branch `<tipo>/<tema>` → commits pequenos.
