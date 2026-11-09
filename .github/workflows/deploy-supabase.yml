@@ -8,6 +8,11 @@ on:
     branches: [main]
     paths: ["supabase/**"]
   workflow_dispatch:
+    inputs:
+      funcoes:
+        description: "Funções para publicar, separadas por espaço (vazio = as alteradas no último commit)"
+        required: false
+        default: ""
 
 concurrency:
   group: deploy-supabase
@@ -36,7 +41,18 @@ jobs:
         run: supabase db push --remote --password "$SUPABASE_DB_PASSWORD" --yes
 
       - name: Edge Functions alteradas
+        env:
+          FUNCOES: ${{ inputs.funcoes }}
         run: |
+          if [ -n "$FUNCOES" ]; then
+            # disparo manual com lista explícita (ex.: republicar após falha da API do Supabase)
+            for f in $FUNCOES; do
+              [[ "$f" =~ ^[a-z0-9-]+$ ]] && [ -d "supabase/functions/$f" ] || { echo "::error::função inválida: $f"; exit 1; }
+              echo "Publicando $f"
+              supabase functions deploy "$f" --remote="$PROJECT_REF" --no-verify-jwt --use-api --yes
+            done
+            exit 0
+          fi
           BASE="${{ github.event.before }}"
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then BASE="HEAD~1"; fi
           CHANGED=$(git diff --name-only "$BASE" "${{ github.sha }}" -- supabase/functions)
