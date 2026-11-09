@@ -27,13 +27,13 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.0.0   # fixo: a v3 (02/11) mudou os alvos (--remote) e quebrou o `latest`
 
       - name: Link
-        run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+        run: supabase link --project-ref "$PROJECT_REF"
 
       - name: Migrations (só aditivas, revisadas no PR)
-        run: supabase db push --password "$SUPABASE_DB_PASSWORD"
+        run: supabase db push --remote --password "$SUPABASE_DB_PASSWORD" --yes
 
       - name: Edge Functions alteradas
         run: |
@@ -52,9 +52,9 @@ jobs:
           for f in $FUNCS; do
             if [ -d "supabase/functions/$f" ]; then
               echo "Publicando $f"
-              supabase functions deploy "$f" --project-ref "$PROJECT_REF" --no-verify-jwt
+              supabase functions deploy "$f" --remote="$PROJECT_REF" --no-verify-jwt --use-api
             fi
           done
 
       - name: Conferir funções no ar
-        run: supabase functions list --project-ref "$PROJECT_REF"
+        run: supabase functions list --remote="$PROJECT_REF"
