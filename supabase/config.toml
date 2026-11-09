@@ -1,0 +1,6 @@
+# IARA HQ · projeto Supabase compartilhado (wrtrhdrohabspbaxpbeu).
+# `supabase link --project-ref wrtrhdrohabspbaxpbeu` grava o vínculo em supabase/.temp (fora do Git).
+project_id = "iara-hq"
+
+[functions.claudia-food-parse]
+verify_jwt = false   # autentica sozinha (JWT + claudia.members) em _shared/common.ts
