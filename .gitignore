@@ -11,3 +11,4 @@ dist/
 # supabase
 supabase/.temp/
 supabase/.branches/
+*.tsbuildinfo

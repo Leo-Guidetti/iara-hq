@@ -2,8 +2,8 @@
 // Contrato (inferido de public.food_logs; o route.ts original não estava disponível):
 //   POST { text: string, meal?: string, date?: 'YYYY-MM-DD' }
 //   200  { items: [{ description, meal, protein_g, kcal, carbs_g, fat_g }], totals, local_date, model }
-import { authenticate, json, CORS, spDate } from './_shared/common.ts'
-import { anthropic, MODELS, textOf, extrairJson } from './_shared/ai.ts'
+import { authenticate, json, CORS, spDate } from '../_shared/claudia/common.ts'
+import { anthropic, MODELS, textOf, extrairJson } from '../_shared/claudia/ai.ts'
 
 const MEALS = ['cafe', 'almoco', 'lanche', 'jantar', 'ceia', 'outro']
 const SYSTEM = `Você é o módulo de registro alimentar da ClaudIA. Converta a descrição em português de uma refeição em itens com macros estimados.
