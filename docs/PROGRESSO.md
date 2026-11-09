@@ -120,6 +120,10 @@ não depende disso enquanto espera.
 
 ## Etapa 6 — Módulos no hub (Fase 6)
 - [ ] `/financas`, `/aprender`, `/casa`; IARA migrada; aposentar Vercel `airton`, `iara`, `shyrlai`
+      **09/11 (pedido do Leo: "tudo em um site único"):** primeira versão de `/financas` (plano do mês, semana,
+      próximos lançamentos, últimos gastos, revisão pendente) e `/casa` (fila de `core.itens` com Feito/Amanhã/Ignorar
+      e os briefings). Falta trazer: Open Finance/Pluggy, chat e investimentos do AIrton; casa/compras da IARA (dados no
+      Supabase antigo, inacessível); `/aprender` da SabIA. Os apps antigos seguem linkados no fim de cada módulo.
       (apagar = pedir ao Leo).
 
 ## Etapa 7 — Voz (Fase 7)
@@ -140,3 +144,4 @@ não depende disso enquanto espera.
 | 09/11 | UX (pedido do Leo) | `feat/hub-menu-temas` | — (conferir após o merge) | `/hoje` vira menu com blocos ClaudIA/AIrton/IARA House; paleta por app (`data-app`) + modo claro/escuro (Perfil → Aparência); `/saude/treino` corrigido (patch nulo na revisão de 26/10) |
 | 09/11 | 1.4 | #17 (inclui o #2, fechado como incorporado), #16 | hub em produção pela `main` (`iara-agents-hq.vercel.app`, tema novo); migrations `20261109150000` e `20261109190000` aplicadas; 7 `claudia-*` republicadas, `claudia-photo-review` e `claudia-strava` pendentes (502 da API do Supabase) | Republicar pelo disparo manual do `deploy-supabase` com `funcoes` (PR `ci/deploy-funcoes`) |
 | 09/11 | 1.4 | #18 + disparo manual | `claudia-photo-review` v4 e `claudia-strava` v4 publicadas do repo; hub em produção com o tema novo | GitHub teve "Partial System Outage" ~18:15 UTC e a API do Supabase deu 502 ~18:53 UTC: reruns resolveram |
+| 09/11 | 6 (início) | `feat/hub-site-unico` | — (conferir após o merge) | Site único: `/financas`, `/casa`, barra com 5 ícones (Hoje, ClaudIA, AIrton, Casa, Perfil); Hoje lúdica com órbita; camada futurista (vidro/brilho); migration `20261109200000_hub_casa` |

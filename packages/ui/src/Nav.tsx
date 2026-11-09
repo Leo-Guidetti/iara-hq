@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-export type NavItem = { href: string; label: string; icon: string; exact?: boolean }
+export type NavItem = { href: string; label: string; icon: string; exact?: boolean; app?: string }
 
 /** Barra inferior do hub. `icon` é o atributo `d` de um path SVG 24×24 com traço. */
 export function Nav({ items }: { items: NavItem[] }) {
@@ -13,7 +13,7 @@ export function Nav({ items }: { items: NavItem[] }) {
         {items.map((i) => {
           const active = i.exact ? path === i.href : path === i.href || path.startsWith(`${i.href}/`)
           return (
-            <li key={i.href}>
+            <li key={i.href} data-app={i.app}>
               <Link href={i.href} aria-current={active ? 'page' : undefined}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d={i.icon} />

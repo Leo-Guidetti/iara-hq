@@ -23,8 +23,8 @@ Como começar: `docs/cowork/GUIA.md`. Estado e próximos passos: `docs/PROGRESSO
 | Peça | Onde |
 | --- | --- |
 | Código (tudo) | GitHub `Leo-Guidetti/iara-hq` — pnpm workspaces + turbo |
-| App único | `apps/hub` (Next.js 15) → projeto Vercel `hub`. Módulos: `/saude` (ClaudIA), depois `/financas` (AIrton), `/aprender` (SabIA), `/casa` (IARA), e `/hoje` |
-| Design | `packages/ui` — neutros "clinical calm" (escuro #0D1117 / claro #F5F6F8, segue o sistema ou a escolha no Perfil) e uma cor por app via `data-app`: HQ lilás, ClaudIA verde, AIrton azul, IARA House dourado; violeta #8B7FF0 só IA, âmbar alertas, Barlow Semi Condensed. `/hoje` é o menu: um bloco de pendências por app |
+| App único (site único) | `apps/hub` (Next.js 15) → projeto Vercel `hub` em `iara-agents-hq.vercel.app`. `/hoje` (menu com a órbita), `/saude` (ClaudIA), `/financas` (AIrton: leitura pelas RPCs do schema `airton`), `/casa` (IARA House: `public.hub_casa()` e `hub_item_status()` sobre `core.itens`); depois `/aprender` (SabIA). Os apps antigos do AIrton e da IARA seguem no ar só para o que ainda não veio (Open Finance, chat, investimentos, casa/compras) |
+| Design | `packages/ui` — neutros "clinical calm" (escuro #0D1117 / claro #F5F6F8, segue o sistema ou a escolha no Perfil) com camada futurista (vidro fosco, borda luminosa, brilho na cor do app) e uma cor por app via `data-app`: HQ lilás, ClaudIA verde, AIrton azul, IARA House dourado; violeta #8B7FF0 só IA, âmbar alertas, Barlow Semi Condensed. `/hoje` é o menu: um bloco de pendências por app |
 | Banco, IA, crons, chaves | Supabase `wrtrhdrohabspbaxpbeu` — schemas `airton`, `claudia`, `sabia`, `core` (+ tabelas antigas da ClaudIA em `public`) |
 | Edge Functions | `supabase/functions/<app>-<função>` — publicadas SÓ a partir do repo |
 | Migrations | `supabase/migrations` — SÓ aditivas |
