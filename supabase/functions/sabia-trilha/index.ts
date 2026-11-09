@@ -67,11 +67,39 @@ async function gerar(userId, config, force) {
             ${it.idioma === 'pt' || it.idioma === 'en' ? it.idioma : null}, ${it.minutos}, ${it.por_que ?? null}, ${it.takeaway ?? null}, ${it.corpo ?? null})`;
       }
     });
+    // Núcleo de itens (Etapa 2): um cartão por trilha na fila comum. Falha aqui não derruba a trilha.
+    let item_id = null, erro_item = null;
+    try {
+      const titulo = tipo === 'recap' ? 'Recap da semana' : tipo === 'deep_dive' ? 'Deep dive do sábado' : 'Trilha do dia';
+      const [p] = await sql`select core.publicar_item(${JSON.stringify({
+        user_id: userId,
+        origem: 'sabia',
+        tipo: 'leitura',
+        titulo: `${titulo} · ${total} min`,
+        detalhe: [
+          r.resumo,
+          ...r.itens.map((it)=>`• ${it.titulo} (${it.minutos} min)`)
+        ].filter(Boolean).join('\n'),
+        data,
+        prioridade: 'media',
+        minutos: total,
+        acao: {
+          url: '/aprender',
+          rotulo: 'Abrir trilha'
+        },
+        chave_origem: `trilha:${data}:${tipo}`
+      })}::jsonb) as id`;
+      item_id = p.id;
+    } catch (e) {
+      erro_item = String(e).slice(0, 300);
+    }
     await fecharRun(run, 'ok', {
       output: {
         tipo,
         itens: r.itens.length,
         minutos: total,
+        item_id,
+        erro_item,
         ...r.stats
       }
     });
