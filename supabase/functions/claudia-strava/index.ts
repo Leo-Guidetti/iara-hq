@@ -1,6 +1,6 @@
 // claudia-strava · integração com o Strava. Secrets: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET.
 //   POST { action: 'status' }                         → strava_status()
-//   POST { action: 'connect', redirect_uri, state }   → { url } de autorização (o callback volta para o app)
+//   POST { action: 'connect', redirect_uri, state }   → { url } de autorização (o callback volta para o hub em /saude/treino/strava)
 //   POST { action: 'exchange', code }                 → troca o code por tokens (strava_save_tokens) e sincroniza
 //   POST { action: 'sync', days? }                    → importa atividades para public.activities (upsert por external_id)
 //   POST { action: 'disconnect' }                     → strava_disconnect() (apaga tokens e atividades do Strava)
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
         const id = Deno.env.get('STRAVA_CLIENT_ID')
         if (!id) return json(500, { error: 'STRAVA_CLIENT_ID não configurado.' })
         const redirect = String(body.redirect_uri ?? '')
-        if (!/^https:\/\/[^/]+\/treino\/strava$/.test(redirect) && !/^http:\/\/localhost(:\d+)?\/treino\/strava$/.test(redirect)) return json(400, { error: 'redirect_uri inválida.' })
+        if (!/^https:\/\/[^/]+\/saude\/treino\/strava$/.test(redirect) && !/^http:\/\/localhost(:\d+)?\/saude\/treino\/strava$/.test(redirect)) return json(400, { error: 'redirect_uri inválida.' })
         const u = new URL('https://www.strava.com/oauth/mobile/authorize')
         u.search = new URLSearchParams({ client_id: id, response_type: 'code', redirect_uri: redirect, approval_prompt: 'auto', scope: 'read,activity:read_all', state: String(body.state ?? '').slice(0, 64) }).toString()
         return json(200, { url: u.toString() })
