@@ -6,9 +6,12 @@ o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 **Próximo passo (10/11, 10:00 UTC):**
 1. **11/11 depois das 09:30 UTC:** conferir o cartão da SabIA em `core.itens` (`origem = 'sabia'`; o de 10/11 falhou,
    corrigido em `fix/sabia-cartao-40min`) e `minutos_total` da trilha entre 35 e 45 em `sabia.trilhas`.
-2. Etapa 5 (próxima grande entrega): planejamento da semana aos domingos à noite (lista abaixo). Começar pela migration.
-3. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`, chave `briefing:<data>:<tipo>`); depois AIrton e ClaudIA.
-4. Domingo 15/11, 20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
+2. Etapa 5: depois do merge de `feat/iara-semana`, conferir a migration `20261110110000`, o job `iara-semana` em `cron.job`
+   e rodar uma vez pelo hub (/semana → "Montar a semana agora") para ver o rascunho e o custo (`core.ai_usage`, feature `plano-semana`).
+   Domingo 15/11: 18:00 SP o rascunho, 19:30 o push (`airton.notify_log`, kind `semana`).
+3. Layout para desktop/iPad (paisagem) e revisão do modo claro (pedido do Leo, 10/11): branch `feat/hub-desktop`.
+4. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`, chave `briefing:<data>:<tipo>`); depois AIrton e ClaudIA.
+5. Domingo 15/11, 20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
 
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
@@ -116,7 +119,14 @@ não depende disso enquanto espera.
 - [ ] Google Calendar e digest do Gmail como itens.
 
 ## Etapa 5 — Planejamento da semana (domingo à noite) e orquestração da IARA (Fase 5)
-- [ ] **Próxima grande entrega (pedido do Leo, 09/11).** Planejamento semanal aos domingos à noite, ver ROADMAP Fase 5:
+- [ ] **10/11, `feat/iara-semana`:** migration `20261110110000_core_planos_semana` (`core.planos_semana` + itens, `core.coletar_semana`,
+      `public.hub_semana`/`hub_semana_hoje`/`hub_semana_item`/`hub_semana_confirmar`, `airton.semana_push`, cron `iara-semana` dom 21:00 UTC),
+      função `iara-semana` (Sonnet, `effort: low`), tela `/semana` (link "Semana →" na Hoje), push `semana` (dom 19:30 SP) no `airton-notify`,
+      briefing lendo o plano do dia. Pedido do Leo (10/11): planejar **tudo junto** — carga de treino adaptada à semana (mover/encurtar;
+      completar com o padrão recente se o plano da ClaudIA acabar), dieta de cada dia casada com a carga (calibrada por `food_logs` e peso),
+      compras derivadas do cardápio. Ao confirmar, as adaptações de treino vão para `public.plan_sessions` (mover dia/duração; sessão nova
+      no plano ativo). Testada em PGlite.
+- [ ] Planejamento semanal aos domingos à noite (pedido do Leo, 09/11), ver ROADMAP Fase 5:
       1. Migration `core.planos_semana` (semana, status rascunho/confirmado, insumos, texto) + itens do plano (dia, área, título, minutos, valor).
       2. Função `iara-semana` (Sonnet, `effort: low`): junta ClaudIA (plano de treino da semana, metas de dieta), SabIA (temas, imersão,
          livro), AIrton (`month_plan.upcoming` da semana, livre por semana), Casa (quando migrar) e agenda (Fase 4). Cron domingo 21:00 UTC (18:00 SP).
@@ -157,3 +167,5 @@ não depende disso enquanto espera.
 | 09/11 | SabIA (pedido do Leo) | `feat/sabia-pilulas` | — (conferir após o merge e na trilha de 10/11) | Trilha diária ~40 min (5–7 itens; migration ajusta `core.perfil.config.minutos_trilha`), pílula de 120–180 palavras por item + "Para ir além" com até 2 links extras (URLs só dos workers), workers devolvem 3–5 candidatos; sábado vira imersão de ~60 min no tema mais quente da semana, com síntese de 250–400 palavras. Conferir custo em `core.ai_usage` (feature `trilha-orquestrador`) |
 | 09/11 | 5 (início) | `feat/hub-dia-semana` | — (conferir após o merge e no briefing de 10/11) | Linha do tempo "Seu dia" no topo do briefing (rotina + treino + contas do dia); `core.briefing_airton` lê `month_plan` (antes vinha vazio); rotina: sem fechamento da noite, trilha 40 min, imersão 60 min, "Planejamento da semana (IARA)" dom 20:00; prompt da IARA não repete a agenda. Planejamento semanal desenhado no ROADMAP Fase 5 |
 | 10/11 | 2 + SabIA | `fix/sabia-cartao-40min` | — (conferir na trilha de 11/11) | Cron de 10/11: trilha ok (7 itens com pílula e "Para ir além", US$ 0,052), mas (a) o cartão não entrou em `core.itens` (`erro_item`: o postgres.js mandou `JSON.stringify(...)::jsonb` como string JSON escalar; agora `sql.json`) e (b) deu 28 min em vez de 40 (fontes curtas). Agora o tempo da pílula conta no item e o prompt exige a soma entre 35 e 45 min (até 8 itens, prefere peças longas) |
+| 10/11 | Conferência | — | trilha 09:30 ok; briefing 07:00 ok | Trilha: 7 itens com pílula, US$ 0,052 (cartão falhou, corrigido no #25). Briefing único: estrutura nova ok, US$ 0,0095; valores saíam "-252.55" (ajustado para R$ no `feat/iara-semana`) |
+| 10/11 | 5 | `feat/iara-semana` | — (conferir após o merge) | Planejamento da semana integrado (treino → dieta → compras, estudo, contas), `/semana` para revisar e confirmar, confirmação aplica as adaptações de treino na ClaudIA |

@@ -196,3 +196,15 @@ details.brief[open] summary { display: none; }
 .timeline li.agora .t { font-weight: 600; }
 .timeline li.agora .h { color: var(--accent); }
 .timeline .feito { color: var(--accent); font-size: .78rem; margin-left: 6px; }
+
+/* Plano da semana (/semana): um dia por cartão, item com a cor do app dono. */
+.semana { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.semana li { display: grid; grid-template-columns: 46px 1fr auto; align-items: start; gap: 10px; padding: 8px 10px;
+  border-radius: 12px; border-left: 3px solid var(--accent); background: var(--surface-2); }
+.semana .h { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: .78rem; color: var(--muted); padding-top: 2px; }
+.semana .t { font-size: .92rem; display: grid; gap: 2px; }
+.semana .t small { color: var(--muted); }
+.semana .d { font-size: .82rem; color: var(--muted); }
+.semana .feito { color: var(--accent); font-size: .78rem; }
+.semana li.fora { opacity: .45; border-left-style: dashed; }
+.semana li.fora strong { text-decoration: line-through; }

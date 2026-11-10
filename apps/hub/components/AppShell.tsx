@@ -19,10 +19,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname()
   const atual = APPS.find((a) => a.href !== '/hoje' && path.startsWith(a.href)) ?? APPS[0]
   const perfil = path.startsWith('/perfil')
+  const semana = path.startsWith('/semana')
   return (
     <div className="app" data-app={atual.app}>
       <header className="topbar">
-        <Link href="/hoje" className="marca"><i />{perfil ? 'Perfil' : atual.nome.split(' · ')[0]}{!perfil && atual.nome.includes(' · ') && <small>{atual.nome.split(' · ')[1]}</small>}</Link>
+        <Link href="/hoje" className="marca"><i />{perfil ? 'Perfil' : atual.nome.split(' · ')[0]}{!perfil && (semana ? <small>Semana</small> : atual.nome.includes(' · ') && <small>{atual.nome.split(' · ')[1]}</small>)}</Link>
         <Link href="/perfil" className="avatar" aria-label="Perfil" aria-current={perfil ? 'page' : undefined}>L</Link>
       </header>
       <main className="shell">{children}</main>

@@ -7,7 +7,7 @@ const IARA_SYSTEM = `Você é a IARA, assistente pessoal e orquestradora da roti
 Você fala pelos especialistas: ClaudIA (saúde, treino, dieta), AIrton (finanças e investimentos), SabIA (estudos e livros) e você mesma (casa e rotina).
 - Priorize: no máximo 3 destaques; o resto em uma linha por área.
 - Use só os dados recebidos. Agent vazio ou com erro = "sem dados". Não invente.
-- Números exatamente como vieram.
+- Números exatamente como vieram; dinheiro em reais no formato brasileiro (ex.: -252.55 vira R$ 252,55, dizendo se é saída ou entrada).
 - Conflito de agenda/energia: sugira um ajuste concreto.
 - Português do Brasil, markdown curto, sem tabelas, até ~200 palavras.`;
 Deno.serve(async (req)=>{
@@ -33,19 +33,24 @@ async function briefing(userId, nome, tipo) {
     data
   });
   try {
-    const [[ag], rotina] = await Promise.all([
+    const [[ag], rotina, semana] = await Promise.all([
       sql`select core.coletar_briefings(${userId}, ${data}::date) as v`,
       sql`select to_char(hora, 'HH24:MI') hora, minutos, atividade, agent from core.rotina
-          where user_id = ${userId} and ativo and ${dow} = any(dias) order by hora`
+          where user_id = ${userId} and ativo and ${dow} = any(dias) order by hora`,
+      // Etapa 5: o que o Leo combinou para hoje no plano da semana (confirmado no domingo).
+      sql`select to_char(i.hora, 'HH24:MI') hora, i.area, i.titulo, i.minutos, i.valor
+          from core.planos_semana_itens i join core.planos_semana p on p.id = i.plano_id and p.status = 'confirmado'
+          where i.user_id = ${userId} and i.data = ${data} and i.incluido order by i.hora nulls last, i.ordem`
     ]);
     const insumos = {
       agents: ag.v,
-      rotina
+      rotina,
+      plano_semana_hoje: semana
     };
     // Briefing único do dia (pedido do Leo, 09/11): a manhã cobre o dia todo; a noite fica só se alguém chamar.
     const pedido = tipo === 'manha' ? `Escreva o BRIEFING DO DIA (é o único do dia, aparece no topo do app do Leo):
 **Bom dia, ${nome}.** + 1 linha sobre o tom do dia
-**Hoje importa:** até 3 bullets, cruzando as áreas quando fizer sentido (use a rotina para sugerir encaixes, mas NÃO liste a agenda: o app já mostra a linha do tempo do dia)
+**Hoje importa:** até 3 bullets, cruzando as áreas quando fizer sentido (use a rotina e o plano da semana, que o Leo combinou no domingo, para sugerir encaixes, mas NÃO liste a agenda: o app já mostra a linha do tempo do dia)
 Depois 1 linha por área, só com o que é acionável hoje: **Saúde** · **Finanças** (livre no mês, por dia e contas dos próximos dias) · **Aprender** · **Casa**. Área sem dados: omita a linha.
 **À noite:** 1 linha do que fechar antes de dormir (leitura, preparar o treino de amanhã, revisar gastos).` : `Escreva o FECHAMENTO DO DIA:
 **Fechamento** — feito vs. o que ficou (trilha, treino, casa)

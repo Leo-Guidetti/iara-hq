@@ -13,7 +13,18 @@ const DEFAULT = {
   // Resumo de custo de IA de todos os apps (PROGRESSO 0.5): domingo 20:00 SP.
   costEnabled: true,
   costDow: 0,
-  costTime: '20:00'
+  costTime: '20:00',
+  // Plano da semana (Etapa 5): a IARA monta domingo 18:00 SP; o push sai 19:30 e o Leo revisa às 20:00.
+  semanaEnabled: true,
+  semanaDow: 0,
+  semanaTime: '19:30'
+};
+const HUB_URL = 'https://iara-agents-hq.vercel.app';
+const AREA_NOME = {
+  saude: 'saúde',
+  financas: 'finanças',
+  aprender: 'estudos',
+  casa: 'casa'
 };
 async function vapid() {
   const k = await kvGet('vapid');
@@ -186,6 +197,20 @@ export async function composeCost() {
     badge: undefined
   };
 }
+export async function composeSemana(userId) {
+  const r = await rpc('semana_push', {
+    p_user: userId
+  });
+  if (!r || !Number(r.itens)) return null;
+  const partes = Object.entries(r.por_area ?? {}).map(([a, n])=>`${n} de ${AREA_NOME[a] ?? a}`);
+  return {
+    title: 'Plano da semana pronto',
+    body: `${plural(Number(r.itens), 'item', 'itens')}: ${partes.join(', ')}. Revise e confirme no hub.`,
+    url: `${HUB_URL}/semana`,
+    tag: 'semana',
+    badge: undefined
+  };
+}
 async function send(userId, msg, ttl = 6 * 3600) {
   const db = admin();
   const { data: subs } = await db.from('push_subscriptions').select('*').eq('user_id', userId);
@@ -243,6 +268,10 @@ async function tick() {
       [
         'custo',
         cfg.costEnabled && now.dow === cfg.costDow && due(now.minutes, cfg.costTime)
+      ],
+      [
+        'semana',
+        cfg.semanaEnabled && now.dow === cfg.semanaDow && due(now.minutes, cfg.semanaTime)
       ]
     ];
     for (const [kind, isDue] of jobs){
@@ -255,7 +284,14 @@ async function tick() {
       });
       if (error) continue;
       try {
-        const msg = kind === 'daily' ? await composeDaily(uid) : kind === 'custo' ? await composeCost() : await composeWeekly(uid);
+        const msg = kind === 'daily' ? await composeDaily(uid) : kind === 'custo' ? await composeCost() : kind === 'semana' ? await composeSemana(uid) : await composeWeekly(uid);
+        // Sem plano da semana (a função não rodou ou falhou): registra e não manda push vazio.
+        if (!msg) {
+          await admin().from('notify_log').update({
+            body: 'sem plano da semana'
+          }).eq('user_id', uid).eq('kind', kind).eq('local_date', now.date);
+          continue;
+        }
         const r = await send(uid, msg, kind === 'daily' ? 6 * 3600 : 24 * 3600);
         await admin().from('notify_log').update({
           title: msg.title,
@@ -287,7 +323,12 @@ Deno.serve(async (req)=>{
     if (body.action === 'vapid') return json(200, {
       publicKey: (await vapid()).publicKey
     });
-    const msg = body.kind === 'weekly' ? await composeWeekly(caller.userId) : body.kind === 'daily' ? await composeDaily(caller.userId) : body.kind === 'custo' ? await composeCost() : {
+    const msg = body.kind === 'weekly' ? await composeWeekly(caller.userId) : body.kind === 'daily' ? await composeDaily(caller.userId) : body.kind === 'custo' ? await composeCost() : body.kind === 'semana' ? await composeSemana(caller.userId) ?? {
+      title: 'Plano da semana',
+      body: 'Ainda não há plano da semana que vem.',
+      url: `${HUB_URL}/semana`,
+      tag: 'semana'
+    } : {
       title: 'AIrton',
       body: 'Notificações funcionando neste aparelho.',
       url: '/',

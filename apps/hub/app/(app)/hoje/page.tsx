@@ -37,14 +37,15 @@ export default async function Hoje() {
   const me = (await currentUser())!
   const raw = me.sb as unknown as SupabaseClient
   const today = spDate()
-  const [sessoes, alertas, pend, mes, iara, sab, dia] = await Promise.all([
-    seguro(me.sb.from('plan_sessions').select('title, status, duration_min').eq('local_date', today).order('id')),
+  const [sessoes, alertas, pend, mes, iara, sab, dia, semana] = await Promise.all([
+    seguro(me.sb.from('plan_sessions').select('id, title, status, duration_min').eq('local_date', today).order('id')),
     dailyAlerts(me.sb).then((r) => r.alerts).catch(() => 'erro' as const),
     seguro(raw.schema('airton').rpc('review_counts', { p_user: me.user.id })),
     seguro(raw.schema('airton').rpc('month_plan', { p_user: me.user.id })),
     seguro(raw.rpc('hub_casa')),
     seguro(raw.rpc('hub_sabia')),
     seguro(raw.rpc('hub_dia')),
+    seguro(raw.rpc('hub_semana_hoje')),
   ])
 
   // ClaudIA: treino do dia e alertas determinísticos (sem IA).
@@ -96,7 +97,19 @@ export default async function Hoje() {
       blocos.push({ hora: r.hora, minutos: ehTrilha && sb?.trilha?.hoje ? sb.trilha.minutos : r.minutos, texto: r.atividade, app: appDoAgent(r.agent), feito: ehTrilha && trilhaFeita })
     }
   }
-  if (Array.isArray(sessoes)) for (const s of sessoes) blocos.push({ hora: null, minutos: s.duration_min, texto: `Treino: ${s.title}`, app: 'claudia', feito: s.status === 'done' })
+  // Plano da semana confirmado: os itens de hoje entram com o horário combinado no domingo.
+  // Treino com ref usa o horário do plano no lugar do bloco sem hora; contas já vêm do AIrton logo abaixo.
+  const planoHoje = Array.isArray(semana) ? (semana as { hora: string | null; area: string; titulo: string; minutos: number | null; ref: string | null; feito: boolean }[]) : []
+  const AREA_APP: Record<string, string> = { saude: 'claudia', financas: 'airton', aprender: 'sabia', casa: 'casa' }
+  const treinoNoPlano = new Map(planoHoje.filter((i) => i.ref?.startsWith('treino:')).map((i) => [Number(i.ref!.slice(7)), i]))
+  for (const i of planoHoje) {
+    if (i.ref?.startsWith('treino:') || i.ref?.startsWith('conta:')) continue
+    blocos.push({ hora: i.hora, minutos: i.minutos, texto: i.titulo, app: AREA_APP[i.area] ?? 'hq', feito: i.feito })
+  }
+  if (Array.isArray(sessoes)) for (const s of sessoes) {
+    const p = treinoNoPlano.get(Number(s.id))
+    blocos.push({ hora: p?.hora ?? null, minutos: s.duration_min, texto: `Treino: ${s.title}`, app: 'claudia', feito: s.status === 'done' })
+  }
   if (mes && mes !== 'erro') {
     for (const u of ((mes as { upcoming?: { date: string; label: string; amount: number }[] }).upcoming ?? []).filter((u) => u.date === today)) {
       blocos.push({ hora: null, texto: `${Number(u.amount) < 0 ? 'Conta' : 'Entrada'}: ${u.label} · ${brl(Math.abs(Number(u.amount)))}`, app: 'airton' })
@@ -128,7 +141,10 @@ export default async function Hoje() {
 
       <section className="card ai">
         <span className="tag ai">Briefing do dia · IARA</span>
-        <h2 style={{ margin: '10px 0 0', fontSize: '1rem' }}>Seu dia</h2>
+        <div className="row between" style={{ marginTop: 10 }}>
+          <h2 style={{ margin: 0, fontSize: '1rem' }}>Seu dia</h2>
+          <Link className="small" href="/semana" style={{ color: 'var(--accent)' }}>Semana →</Link>
+        </div>
         {blocos.length ? <SeuDia blocos={blocos} agora={agoraHHMM} /> : <p className="small muted" style={{ margin: '4px 0 0' }}>Nada agendado hoje.</p>}
         <h2 style={{ margin: '12px 0 4px', fontSize: '1rem' }}>O que importa</h2>
         {briefing?.texto ? (
