@@ -12,7 +12,7 @@ const ORIGEM: Record<string, { nome: string; app: string }> = {
 }
 
 // Rotas que existem no hub.
-const ROTAS = ['/hoje', '/saude', '/financas', '/aprender', '/casa', '/perfil']
+const ROTAS = ['/hoje', '/semana', '/saude', '/financas', '/aprender', '/casa', '/perfil']
 
 /** Fila do dia (core.itens) com as ações feito / amanhã / ignorar, via public.hub_item_status. */
 export function Fila({ itens, vazio = 'Fila vazia: nada pendente hoje.' }: { itens: Item[]; vazio?: string }) {

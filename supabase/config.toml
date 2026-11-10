@@ -47,5 +47,8 @@ verify_jwt = false   # como está em produção
 [functions.sabia-trilha]
 verify_jwt = false   # como está em produção
 
+[functions.iara-semana]
+verify_jwt = false   # autentica sozinha: x-iara-cron do pg_cron ou JWT de core.members (_shared/common.ts)
+
 [functions.hub-senha]
 verify_jwt = false   # autentica sozinha: só o e-mail do Leo + código do secret HUB_CADASTRO_CODIGO
