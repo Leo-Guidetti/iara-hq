@@ -1,4 +1,5 @@
-// IARA · planejamento da semana (Etapa 5, pedido do Leo em 09/11).
+// IARA · planejamento da semana (Etapa 5, pedido do Leo em 09/11; 10/11: parte do Leo — expediente, compromissos
+// e agenda são fixos — e devolve sugestão inicial + crítica, com deslocamento entre os lugares).
 // Domingo 18:00 SP o pg_cron chama; a IARA junta os insumos de todos os agents (core.coletar_semana)
 // e monta um rascunho dia a dia em core.planos_semana, tudo junto: carga de treino → dieta do dia → compras,
 // estudo e contas. O Leo revisa e confirma em /semana; as adaptações de treino vão para a ClaudIA ao confirmar.
@@ -23,6 +24,56 @@ Você fala pelos especialistas: ClaudIA (treino e dieta), AIrton (finanças), Sa
 - Use só os dados recebidos; não invente compromissos, valores nem treinos que não estejam nos insumos.
 - Números exatamente como vieram.
 - Português do Brasil.`;
+
+type Fixo = { data: string; inicio: string | null; fim: string | null; titulo: string; tipo: string; fonte: string; local?: string | null; desloc_min?: number | null };
+type Lugar = { nome: string; endereco: string | null; min_casa: number | null };
+
+const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+/** Deslocamento a partir de casa (ida) para cada bloco com local: primeiro os lugares cadastrados pelo Leo
+ *  (tempo informado); o que faltar vai ao Google Routes com trânsito se houver IARA_GOOGLE_MAPS_KEY e endereço de casa. */
+async function deslocamentos(fixos: Fixo[], lugares: Lugar[]): Promise<{ fixos: Fixo[]; fonte: string }> {
+  const casa = lugares.find((l) => norm(l.nome) === 'casa');
+  const porNome = (local: string) => lugares.find((l) => norm(l.nome) !== 'casa' && (norm(local) === norm(l.nome) || norm(local).includes(norm(l.nome))));
+  const faltam = new Map<string, string>(); // local → endereço para a consulta
+  for (const f of fixos) {
+    if (!f.local) continue;
+    const l = porNome(f.local);
+    if (l?.min_casa != null) f.desloc_min = l.min_casa;
+    else if (norm(f.local) === 'casa' || norm(f.local) === 'home') f.desloc_min = 0;
+    else faltam.set(f.local, l?.endereco ?? f.local);
+  }
+  const chave = Deno.env.get('IARA_GOOGLE_MAPS_KEY');
+  if (!faltam.size || !chave || !casa?.endereco) return { fixos, fonte: 'informado' };
+  try {
+    const destinos = [...faltam.entries()].slice(0, 10);
+    // Saída de referência: próximo dia útil às 08:00 de São Paulo (trânsito típico de ida).
+    const ref = new Date(Date.now() + 864e5);
+    while ([0, 6].includes(ref.getUTCDay())) ref.setUTCDate(ref.getUTCDate() + 1);
+    const partida = `${ref.toISOString().slice(0, 10)}T11:00:00Z`;
+    const r = await fetch('https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-Goog-Api-Key': chave, 'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,condition' },
+      body: JSON.stringify({
+        origins: [{ waypoint: { address: casa.endereco } }],
+        destinations: destinos.map(([, end]) => ({ waypoint: { address: end } })),
+        travelMode: 'DRIVE', routingPreference: 'TRAFFIC_AWARE', departureTime: partida,
+      }),
+    });
+    if (!r.ok) throw new Error(`Routes ${r.status}`);
+    const els = (await r.json()) as { destinationIndex: number; duration?: string; condition?: string }[];
+    const min = new Map<string, number>();
+    for (const e of els) {
+      if (e.condition !== 'ROUTE_EXISTS' || !e.duration) continue;
+      min.set(destinos[e.destinationIndex][0], Math.round(parseInt(e.duration) / 60));
+    }
+    for (const f of fixos) if (f.local && f.desloc_min == null && min.has(f.local)) f.desloc_min = min.get(f.local)!;
+    return { fixos, fonte: 'google_routes' };
+  } catch (e) {
+    console.error('deslocamentos', e);
+    return { fixos, fonte: 'informado' };
+  }
+}
 
 function addDias(iso: string, n: number): string {
   const d = new Date(`${iso}T12:00:00Z`);
@@ -52,8 +103,18 @@ async function planejar(userId: string, nome: string, inicio: string, desde: str
   if (existente?.status === 'confirmado') return;
   const run = await iniciarRun('iara', userId, 'plano_semana', { semana: inicio, desde });
   try {
-    const [{ v: insumos }] = await sql`select core.coletar_semana(${userId}, ${inicio}::date) as v`;
     const fim = addDias(inicio, 6);
+    const [[{ v: insumos }], [{ f: fixosBrutos, l: lugaresBrutos }]] = await Promise.all([
+      sql`select core.coletar_semana(${userId}, ${inicio}::date) as v`,
+      sql`select core.fixos(${userId}, ${desde}::date, ${fim}::date) as f,
+            (select coalesce(config -> 'lugares', '[]'::jsonb) from core.perfil where user_id = ${userId}) as l`,
+    ]);
+    const lugares = (lugaresBrutos ?? []) as Lugar[];
+    const desloc = await deslocamentos((fixosBrutos ?? []) as Fixo[], lugares);
+    // Os fixos da semana (expediente, compromissos do Leo e agenda) mandam no encaixe de todo o resto.
+    insumos.fixos = desloc.fixos;
+    insumos.lugares = lugares.map((l) => ({ nome: l.nome, min_casa: l.min_casa }));
+    insumos.deslocamento_fonte = desloc.fonte;
     const n = Math.round((Date.parse(`${fim}T12:00:00Z`) - Date.parse(`${desde}T12:00:00Z`)) / 864e5) + 1;
     const dias = Array.from({ length: n }, (_, i) => {
       const d = addDias(desde, i);
@@ -66,9 +127,15 @@ async function planejar(userId: string, nome: string, inicio: string, desde: str
 
     const pedido = `Monte o PLANO DA SEMANA do ${nome}, de ${desde} a ${fim} (${dias}).${desde > inicio ? `
 A semana começou em ${inicio}, mas os dias antes de ${desde} já passaram: planeje só de ${desde} em diante (use o que já aconteceu como contexto).` : ''}
-Ele revisa domingo à noite e confirma; depois cada item vira tarefa do dia no app e os treinos vão para a ClaudIA.
+Isto é uma SUGESTÃO INICIAL com CRÍTICA: o Leo decide. Ele ajusta, tira e move itens e só então confirma;
+depois cada item vira tarefa do dia no app e os treinos vão para a ClaudIA.
 
-Planeje TUDO JUNTO, nesta ordem, e deixe as áreas conversarem:
+0. Blocos fixos ("fixos"): expediente de trabalho, compromissos que o Leo registrou (jantares, bares, dates, médico...) e
+   eventos da agenda dele. NUNCA marque nada por cima deles. Antes e depois de cada fixo com local, reserve o deslocamento
+   ("desloc_min" = minutos de casa até lá; sem número, estime com folga e diga isso na crítica). Durante o expediente,
+   só o que cabe no intervalo (ex.: almoço). Evento com "ocupado": false é informativo.
+
+Planeje TUDO JUNTO em volta dos fixos, nesta ordem, e deixe as áreas conversarem:
 1. Carga de treino da semana: parta dos treinos previstos (use o "ref" de cada um). Adapte à semana: dias com conta grande,
    compromisso da rotina ou semana passada com treinos pulados pedem ajuste (mover de dia, encurtar). Para mover, mantenha o
    "ref" e mude "data"/"minutos". Se o plano termina antes do fim da semana ("plano_treino_ate"), proponha as sessões que faltam
@@ -84,12 +151,18 @@ Planeje TUDO JUNTO, nesta ordem, e deixe as áreas conversarem:
    Imersão no sábado (~60 min). Livro em leitura: meta de páginas da semana.
 5. Finanças: um item por conta ou entrada prevista (use "ref" e "valor" exatamente como vieram, negativo = saída) e 1 revisão
    de gastos com o livre por dia; categoria apertada vira alerta no detalhe (e pesa nas compras da casa).
-- Não marque duas coisas no mesmo horário; respeite a rotina; no máximo 7 itens por dia; nada genérico ("beber água").
+- Não marque duas coisas no mesmo horário (contando deslocamento); respeite a rotina; no máximo 7 itens por dia; nada genérico.
+- Compromisso social à noite (bar, jantar, date) pesa no dia seguinte: nada de treino intenso cedo, dieta com margem
+  para a refeição fora, e o gasto entra na conta do livre por dia.
+
+"critica": a crítica honesta da semana em 4 a 7 bullets de markdown, cada um com o problema e o ajuste concreto:
+dias apertados (blocos colados sem deslocamento), sono curto antes de treino cedo, treino que não cabe, excesso de
+compromissos sociais vs. meta de dieta e o livre por dia, dias sem respiro, deslocamento desconhecido, o que sobra solto.
 
 "resumo": 100–170 palavras em markdown com **negrito**: o fio da semana em 1 frase (como treino, dieta e o resto se encaixam)
 e 1 linha por área (Saúde, Finanças, Aprender, Casa), dizendo o que foi adaptado e por quê.
 Responda só com o JSON dentro de <semana></semana>:
-{"resumo":"...","itens":[{"data":"aaaa-mm-dd","hora":"HH:MM ou null","area":"saude|financas|aprender|casa","titulo":"curto","detalhe":"1 frase ou null","minutos":45,"valor":null,"ref":null,"treino":null}]}`;
+{"resumo":"...","critica":"- ...","itens":[{"data":"aaaa-mm-dd","hora":"HH:MM ou null","area":"saude|financas|aprender|casa","titulo":"curto","detalhe":"1 frase ou null","minutos":45,"valor":null,"ref":null,"treino":null}]}`;
 
     const r = await anthropic({
       model: MODELS.smart,
@@ -124,12 +197,13 @@ Responda só com o JSON dentro de <semana></semana>:
     }
     if (itens.length < 3) throw new Error(`Poucos itens válidos (${itens.length})`);
     const resumo = typeof saida.resumo === 'string' ? saida.resumo.slice(0, 3000) : null;
+    const critica = typeof saida.critica === 'string' ? saida.critica.slice(0, 3000) : null;
 
     // Rascunho novo substitui o anterior da mesma semana (os itens saem junto pelo on delete cascade).
     const planoId = await sql.begin(async (tx) => {
       if (existente) await tx`delete from core.planos_semana where id = ${existente.id}`;
-      const [p] = await tx`insert into core.planos_semana (user_id, semana, status, resumo, insumos, run_id)
-        values (${userId}, ${inicio}, 'rascunho', ${resumo}, ${tx.json(insumos)}, ${run.id}) returning id`;
+      const [p] = await tx`insert into core.planos_semana (user_id, semana, status, resumo, critica, insumos, run_id)
+        values (${userId}, ${inicio}, 'rascunho', ${resumo}, ${critica}, ${tx.json(insumos)}, ${run.id}) returning id`;
       for (const [n, it] of itens.entries()) {
         await tx`insert into core.planos_semana_itens (plano_id, user_id, data, hora, area, titulo, detalhe, minutos, valor, ref, treino, ordem)
           values (${p.id}, ${userId}, ${it.data}, ${it.hora}, ${it.area}, ${it.titulo}, ${it.detalhe}, ${it.minutos}, ${it.valor}, ${it.ref},

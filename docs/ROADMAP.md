@@ -67,3 +67,10 @@ aposentar os projetos Vercel `airton`, `iara`, `shyrlai`.
 Um agente de voz no hub (gpt-realtime-2.1-mini ou Gemini 3.8 Live, ~US$ 0,02/min), com as
 ferramentas `ask_airton`, `ask_claudia`, `ask_iara`; o Claude responde com a chave
 `<app>-voice`. Protótipo de 1 dia comparando os dois com 20 perguntas reais.
+
+### Fase 5 · ajuste de 10/11 (pedido do Leo)
+O planejamento semanal é **input do Leo**: ele marca expediente, compromissos (inclusive pessoais: jantares, bares, dates) e os
+lugares com o tempo de deslocamento; a agenda (Google ou iPhone) entra por link iCal, sem OAuth. A IARA devolve uma **sugestão
+inicial** e uma **crítica** do encaixe (dias apertados, deslocamento, sono antes de treino cedo, social × dieta × livre por dia).
+O Leo move/tira e confirma. O hub publica um feed iCal (compromissos + plano confirmado) que o Leo assina no iPhone/Google.
+Tempo de deslocamento real com trânsito: Google Routes API, opcional (`IARA_GOOGLE_MAPS_KEY`).

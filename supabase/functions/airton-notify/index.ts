@@ -204,8 +204,8 @@ export async function composeSemana(userId) {
   if (!r || !Number(r.itens)) return null;
   const partes = Object.entries(r.por_area ?? {}).map(([a, n])=>`${n} de ${AREA_NOME[a] ?? a}`);
   return {
-    title: 'Plano da semana pronto',
-    body: `${plural(Number(r.itens), 'item', 'itens')}: ${partes.join(', ')}. Revise e confirme no hub.`,
+    title: 'Sua semana: sugestão e crítica prontas',
+    body: `${plural(Number(r.itens), 'sugestão', 'sugestões')} (${partes.join(', ')}) em volta dos seus compromissos. Ajuste e confirme no hub.`,
     url: `${HUB_URL}/semana`,
     tag: 'semana',
     badge: undefined
