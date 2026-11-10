@@ -132,14 +132,14 @@ export default async function Hoje() {
   const total = planetas.reduce((s, p) => s + p.n, 0)
 
   return (
-    <div className="stack">
+    <div className="stack hoje">
       <div className="hello">
         <span className="tag progress">IARA HQ · {data}</span>
         <h1>{saudacao}, {nome}</h1>
         <p className="muted small" style={{ margin: 0 }}>{total ? `${plural(total, 'missão pede', 'missões pedem')} você hoje.` : 'Tudo em órbita: nada pendente agora.'}</p>
       </div>
 
-      <section className="card ai">
+      <section className="card ai brief-card">
         <span className="tag ai">Briefing do dia · IARA</span>
         <div className="row between" style={{ marginTop: 10 }}>
           <h2 style={{ margin: 0, fontSize: '1rem' }}>Seu dia</h2>

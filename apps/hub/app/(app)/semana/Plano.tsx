@@ -63,16 +63,17 @@ export function Plano({ plano }: { plano: PlanoSemana }) {
   return (
     <div className="stack">
       {erro && <p className="error">{erro}</p>}
+      <div className="semana-grade">
       {dias.map((d) => (
         <section key={d} className="card stack" style={{ gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: '1rem', textTransform: 'capitalize' }}>{nomeDia(d)}</h2>
+          <h2 className="dia" style={{ margin: 0, fontSize: '1rem' }}>{nomeDia(d)}</h2>
           <ol className="semana">
             {plano.itens.filter((i) => i.data === d).map((i) => (
               <li key={i.id} data-app={AREA[i.area].app} className={i.incluido ? '' : 'fora'}>
                 <span className="h">{i.hora ?? '—'}</span>
                 <span className="t">
                   <strong>{i.titulo}</strong>
-                  <small> · {AREA[i.area].nome}{i.minutos ? ` · ${i.minutos} min` : ''}{i.valor != null ? ` · ${brl(Number(i.valor))}` : ''}</small>
+                  <small>{[AREA[i.area].nome, i.minutos ? `${i.minutos} min` : null, i.valor != null ? brl(Number(i.valor)) : null].filter(Boolean).join(' · ')}</small>
                   {i.status === 'feito' && <span className="feito">✓ feito</span>}
                   {i.detalhe && <span className="d">{i.detalhe}</span>}
                 </span>
@@ -86,8 +87,9 @@ export function Plano({ plano }: { plano: PlanoSemana }) {
           </ol>
         </section>
       ))}
+      </div>
       {rascunho ? (
-        <div className="stack" style={{ gap: 8 }}>
+        <div className="stack semana-acoes" style={{ gap: 8 }}>
           <button className="btn" disabled={!!busy || !incluidos} onClick={confirmar}>
             {busy === 'ok' ? 'Confirmando…' : `Confirmar a semana (${incluidos} ${incluidos === 1 ? 'item' : 'itens'})`}
           </button>
