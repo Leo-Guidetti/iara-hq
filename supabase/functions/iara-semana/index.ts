@@ -40,20 +40,23 @@ Deno.serve(async (req) => {
   // Domingo planeja a semana que vem; nos outros dias (pelo app), a semana atual, salvo pedido explícito.
   const proxima = body.semana === 'proxima' || (body.semana !== 'atual' && dow === 0);
   const inicio = proxima ? addDias(data, ((8 - dow) % 7) || 7) : addDias(data, -((dow + 6) % 7));
+  // Semana atual (pedido no meio da semana): planeja de hoje em diante; os dias que já passaram ficam de fora.
+  const desde = proxima ? inicio : data;
   // @ts-ignore EdgeRuntime existe no runtime do Supabase
-  EdgeRuntime.waitUntil(Promise.all(lista.map((p) => planejar(p.user_id, p.nome ?? 'Leo', inicio))));
+  EdgeRuntime.waitUntil(Promise.all(lista.map((p) => planejar(p.user_id, p.nome ?? 'Leo', inicio, desde))));
   return json(202, { ok: true, semana: inicio, perfis: lista.length });
 });
 
-async function planejar(userId: string, nome: string, inicio: string) {
+async function planejar(userId: string, nome: string, inicio: string, desde: string) {
   const [existente] = await sql`select id, status from core.planos_semana where user_id = ${userId} and semana = ${inicio}`;
   if (existente?.status === 'confirmado') return;
-  const run = await iniciarRun('iara', userId, 'plano_semana', { semana: inicio });
+  const run = await iniciarRun('iara', userId, 'plano_semana', { semana: inicio, desde });
   try {
     const [{ v: insumos }] = await sql`select core.coletar_semana(${userId}, ${inicio}::date) as v`;
     const fim = addDias(inicio, 6);
-    const dias = Array.from({ length: 7 }, (_, i) => {
-      const d = addDias(inicio, i);
+    const n = Math.round((Date.parse(`${fim}T12:00:00Z`) - Date.parse(`${desde}T12:00:00Z`)) / 864e5) + 1;
+    const dias = Array.from({ length: n }, (_, i) => {
+      const d = addDias(desde, i);
       return `${DIAS[new Date(`${d}T12:00:00Z`).getUTCDay()]} ${d}`;
     }).join(', ');
     const refs = new Set<string>([
@@ -61,7 +64,8 @@ async function planejar(userId: string, nome: string, inicio: string) {
       ...(insumos?.financas?.contas_semana ?? []).map((c: { ref: string }) => c.ref),
     ]);
 
-    const pedido = `Monte o PLANO DA SEMANA do ${nome}, de ${inicio} a ${fim} (${dias}).
+    const pedido = `Monte o PLANO DA SEMANA do ${nome}, de ${desde} a ${fim} (${dias}).${desde > inicio ? `
+A semana começou em ${inicio}, mas os dias antes de ${desde} já passaram: planeje só de ${desde} em diante (use o que já aconteceu como contexto).` : ''}
 Ele revisa domingo à noite e confirma; depois cada item vira tarefa do dia no app e os treinos vão para a ClaudIA.
 
 Planeje TUDO JUNTO, nesta ordem, e deixe as áreas conversarem:
@@ -100,7 +104,7 @@ Responda só com o JSON dentro de <semana></semana>:
     const itens: Item[] = [];
     for (const i of Array.isArray(saida.itens) ? saida.itens : []) {
       const d = String(i.data ?? '');
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < inicio || d > fim || !AREAS.has(i.area)) continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < desde || d > fim || !AREAS.has(i.area)) continue;
       const titulo = String(i.titulo ?? '').trim().slice(0, 120);
       if (!titulo) continue;
       const hora = typeof i.hora === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(i.hora) ? i.hora : null;
