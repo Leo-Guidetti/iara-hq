@@ -3,12 +3,12 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (09/11, 19:00 UTC):**
-1. **10/11 depois das 09:30 UTC:** conferir o 1º cartão da SabIA em `core.itens` (`origem = 'sabia'`) e o run do dia
-   em `core.agent_runs` (`output.item_id` preenchido, `erro_item` nulo). O bloco "IARA House" da tela Hoje deve mostrá-lo.
-2. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`, chave `briefing:<data>:<tipo>`); depois AIrton e ClaudIA.
-3. Domingo 15/11, 20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
-4. Esperar o retorno do Leo sobre a nova experiência (Hoje como menu, cores por app, claro/escuro) e ajustar.
+**Próximo passo (10/11, 10:00 UTC):**
+1. **11/11 depois das 09:30 UTC:** conferir o cartão da SabIA em `core.itens` (`origem = 'sabia'`; o de 10/11 falhou,
+   corrigido em `fix/sabia-cartao-40min`) e `minutos_total` da trilha entre 35 e 45 em `sabia.trilhas`.
+2. Etapa 5 (próxima grande entrega): planejamento da semana aos domingos à noite (lista abaixo). Começar pela migration.
+3. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`, chave `briefing:<data>:<tipo>`); depois AIrton e ClaudIA.
+4. Domingo 15/11, 20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
 
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
@@ -156,3 +156,4 @@ não depende disso enquanto espera.
 | 09/11 | 6 (superapp) | #21 + `feat/hub-orbe-cerebro` | deploy do #21 ok | Centro da órbita: orbe de vidro neutro com ícone de cérebro (IARA HQ centralizando), sem contador nem cor (pedido do Leo) |
 | 09/11 | SabIA (pedido do Leo) | `feat/sabia-pilulas` | — (conferir após o merge e na trilha de 10/11) | Trilha diária ~40 min (5–7 itens; migration ajusta `core.perfil.config.minutos_trilha`), pílula de 120–180 palavras por item + "Para ir além" com até 2 links extras (URLs só dos workers), workers devolvem 3–5 candidatos; sábado vira imersão de ~60 min no tema mais quente da semana, com síntese de 250–400 palavras. Conferir custo em `core.ai_usage` (feature `trilha-orquestrador`) |
 | 09/11 | 5 (início) | `feat/hub-dia-semana` | — (conferir após o merge e no briefing de 10/11) | Linha do tempo "Seu dia" no topo do briefing (rotina + treino + contas do dia); `core.briefing_airton` lê `month_plan` (antes vinha vazio); rotina: sem fechamento da noite, trilha 40 min, imersão 60 min, "Planejamento da semana (IARA)" dom 20:00; prompt da IARA não repete a agenda. Planejamento semanal desenhado no ROADMAP Fase 5 |
+| 10/11 | 2 + SabIA | `fix/sabia-cartao-40min` | — (conferir na trilha de 11/11) | Cron de 10/11: trilha ok (7 itens com pílula e "Para ir além", US$ 0,052), mas (a) o cartão não entrou em `core.itens` (`erro_item`: o postgres.js mandou `JSON.stringify(...)::jsonb` como string JSON escalar; agora `sql.json`) e (b) deu 28 min em vez de 40 (fontes curtas). Agora o tempo da pílula conta no item e o prompt exige a soma entre 35 e 45 min (até 8 itens, prefere peças longas) |

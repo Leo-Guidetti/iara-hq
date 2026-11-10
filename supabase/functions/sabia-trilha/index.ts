@@ -72,7 +72,9 @@ async function gerar(userId, config, force) {
     let item_id = null, erro_item = null;
     try {
       const titulo = tipo === 'recap' ? 'Recap da semana' : tipo === 'deep_dive' ? `Imersão do sábado${r.tema_hot ? ` · ${r.tema_hot}` : ''}` : 'Trilha do dia';
-      const [p] = await sql`select core.publicar_item(${JSON.stringify({
+      // sql.json: com JSON.stringify(...)::jsonb o postgres.js mandava uma string JSON (escalar), e o
+      // publicar_item lia todos os campos como nulos (erro_item do cron de 10/11).
+      const [p] = await sql`select core.publicar_item(${sql.json({
         user_id: userId,
         origem: 'sabia',
         tipo: 'leitura',
@@ -89,7 +91,7 @@ async function gerar(userId, config, force) {
           rotulo: 'Abrir trilha'
         },
         chave_origem: `trilha:${data}:${tipo}`
-      })}::jsonb) as id`;
+      })}) as id`;
       item_id = p.id;
     } catch (e) {
       erro_item = String(e).slice(0, 300);
@@ -336,7 +338,8 @@ async function curadoria(run, ctx, tipo, minutos, data, dow, perfil) {
   const pedido = tipo === 'deep_dive' ? `Hoje é sábado: monte a IMERSÃO DO FIM DE SEMANA (~${minutos} min) no tema mais QUENTE da semana.
 Escolha o tema com mais momento entre os candidatos (várias fontes falando, novidade relevante, impacto no contexto do Leo) e diga qual em "tema_hot" (nome curto).
 Monte 3 a 5 peças desse tema que se completam (uma longa de 20–30 min, as outras de 5–15), sem repetir o que ele já viu: ${ctx.semana.map((i)=>i.titulo).join(' | ') || 'nada registrado'}.
-Em "resumo", escreva a síntese do tema em 250–400 palavras (markdown com **negrito** e bullets): o que aconteceu, por que importa, o que observar nas próximas semanas.` : `Monte a trilha diária (~${minutos} min, aceitável ${minutos - 5}–${minutos + 5}): 5 a 7 itens, pelo menos 1 por tema com candidatos; IA pode ter 2. Respeite o orçamento por tema.`;
+Em "resumo", escreva a síntese do tema em 250–400 palavras (markdown com **negrito** e bullets): o que aconteceu, por que importa, o que observar nas próximas semanas.` : `Monte a trilha diária de ~${minutos} min: 5 a 8 itens, pelo menos 1 por tema com candidatos; IA pode ter 2. Respeite o orçamento por tema.
+O tempo de cada item é o da fonte + ~1 min da pílula. A SOMA precisa ficar entre ${minutos - 5} e ${minutos + 5} min: se os candidatos forem curtos, use mais itens ou prefira os mais longos (análise, podcast, vídeo, paper).`;
   const prompt = `Hoje é ${DIAS[dow]}, ${data}. Quem é o Leo: ${perfil}
 
 Candidatos pesquisados pelos workers (use SÓ estes, com a URL exata):
@@ -387,7 +390,12 @@ Responda só com o JSON dentro de <trilha></trilha>:
   for (const i of itens){
     const extra = (porTema[i.tema] ?? []).filter((c)=>!vistos.has(c.url)).slice(0, 2);
     const partes = [];
-    if (typeof i.pilula === 'string' && i.pilula.trim()) partes.push(i.pilula.trim().slice(0, 2500));
+    if (typeof i.pilula === 'string' && i.pilula.trim()) {
+      const pilula = i.pilula.trim().slice(0, 2500);
+      partes.push(pilula);
+      // A pílula também é leitura: entra no tempo do item (~180 palavras por minuto).
+      i.minutos = Math.min(45, i.minutos + Math.max(1, Math.round(pilula.split(/\s+/).length / 180)));
+    }
     if (extra.length) partes.push('**Para ir além**\n' + extra.map((c)=>`- [${String(c.titulo).replace(/[\[\]]/g, '')}](${c.url})${c.fonte ? ` — ${c.fonte}` : ''}`).join('\n'));
     if (partes.length) i.corpo = partes.join('\n\n');
     delete i.pilula;
