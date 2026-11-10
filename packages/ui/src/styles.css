@@ -208,3 +208,53 @@ details.brief[open] summary { display: none; }
 .semana .feito { color: var(--accent); font-size: .78rem; }
 .semana li.fora { opacity: .45; border-left-style: dashed; }
 .semana li.fora strong { text-decoration: line-through; }
+
+/* Botão rápido de tema no topo (10/11: o modo claro existia só escondido no Perfil). */
+.tema { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  background: var(--glass); border: 1px solid var(--edge); color: var(--text); }
+.tema svg { width: 18px; height: 18px; }
+
+/* Modo claro mais legível: o vidro branco sobre o cinza claro some, então o cartão ganha sombra e borda reais. */
+:root[data-theme="light"] .card { box-shadow: 0 1px 2px rgb(16 22 31 / 6%), 0 10px 28px -18px color-mix(in srgb, var(--accent) 40%, rgb(16 22 31 / 30%)); }
+:root[data-theme="light"] .app::before { opacity: .55; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .card { box-shadow: 0 1px 2px rgb(16 22 31 / 6%), 0 10px 28px -18px color-mix(in srgb, var(--accent) 40%, rgb(16 22 31 / 30%)); }
+  :root:not([data-theme="dark"]) .app::before { opacity: .55; }
+}
+
+/* Plano da semana: um cartão por dia (no desktop vira um quadro com os dias lado a lado). */
+.semana-grade { display: grid; gap: 16px; }
+.semana .dia::first-letter, h2.dia::first-letter { text-transform: uppercase; }
+
+/* ── Desktop e iPad em paisagem (10/11): trilho de navegação à esquerda, conteúdo largo, Hoje em duas colunas. */
+@media (min-width: 900px) and (min-height: 560px) {
+  :root { --rail: 92px; --gutter: 32px; }
+  .app { padding-left: var(--rail); }
+  .nav { inset: 0 auto 0 0; width: var(--rail); border-top: 0; border-right: 1px solid var(--edge);
+    padding: calc(76px + env(safe-area-inset-top)) 0 16px; }
+  .nav ul { grid-template-columns: none !important; grid-auto-rows: max-content; gap: 6px; max-width: none; }
+  .nav a { margin: 0 10px; padding: 10px 4px; border-radius: 14px; font-size: .74rem; }
+  .nav a:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+  .nav a[aria-current="page"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .topbar, .shell { max-width: 1160px; }
+  .shell { padding-bottom: 48px; }
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .tabs { margin: 0 0 4px; padding: 2px 0; }
+
+  .hoje { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; column-gap: 28px; }
+  .hoje > .hello { grid-column: 1 / -1; }
+  .hoje > .brief-card { grid-column: 1; grid-row: 2 / span 5; }
+  .hoje > .orbit { grid-column: 2; grid-row: 2; width: min(100%, 300px); margin: 40px auto 44px; }
+  .hoje > .module { grid-column: 2; }
+
+  .semana-grade { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); align-items: start; }
+  .semana-acoes { max-width: 420px; }
+}
+@media (min-width: 1280px) and (min-height: 560px) {
+  :root { --rail: 216px; }
+  .nav a { grid-auto-flow: column; justify-content: start; align-items: center; gap: 12px; padding: 10px 14px; font-size: .95rem; }
+  .hoje > .module { grid-column: auto; }
+  .hoje { grid-template-columns: minmax(0, 1.4fr) minmax(0, .8fr) minmax(0, .8fr); }
+  .hoje > .brief-card { grid-row: 2 / span 3; }
+  .hoje > .orbit { grid-column: 2 / span 2; }
+}

@@ -9,7 +9,7 @@ o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 2. Etapa 5: depois do merge de `feat/iara-semana`, conferir a migration `20261110110000`, o job `iara-semana` em `cron.job`
    e rodar uma vez pelo hub (/semana → "Montar a semana agora") para ver o rascunho e o custo (`core.ai_usage`, feature `plano-semana`).
    Domingo 15/11: 18:00 SP o rascunho, 19:30 o push (`airton.notify_log`, kind `semana`).
-3. Layout para desktop/iPad (paisagem) e revisão do modo claro (pedido do Leo, 10/11): branch `feat/hub-desktop`.
+3. Depois do merge de `feat/hub-desktop`: conferir o deploy do Vercel e `get_runtime_errors` do projeto `hub`.
 4. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`, chave `briefing:<data>:<tipo>`); depois AIrton e ClaudIA.
 5. Domingo 15/11, 20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
 
@@ -168,4 +168,5 @@ não depende disso enquanto espera.
 | 09/11 | 5 (início) | `feat/hub-dia-semana` | — (conferir após o merge e no briefing de 10/11) | Linha do tempo "Seu dia" no topo do briefing (rotina + treino + contas do dia); `core.briefing_airton` lê `month_plan` (antes vinha vazio); rotina: sem fechamento da noite, trilha 40 min, imersão 60 min, "Planejamento da semana (IARA)" dom 20:00; prompt da IARA não repete a agenda. Planejamento semanal desenhado no ROADMAP Fase 5 |
 | 10/11 | 2 + SabIA | `fix/sabia-cartao-40min` | — (conferir na trilha de 11/11) | Cron de 10/11: trilha ok (7 itens com pílula e "Para ir além", US$ 0,052), mas (a) o cartão não entrou em `core.itens` (`erro_item`: o postgres.js mandou `JSON.stringify(...)::jsonb` como string JSON escalar; agora `sql.json`) e (b) deu 28 min em vez de 40 (fontes curtas). Agora o tempo da pílula conta no item e o prompt exige a soma entre 35 e 45 min (até 8 itens, prefere peças longas) |
 | 10/11 | Conferência | — | trilha 09:30 ok; briefing 07:00 ok | Trilha: 7 itens com pílula, US$ 0,052 (cartão falhou, corrigido no #25). Briefing único: estrutura nova ok, US$ 0,0095; valores saíam "-252.55" (ajustado para R$ no `feat/iara-semana`) |
-| 10/11 | 5 | `feat/iara-semana` | — (conferir após o merge) | Planejamento da semana integrado (treino → dieta → compras, estudo, contas), `/semana` para revisar e confirmar, confirmação aplica as adaptações de treino na ClaudIA |
+| 10/11 | 5 | #26 | deploy ok: migration `20261110110000`, cron `iara-semana` dom 21:00 UTC, `coletar_semana` com dados reais | Planejamento da semana integrado (treino → dieta → compras, estudo, contas), `/semana` para revisar e confirmar, confirmação aplica as adaptações de treino na ClaudIA |
+| 10/11 | 6 (pedido do Leo) | `feat/hub-desktop` | — (conferir após o merge) | Desktop e iPad em paisagem (≥ 900 px): barra vira trilho à esquerda (com nomes a partir de 1280 px), Hoje em colunas (briefing à esquerda; órbita e blocos à direita), semana em quadro de dias; botão de claro/escuro no topo; modo claro com sombra real nos cartões |
