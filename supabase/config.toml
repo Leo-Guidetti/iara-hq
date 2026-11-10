@@ -47,6 +47,9 @@ verify_jwt = false   # como está em produção
 [functions.sabia-trilha]
 verify_jwt = false   # como está em produção
 
+[functions.iara-agenda]
+verify_jwt = false   # GET do feed iCal autentica pelo token; POST sync pelo x-iara-cron ou JWT de core.members
+
 [functions.iara-semana]
 verify_jwt = false   # autentica sozinha: x-iara-cron do pg_cron ou JWT de core.members (_shared/common.ts)
 

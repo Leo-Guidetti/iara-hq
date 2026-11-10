@@ -225,6 +225,15 @@ details.brief[open] summary { display: none; }
 /* Plano da semana: um cartão por dia (no desktop vira um quadro com os dias lado a lado). */
 .semana-grade { display: grid; gap: 16px; }
 .semana .dia::first-letter, h2.dia::first-letter { text-transform: uppercase; }
+/* Blocos fixos (expediente, compromissos, agenda): neutros, a IARA encaixa o resto em volta. */
+.semana li.fixo { background: transparent; border: 1px dashed var(--edge); border-left: 3px solid var(--muted); }
+.semana li.fixo strong { font-weight: 600; }
+.semana .acoes { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.semana-cols { display: grid; gap: 16px; }
+.lugar { display: grid; grid-template-columns: 1fr 64px auto; gap: 6px; align-items: center; }
+.lugar input:nth-child(3) { grid-column: 1 / 3; grid-row: 2; }
+.lugar button { grid-row: 1; grid-column: 3; }
+details.card > summary::-webkit-details-marker { display: none; }
 
 /* ── Desktop e iPad em paisagem (10/11): trilho de navegação à esquerda, conteúdo largo, Hoje em duas colunas. */
 @media (min-width: 900px) and (min-height: 560px) {
@@ -249,6 +258,8 @@ details.brief[open] summary { display: none; }
 
   .semana-grade { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); align-items: start; }
   .semana-acoes { max-width: 420px; }
+  .semana-cols { grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); align-items: start; }
+  .semana-cols .semana-grade { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 }
 @media (min-width: 1280px) and (min-height: 560px) {
   :root { --rail: 216px; }

@@ -33,19 +33,22 @@ async function briefing(userId, nome, tipo) {
     data
   });
   try {
-    const [[ag], rotina, semana] = await Promise.all([
+    const [[ag], rotina, semana, [fx]] = await Promise.all([
       sql`select core.coletar_briefings(${userId}, ${data}::date) as v`,
       sql`select to_char(hora, 'HH24:MI') hora, minutos, atividade, agent from core.rotina
           where user_id = ${userId} and ativo and ${dow} = any(dias) order by hora`,
       // Etapa 5: o que o Leo combinou para hoje no plano da semana (confirmado no domingo).
       sql`select to_char(i.hora, 'HH24:MI') hora, i.area, i.titulo, i.minutos, i.valor
           from core.planos_semana_itens i join core.planos_semana p on p.id = i.plano_id and p.status = 'confirmado'
-          where i.user_id = ${userId} and i.data = ${data} and i.incluido order by i.hora nulls last, i.ordem`
+          where i.user_id = ${userId} and i.data = ${data} and i.incluido order by i.hora nulls last, i.ordem`,
+      // Expediente, compromissos do Leo e eventos da agenda de hoje (blocos fixos).
+      sql`select core.fixos(${userId}, ${data}::date, ${data}::date) as v`
     ]);
     const insumos = {
       agents: ag.v,
       rotina,
-      plano_semana_hoje: semana
+      plano_semana_hoje: semana,
+      fixos_hoje: fx.v
     };
     // Briefing único do dia (pedido do Leo, 09/11): a manhã cobre o dia todo; a noite fica só se alguém chamar.
     const pedido = tipo === 'manha' ? `Escreva o BRIEFING DO DIA (é o único do dia, aparece no topo do app do Leo):

@@ -2,6 +2,7 @@
   "version": "5",
   "specifiers": {
     "npm:@supabase/supabase-js@2.46.1": "2.46.1",
+    "npm:ical.js@2.2.1": "2.2.1",
     "npm:postgres@3.4.5": "3.4.5"
   },
   "npm": {
@@ -69,6 +70,9 @@
       "dependencies": [
         "@types/node"
       ]
+    },
+    "ical.js@2.2.1": {
+      "integrity": "sha512-yK/UlPbEs316igb/tjRgbFA8ZV75rCsBJp/hWOatpyaPNlgw0dGDmU+FoicOcwX4xXkeXOkYiOmCqNPFpNPkQg=="
     },
     "postgres@3.4.5": {
       "integrity": "sha512-cDWgoah1Gez9rN3H4165peY9qfpEo+SA61oQv65O3cRUE1pOEoJWwddwcqKE8XZYjbblOJlYDlLV4h67HrEVDg=="

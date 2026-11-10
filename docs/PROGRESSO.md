@@ -3,15 +3,13 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (10/11, 10:00 UTC):**
-1. **11/11 depois das 09:30 UTC:** conferir o cartão da SabIA em `core.itens` (`origem = 'sabia'`; o de 10/11 falhou,
-   corrigido em `fix/sabia-cartao-40min`) e `minutos_total` da trilha entre 35 e 45 em `sabia.trilhas`.
-2. Etapa 5: depois do merge de `feat/iara-semana`, conferir a migration `20261110110000`, o job `iara-semana` em `cron.job`
-   e rodar uma vez pelo hub (/semana → "Montar a semana agora") para ver o rascunho e o custo (`core.ai_usage`, feature `plano-semana`).
-   Domingo 15/11: 18:00 SP o rascunho, 19:30 o push (`airton.notify_log`, kind `semana`).
-3. Depois do merge de `feat/hub-desktop`: conferir o deploy do Vercel e `get_runtime_errors` do projeto `hub`.
-4. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`, chave `briefing:<data>:<tipo>`); depois AIrton e ClaudIA.
-5. Domingo 15/11, 20:00 SP: conferir o 1º push de custo (`airton.notify_log`, kind `custo`).
+**Próximo passo (10/11, 10:40 UTC):**
+1. Depois do merge de `feat/semana-input-agenda`: conferir a migration `20261110130000`, os jobs `iara-agenda-sync` e `iara-semana`,
+   o feed (`GET /functions/v1/iara-agenda?t=<token>` responde `text/calendar`) e o /semana sem erro no Vercel.
+2. Quando o Leo colar o link iCal no secret `IARA_AGENDA_ICS_URLS`: ver `core.agenda_eventos` enchendo de hora em hora.
+3. **11/11 depois das 09:30 UTC:** cartão da SabIA em `core.itens` e `minutos_total` da trilha entre 35 e 45 (fix do #25).
+4. Domingo 15/11: 18:00 SP a sugestão + crítica, 19:30 o push (`kind` `semana`), 20:00 o push de custo.
+5. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`); depois AIrton e ClaudIA.
 
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
@@ -126,7 +124,16 @@ não depende disso enquanto espera.
       completar com o padrão recente se o plano da ClaudIA acabar), dieta de cada dia casada com a carga (calibrada por `food_logs` e peso),
       compras derivadas do cardápio. Ao confirmar, as adaptações de treino vão para `public.plan_sessions` (mover dia/duração; sessão nova
       no plano ativo). Testada em PGlite.
-- [ ] Planejamento semanal aos domingos à noite (pedido do Leo, 09/11), ver ROADMAP Fase 5:
+- [ ] **10/11, `feat/semana-input-agenda` (pedido do Leo):** o planejamento parte dele. Migration `20261110130000_semana_input_agenda`:
+      `core.compromissos` (jantares, bares, dates...; cancelar = flag), `core.agenda_eventos`, `core.fixos()` (expediente +
+      compromissos + agenda), expediente e lugares em `core.perfil.config` (`expediente`, `lugares` com minutos de casa),
+      `planos_semana.critica`, RPCs `hub_semana_painel`, `hub_compromisso_salvar/cancelar`, `hub_expediente_salvar`,
+      `hub_lugares_salvar`, `hub_semana_item_editar`; `hub_semana_hoje` com os fixos do dia; token do feed; cron `iara-agenda-sync` (:07).
+      Função `iara-agenda`: lê a agenda pelo link iCal secreto (secret `IARA_AGENDA_ICS_URLS`, Google e/ou iCloud; recorrência,
+      exceções e fusos pelo ical.js) e serve o feed iCal (`GET ?t=`) com compromissos do hub + plano confirmado para assinar no
+      iPhone/Google. `iara-semana`: fixos nunca são sobrepostos, deslocamento reservado (minutos informados ou Google Routes se houver
+      `IARA_GOOGLE_MAPS_KEY` e endereço de casa) e saída com **crítica**. Tela /semana: entrada do Leo + sugestão + crítica, mover/tirar.
+- [x] Planejamento semanal aos domingos à noite (pedido do Leo, 09/11; #26, #28), ver ROADMAP Fase 5:
       1. Migration `core.planos_semana` (semana, status rascunho/confirmado, insumos, texto) + itens do plano (dia, área, título, minutos, valor).
       2. Função `iara-semana` (Sonnet, `effort: low`): junta ClaudIA (plano de treino da semana, metas de dieta), SabIA (temas, imersão,
          livro), AIrton (`month_plan.upcoming` da semana, livre por semana), Casa (quando migrar) e agenda (Fase 4). Cron domingo 21:00 UTC (18:00 SP).
@@ -171,3 +178,5 @@ não depende disso enquanto espera.
 | 10/11 | 5 | #26 | deploy ok: migration `20261110110000`, cron `iara-semana` dom 21:00 UTC, `coletar_semana` com dados reais | Planejamento da semana integrado (treino → dieta → compras, estudo, contas), `/semana` para revisar e confirmar, confirmação aplica as adaptações de treino na ClaudIA |
 | 10/11 | 6 (pedido do Leo) | #27 | deploy do Vercel ok, sem erros de runtime | Desktop e iPad em paisagem (≥ 900 px): barra vira trilho à esquerda (com nomes a partir de 1280 px), Hoje em colunas (briefing à esquerda; órbita e blocos à direita), semana em quadro de dias; botão de claro/escuro no topo; modo claro com sombra real nos cartões |
 | 10/11 | 5 | `fix/semana-de-hoje` | — (conferir após o merge) | Pedido "monte a semana agora" (terça): no meio da semana a `iara-semana` planeja só de hoje até domingo. Disparo pelo botão de /semana (o conector do Supabase é só leitura) |
+| 10/11 | 5 | #28 | deploy ok | Semana atual planejada de hoje até domingo |
+| 10/11 | 5 (pedido do Leo) | `feat/semana-input-agenda` | — (conferir após o merge) | Planejamento como input do Leo: expediente, compromissos pessoais, lugares com deslocamento, agenda Google/iPhone por iCal (leitura de hora em hora + feed para assinar), sugestão inicial + crítica, mover itens. Depende do Leo: link iCal no secret `IARA_AGENDA_ICS_URLS`; opcional `IARA_GOOGLE_MAPS_KEY` |
