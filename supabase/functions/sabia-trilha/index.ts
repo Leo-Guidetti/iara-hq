@@ -8,7 +8,7 @@
 // Sábado = deep dive; domingo = recap (só a orquestradora, sem busca).
 // Chamada pelo pg_cron (core_private.call_function) ou pelo app com { "force": true }.
 import { agoraSP, authenticate, CORS, DIAS, fecharRun, iniciarRun, json, perfis, sql } from './_shared/common.ts';
-import { anthropic, comBusca, extrairJson, geminiBusca, hasGemini, MODELS, normalizar, textOf } from './_shared/ai.ts';
+import { anthropic, anthropicJson, comBusca, extrairJson, geminiBusca, hasGemini, MODELS, normalizar, textOf } from './_shared/ai.ts';
 const FORMATOS = new Set([
   'artigo',
   'newsletter',
@@ -18,6 +18,21 @@ const FORMATOS = new Set([
   'recap',
   'livro'
 ]);
+// Saída com structured outputs (output_config.format): a API garante JSON válido. Em 11/11 a trilha caiu
+// porque uma pílula trouxe aspas sem escape e o JSON livre não abriu ("Expected ':' after property name").
+const obj = (props: Record<string, unknown>) => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false });
+const TXT = { type: 'string' };
+const FORMATO = { type: 'string', enum: ['artigo', 'newsletter', 'podcast', 'video', 'paper', 'recap', 'livro'] };
+const TRILHA_SCHEMA = obj({
+  resumo: TXT,
+  tema_hot: { anyOf: [TXT, { type: 'null' }] },
+  itens: { type: 'array', items: obj({ tema: TXT, titulo: TXT, fonte: TXT, url: TXT, formato: FORMATO, idioma: { type: 'string', enum: ['pt', 'en'] },
+    minutos: { type: 'integer' }, por_que: TXT, takeaway: TXT, pilula: TXT }) },
+});
+const RECAP_SCHEMA = obj({
+  resumo: TXT,
+  itens: { type: 'array', items: obj({ tema: TXT, titulo: TXT, formato: FORMATO, minutos: { type: 'integer' }, por_que: TXT, corpo: TXT }) },
+});
 const SABIA_SYSTEM = `Você é a SabIA, curadora de conhecimento do Leo. Escolha pouco e bem: uma trilha curta que o deixa atualizado e mais afiado em IA, negócios de tecnologia e empreendedorismo, investimentos e política — nessa ordem de prioridade.
 - Sinal acima de ruído: o que muda a forma de pensar ou de trabalhar.
 - Fontes primárias primeiro (anúncio oficial, paper, documento, dado), depois boa análise.
@@ -350,9 +365,9 @@ Ele gostou de: ${ctx.gostou.slice(0, 10).join(' | ') || 'sem sinal ainda'}
 Ele não gostou de: ${ctx.naoGostou.slice(0, 10).join(' | ') || 'sem sinal ainda'}
 
 Para cada item: "por_que" liga ao contexto do Leo em 1 frase; "takeaway" é a ideia central em 1 frase; "pilula" é uma pílula de conhecimento de 120–180 palavras (markdown com bullets): o contexto e os conceitos por trás do assunto, por que importa e o que observar. Use o resumo do candidato e conhecimento consolidado; não invente fatos, números ou citações do texto.
-Responda só com o JSON dentro de <trilha></trilha>:
+Responda no formato JSON pedido, por exemplo:
 {"resumo":"fio condutor","tema_hot":"(só na imersão)","itens":[{"tema":"ia","titulo":"...","fonte":"...","url":"https://...","formato":"artigo","idioma":"pt","minutos":5,"por_que":"...","takeaway":"...","pilula":"..."}]}`;
-  const r = await anthropic({
+  const saida = await anthropicJson({
     model: MODELS.smart,
     max_tokens: 9000,
     system: SABIA_SYSTEM,
@@ -364,14 +379,14 @@ Responda só com o JSON dentro de <trilha></trilha>:
     ],
     // Sem effort o Sonnet 5.5 pensa no padrão e o pensamento (cobrado como saída) esgotava o max_tokens antes do JSON.
     output_config: {
-      effort: 'low'
+      effort: 'low',
+      format: { type: 'json_schema', schema: TRILHA_SCHEMA }
     }
   }, {
     run,
     feature: 'trilha-orquestrador',
     papel: 'orquestrador'
   });
-  const saida = extrairJson(textOf(r.content), 'trilha');
   const validas = new Map(Object.entries(porTema).flatMap(([slug, cs])=>cs.map((c)=>[
         c.url,
         slug
@@ -427,9 +442,9 @@ Gere 2 itens:
 1) tema "recap", formato "recap", ~10 min: em "corpo" (markdown) as ideias mais importantes da semana conectadas, o que muda para o trabalho dele em produto/IA, e 3 perguntas de revisão com respostas no fim. Se a semana está vazia, diga isso em 1 linha e proponha o foco da próxima.
 2) tema "livros", formato "livro", ~15 min: meta concreta de páginas no livro em andamento; se não houver, sugerir o próximo da fila e por quê. "corpo" com a meta e 1 pergunta para pensar.
 
-Responda só com o JSON dentro de <trilha></trilha>:
+Responda no formato JSON pedido, por exemplo:
 {"resumo":"...","itens":[{"tema":"recap","titulo":"Recap da semana","formato":"recap","minutos":10,"por_que":"...","corpo":"..."},{"tema":"livros","titulo":"...","formato":"livro","minutos":15,"por_que":"...","corpo":"..."}]}`;
-  const r = await anthropic({
+  const saida = await anthropicJson({
     model: MODELS.smart,
     max_tokens: 5000,
     system: SABIA_SYSTEM,
@@ -440,14 +455,14 @@ Responda só com o JSON dentro de <trilha></trilha>:
       }
     ],
     output_config: {
-      effort: 'low'
+      effort: 'low',
+      format: { type: 'json_schema', schema: RECAP_SCHEMA }
     }
   }, {
     run,
     feature: 'trilha-recap',
     papel: 'orquestrador'
   });
-  const saida = extrairJson(textOf(r.content), 'trilha');
   const itens = (saida.itens ?? []).filter((i)=>FORMATOS.has(i.formato)).map((i)=>({
       ...i,
       minutos: Math.min(30, Math.max(1, Math.round(Number(i.minutos) || 10)))

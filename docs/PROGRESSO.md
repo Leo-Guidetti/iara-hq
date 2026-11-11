@@ -7,7 +7,8 @@ o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 1. Depois do merge de `feat/semana-input-agenda`: conferir a migration `20261110130000`, os jobs `iara-agenda-sync` e `iara-semana`,
    o feed (`GET /functions/v1/iara-agenda?t=<token>` responde `text/calendar`) e o /semana sem erro no Vercel.
 2. Quando o Leo colar o link iCal no secret `IARA_AGENDA_ICS_URLS`: ver `core.agenda_eventos` enchendo de hora em hora.
-3. **11/11 depois das 09:30 UTC:** cartão da SabIA em `core.itens` e `minutos_total` da trilha entre 35 e 45 (fix do #25).
+3. **12/11 depois das 09:30 UTC:** trilha com structured outputs (`fix/json-estruturado`): run ok, cartão da SabIA em
+   `core.itens` (`trilha:<data>:diaria`) e `minutos_total` entre 35 e 45. A de 11/11 falhou (JSON livre inválido).
 4. Domingo 15/11: 18:00 SP a sugestão + crítica, 19:30 o push (`kind` `semana`), 20:00 o push de custo.
 5. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`); depois AIrton e ClaudIA.
 
@@ -180,3 +181,4 @@ não depende disso enquanto espera.
 | 10/11 | 5 | `fix/semana-de-hoje` | — (conferir após o merge) | Pedido "monte a semana agora" (terça): no meio da semana a `iara-semana` planeja só de hoje até domingo. Disparo pelo botão de /semana (o conector do Supabase é só leitura) |
 | 10/11 | 5 | #28 | deploy ok | Semana atual planejada de hoje até domingo |
 | 10/11 | 5 (pedido do Leo) | `feat/semana-input-agenda` | — (conferir após o merge) | Planejamento como input do Leo: expediente, compromissos pessoais, lugares com deslocamento, agenda Google/iPhone por iCal (leitura de hora em hora + feed para assinar), sugestão inicial + crítica, mover itens. Depende do Leo: link iCal no secret `IARA_AGENDA_ICS_URLS`; opcional `IARA_GOOGLE_MAPS_KEY` |
+| 11/11 | Conferência + SabIA | `fix/json-estruturado` | — (conferir na trilha de 12/11) | Trilha de 11/11 falhou: o orquestrador devolveu JSON livre inválido (aspas sem escape numa pílula; US$ 0,069 perdidos, sem trilha). Agora a orquestradora e o recap da SabIA e o plano da semana usam structured outputs (`output_config.format` com JSON Schema; se a API recusar o schema, repete uma vez sem ele); corte por `max_tokens`/recusa vira erro claro. Botão "Gerar a trilha de hoje" no /aprender quando a do dia não saiu. Vercel sem erros em 24h; agenda/compromissos ainda vazios (aguardando o Leo) |
