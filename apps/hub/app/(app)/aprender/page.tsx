@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { currentUser } from '@/lib/supabase/server'
 import { Trilha, type ItemTrilha } from './Trilha'
 import { Md } from '@/lib/md'
+import { GerarTrilha } from './GerarTrilha'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,7 @@ export default async function Aprender() {
         </p>
       </div>
       {error && <div className="card alert"><p className="small">Não consegui carregar a trilha agora.</p></div>}
+      {!error && !t?.hoje && <GerarTrilha />}
       {t?.resumo && <section className="card ai"><span className="tag ai">{t.tipo === 'deep_dive' ? 'Síntese do tema' : 'Fio condutor'}</span><div style={{ marginTop: 6 }}><Md texto={t.resumo} /></div></section>}
       <Trilha itens={s?.itens ?? []} />
     </div>

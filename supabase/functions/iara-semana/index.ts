@@ -5,7 +5,7 @@
 // estudo e contas. O Leo revisa e confirma em /semana; as adaptações de treino vão para a ClaudIA ao confirmar.
 // App: { semana?: 'atual' | 'proxima' } refaz o rascunho. Plano já confirmado nunca é refeito (as tarefas já saíram).
 import { agoraSP, authenticate, CORS, DIAS, fecharRun, iniciarRun, json, perfis, sql } from './_shared/common.ts';
-import { anthropic, extrairJson, MODELS, textOf } from './_shared/ai.ts';
+import { anthropicJson, MODELS } from './_shared/ai.ts';
 
 type Perfil = { user_id: string; nome: string | null };
 type Item = {
@@ -74,6 +74,25 @@ async function deslocamentos(fixos: Fixo[], lugares: Lugar[]): Promise<{ fixos: 
     return { fixos, fonte: 'informado' };
   }
 }
+
+// Saída com structured outputs (output_config.format): a API garante JSON válido (a trilha da SabIA caiu em
+// 11/11 por JSON livre com aspas sem escape).
+const obj = (props: Record<string, unknown>) => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false });
+const ouNulo = (t: Record<string, unknown>) => ({ anyOf: [t, { type: 'null' }] });
+const SEMANA_SCHEMA = obj({
+  resumo: { type: 'string' },
+  critica: { type: 'string' },
+  itens: {
+    type: 'array',
+    items: obj({
+      data: { type: 'string' }, hora: ouNulo({ type: 'string' }),
+      area: { type: 'string', enum: ['saude', 'financas', 'aprender', 'casa'] },
+      titulo: { type: 'string' }, detalhe: ouNulo({ type: 'string' }),
+      minutos: ouNulo({ type: 'integer' }), valor: ouNulo({ type: 'number' }), ref: ouNulo({ type: 'string' }),
+      treino: ouNulo(obj({ esporte: { type: 'string', enum: [...ESPORTES] }, intensidade: { type: 'string', enum: [...INTENSIDADES] } })),
+    }),
+  },
+});
 
 function addDias(iso: string, n: number): string {
   const d = new Date(`${iso}T12:00:00Z`);
@@ -161,19 +180,18 @@ compromissos sociais vs. meta de dieta e o livre por dia, dias sem respiro, desl
 
 "resumo": 100–170 palavras em markdown com **negrito**: o fio da semana em 1 frase (como treino, dieta e o resto se encaixam)
 e 1 linha por área (Saúde, Finanças, Aprender, Casa), dizendo o que foi adaptado e por quê.
-Responda só com o JSON dentro de <semana></semana>:
+Responda no formato JSON pedido, por exemplo:
 {"resumo":"...","critica":"- ...","itens":[{"data":"aaaa-mm-dd","hora":"HH:MM ou null","area":"saude|financas|aprender|casa","titulo":"curto","detalhe":"1 frase ou null","minutos":45,"valor":null,"ref":null,"treino":null}]}`;
 
-    const r = await anthropic({
+    const saida = await anthropicJson({
       model: MODELS.smart,
       max_tokens: 8000,
       system: IARA_SYSTEM,
       // Sem effort o Sonnet 5.5 pensa no padrão e o pensamento (cobrado como saída) pode esgotar o teto.
-      output_config: { effort: 'low' },
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: SEMANA_SCHEMA } },
       messages: [{ role: 'user', content: `Insumos (JSON):\n${JSON.stringify(insumos)}\n\n${pedido}` }],
     }, { run, feature: 'plano-semana', papel: 'orquestrador' });
 
-    const saida = extrairJson(textOf(r.content), 'semana');
     const itens: Item[] = [];
     for (const i of Array.isArray(saida.itens) ? saida.itens : []) {
       const d = String(i.data ?? '');

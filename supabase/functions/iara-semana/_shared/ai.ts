@@ -156,6 +156,29 @@ export async function anthropic(body, meta) {
     urls
   };
 }
+/** JSON da resposta com structured outputs (output_config.format). Se a API recusar o schema (400 sobre o
+ *  formato), repete uma vez sem ele e lê o objeto do texto. Corte por max_tokens ou recusa vira erro claro. */
+export async function anthropicJson(body, meta) {
+  let r;
+  try {
+    r = await anthropic(body, meta);
+  } catch (e) {
+    const msg = String(e?.message ?? e);
+    if (!msg.startsWith('Anthropic 400') || !/format|schema|output_config/i.test(msg)) throw e;
+    const { format: _formato, ...resto } = body.output_config ?? {};
+    r = await anthropic({ ...body, output_config: resto }, meta);
+  }
+  if (r.stop_reason === 'max_tokens') throw new Error('Resposta cortada no max_tokens');
+  if (r.stop_reason === 'refusal') throw new Error('Pedido recusado pelo modelo');
+  const t = textOf(r.content);
+  try {
+    return JSON.parse(t);
+  } catch {
+    const a = t.indexOf('{'), b = t.lastIndexOf('}');
+    if (a < 0 || b <= a) throw new Error('Resposta sem JSON');
+    return JSON.parse(t.slice(a, b + 1));
+  }
+}
 export function textOf(blocks) {
   return blocks.filter((b)=>b.type === 'text').map((b)=>b.text ?? '').join('').trim();
 }
