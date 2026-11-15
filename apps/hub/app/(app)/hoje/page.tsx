@@ -7,6 +7,7 @@ import { spDate } from '@/lib/dates'
 import { ICON } from '@/lib/icons'
 import { Md } from '@/lib/md'
 import { SeuDia, appDoAgent, type Bloco } from '@/components/SeuDia'
+import { Notificacoes } from '@/components/Notificacoes'
 
 export const dynamic = 'force-dynamic'
 
@@ -139,6 +140,7 @@ export default async function Hoje() {
         <p className="muted small" style={{ margin: 0 }}>{total ? `${plural(total, 'missão pede', 'missões pedem')} você hoje.` : 'Tudo em órbita: nada pendente agora.'}</p>
       </div>
 
+      <Notificacoes compacto />
       <section className="card ai brief-card">
         <span className="tag ai">Briefing do dia · IARA</span>
         <div className="row between" style={{ marginTop: 10 }}>

@@ -329,9 +329,9 @@ Deno.serve(async (req)=>{
       url: `${HUB_URL}/semana`,
       tag: 'semana'
     } : {
-      title: 'AIrton',
+      title: 'IARA HQ',
       body: 'Notificações funcionando neste aparelho.',
-      url: '/',
+      url: `${HUB_URL}/hoje`,
       tag: 'ping'
     };
     if (body.action === 'preview') return json(200, {
