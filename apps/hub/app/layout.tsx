@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: 'IARA HQ',
   description: 'Central dos assistentes pessoais do Leo.',
   appleWebApp: { capable: true, title: 'IARA HQ', statusBarStyle: 'default' },
-  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+  icons: { icon: '/icon.svg', apple: '/apple-icon.png' },
 }
 
 export const viewport: Viewport = {
