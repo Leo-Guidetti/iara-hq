@@ -3,13 +3,13 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (10/11, 10:40 UTC):**
-1. Depois do merge de `feat/semana-input-agenda`: conferir a migration `20261110130000`, os jobs `iara-agenda-sync` e `iara-semana`,
-   o feed (`GET /functions/v1/iara-agenda?t=<token>` responde `text/calendar`) e o /semana sem erro no Vercel.
-2. Quando o Leo colar o link iCal no secret `IARA_AGENDA_ICS_URLS`: ver `core.agenda_eventos` enchendo de hora em hora.
-3. **12/11 depois das 09:30 UTC:** trilha com structured outputs (`fix/json-estruturado`): run ok, cartão da SabIA em
-   `core.itens` (`trilha:<data>:diaria`) e `minutos_total` entre 35 e 45. A de 11/11 falhou (JSON livre inválido).
-4. Domingo 15/11: 18:00 SP a sugestão + crítica, 19:30 o push (`kind` `semana`), 20:00 o push de custo.
+**Próximo passo (15/11, 22:50 UTC):**
+1. **Push no hub (Etapa 3, prioridade):** nenhum aparelho em `airton.push_subscriptions`, então os pushes `daily`, `weekly`,
+   `semana` e `custo` são registrados com `sent = 0` e não chegam ao Leo. Fazer o hub virar PWA instalável (manifest + service
+   worker), botão "Ativar notificações" no Perfil gravando a inscrição (VAPID do `airton-notify`) e os pushes abrindo o hub.
+2. 16/11 depois das 09:30 UTC: conferir os workers da SabIA (`falhas_workers` vazio) com `fix/sabia-workers`.
+3. Sábado 21/11: imersão entre 55 e 65 min.
+4. Leo: agenda (`IARA_AGENDA_ICS_URLS`), expediente, lugares e compromissos em /semana; revisar e confirmar o plano de 16/11.
 5. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`); depois AIrton e ClaudIA.
 
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
@@ -182,3 +182,4 @@ não depende disso enquanto espera.
 | 10/11 | 5 | #28 | deploy ok | Semana atual planejada de hoje até domingo |
 | 10/11 | 5 (pedido do Leo) | `feat/semana-input-agenda` | — (conferir após o merge) | Planejamento como input do Leo: expediente, compromissos pessoais, lugares com deslocamento, agenda Google/iPhone por iCal (leitura de hora em hora + feed para assinar), sugestão inicial + crítica, mover itens. Depende do Leo: link iCal no secret `IARA_AGENDA_ICS_URLS`; opcional `IARA_GOOGLE_MAPS_KEY` |
 | 11/11 | Conferência + SabIA | `fix/json-estruturado` | — (conferir na trilha de 12/11) | Trilha de 11/11 falhou: o orquestrador devolveu JSON livre inválido (aspas sem escape numa pílula; US$ 0,069 perdidos, sem trilha). Agora a orquestradora e o recap da SabIA e o plano da semana usam structured outputs (`output_config.format` com JSON Schema; se a API recusar o schema, repete uma vez sem ele); corte por `max_tokens`/recusa vira erro claro. Botão "Gerar a trilha de hoje" no /aprender quando a do dia não saiu. Vercel sem erros em 24h; agenda/compromissos ainda vazios (aguardando o Leo) |
+| 15/11 | 5 + SabIA | `fix/sabia-workers` | — (conferir na trilha de 16/11) | 1º plano automático (dom 21:00 UTC) ok: 40 itens (saúde 14, aprender 14, finanças 9, casa 3), crítica útil (0/8 treinos na semana passada, sem registro de comida, Airbnb R$ 1.074,60 na sexta, sem fixos), US$ 0,056. Trilhas de 12–15/11 ok com cartão em `core.itens` (fix #25 confirmado; 36 min nos dias úteis); structured outputs ok. Problemas: workers com busca na web caíam com "Resposta sem <candidatos>" (1–2 temas por dia) → leitura tolerante + `max_tokens` 3000; imersão de sábado deu 30 min (alvo 60) → soma exigida no prompt. Pushes `daily`/`weekly`/`semana` registrados com `sent = 0`: nenhum aparelho inscrito. Mês: US$ 1,06 |

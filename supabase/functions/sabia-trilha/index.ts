@@ -226,6 +226,17 @@ const limpar = (x)=>x?.replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]+>/g, ' '
     return [];
   }
 }
+/** Lista de candidatos do texto do worker: dentro de <candidatos>; se a tag faltar, o primeiro array JSON do texto.
+ *  Em 12–14/11 a busca com web search às vezes respondia sem a tag e o tema caía inteiro. */
+function lerCandidatos(texto) {
+  try {
+    return extrairJson(texto, 'candidatos') ?? [];
+  } catch {
+    const a = texto.indexOf('['), b = texto.lastIndexOf(']');
+    if (a < 0 || b <= a) throw new Error('Resposta sem candidatos');
+    return JSON.parse(texto.slice(a, b + 1));
+  }
+}
 /**
  * Worker: um tema.
  *   1. Feeds RSS das fontes do tema (custo zero) → o Haiku escolhe pelo índice, sem ferramentas.
@@ -274,7 +285,7 @@ Responda só dentro de <candidatos></candidatos>:
         feature: 'trilha-worker',
         papel: 'worker'
       });
-      const escolhas = extrairJson(textOf(r.content), 'candidatos') ?? [];
+      const escolhas = lerCandidatos(textOf(r.content));
       const cands = escolhas.filter((e)=>itens[e.i]).map((e)=>{
         const it = itens[e.i];
         return {
@@ -318,7 +329,7 @@ Faça até 2 buscas e devolva de 3 a 5 candidatos, do mais relevante ao menos, d
         feature: 'trilha-search',
         papel: 'worker'
       });
-      const ok = validar(extrairJson(g.text, 'candidatos'), g.urls);
+      const ok = validar(lerCandidatos(g.text), g.urls);
       if (ok.length >= 2) return ok;
     } catch (e) {
       console.warn(`[sabia] ${tema.slug}: Gemini falhou (${String(e).slice(0, 160)}); usando o Claude`);
@@ -326,7 +337,8 @@ Faça até 2 buscas e devolva de 3 a 5 candidatos, do mais relevante ao menos, d
   }
   const r = await comBusca({
     model: MODELS.fast,
-    max_tokens: 1500,
+    // 1500 cortava a resposta depois das buscas (texto sem <candidatos>).
+    max_tokens: 3000,
     system: WORKER_SYSTEM,
     prompt,
     maxUses: 2
@@ -335,7 +347,7 @@ Faça até 2 buscas e devolva de 3 a 5 candidatos, do mais relevante ao menos, d
     feature: 'trilha-worker',
     papel: 'worker'
   });
-  return validar(extrairJson(r.text, 'candidatos'), r.urls);
+  return validar(lerCandidatos(r.text), r.urls);
 }
 async function curadoria(run, ctx, tipo, minutos, data, dow, perfil) {
   const orc = alocar(ctx.temas, minutos);
@@ -353,6 +365,7 @@ async function curadoria(run, ctx, tipo, minutos, data, dow, perfil) {
   const pedido = tipo === 'deep_dive' ? `Hoje é sábado: monte a IMERSÃO DO FIM DE SEMANA (~${minutos} min) no tema mais QUENTE da semana.
 Escolha o tema com mais momento entre os candidatos (várias fontes falando, novidade relevante, impacto no contexto do Leo) e diga qual em "tema_hot" (nome curto).
 Monte 3 a 5 peças desse tema que se completam (uma longa de 20–30 min, as outras de 5–15), sem repetir o que ele já viu: ${ctx.semana.map((i)=>i.titulo).join(' | ') || 'nada registrado'}.
+A SOMA dos minutos (fonte + ~1 min da pílula de cada peça) precisa ficar entre ${minutos - 5} e ${minutos + 5} min (a de 14/11 deu 30).
 Em "resumo", escreva a síntese do tema em 250–400 palavras (markdown com **negrito** e bullets): o que aconteceu, por que importa, o que observar nas próximas semanas.` : `Monte a trilha diária de ~${minutos} min: 5 a 8 itens, pelo menos 1 por tema com candidatos; IA pode ter 2. Respeite o orçamento por tema.
 O tempo de cada item é o da fonte + ~1 min da pílula. A SOMA precisa ficar entre ${minutos - 5} e ${minutos + 5} min: se os candidatos forem curtos, use mais itens ou prefira os mais longos (análise, podcast, vídeo, paper).`;
   const prompt = `Hoje é ${DIAS[dow]}, ${data}. Quem é o Leo: ${perfil}
