@@ -3,14 +3,14 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (15/11, 22:50 UTC):**
-1. **Push no hub (Etapa 3, prioridade):** nenhum aparelho em `airton.push_subscriptions`, então os pushes `daily`, `weekly`,
-   `semana` e `custo` são registrados com `sent = 0` e não chegam ao Leo. Fazer o hub virar PWA instalável (manifest + service
-   worker), botão "Ativar notificações" no Perfil gravando a inscrição (VAPID do `airton-notify`) e os pushes abrindo o hub.
-2. 16/11 depois das 09:30 UTC: conferir os workers da SabIA (`falhas_workers` vazio) com `fix/sabia-workers`.
-3. Sábado 21/11: imersão entre 55 e 65 min.
-4. Leo: agenda (`IARA_AGENDA_ICS_URLS`), expediente, lugares e compromissos em /semana; revisar e confirmar o plano de 16/11.
-5. Etapa 2, próximo publicador: `iara-briefing` (cartão `lembrete`); depois AIrton e ClaudIA.
+**Próximo passo (16/11, 09:55 UTC):**
+1. Esperando o Leo (nada a construir até lá): instalar o hub na tela inicial e **ativar as notificações** (nenhuma linha em
+   `airton.push_subscriptions`; os pushes de 15/11 — daily, weekly, semana, custo — saíram com `sent = 0`); preencher expediente,
+   lugares e compromissos e confirmar o plano de 16/11 (ainda `rascunho`); colar o link iCal em `IARA_AGENDA_ICS_URLS`.
+2. Quando houver aparelho inscrito: conferir `sent > 0` no próximo `daily` (22:00 SP) e o teste do Perfil.
+3. Sábado 21/11: imersão entre 55 e 65 min. Domingo 22/11: plano automático com os fixos do Leo (se preenchidos).
+4. Etapa 2 (publicadores): o cartão do briefing em `core.itens` fica para depois — a Hoje já mostra o briefing e o bloco da
+   casa lê `origem = 'iara'`, então o cartão poluiria a casa. Próximos candidatos: AIrton (lançamentos a revisar) e ClaudIA (treino do dia).
 
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
@@ -184,3 +184,4 @@ não depende disso enquanto espera.
 | 11/11 | Conferência + SabIA | `fix/json-estruturado` | — (conferir na trilha de 12/11) | Trilha de 11/11 falhou: o orquestrador devolveu JSON livre inválido (aspas sem escape numa pílula; US$ 0,069 perdidos, sem trilha). Agora a orquestradora e o recap da SabIA e o plano da semana usam structured outputs (`output_config.format` com JSON Schema; se a API recusar o schema, repete uma vez sem ele); corte por `max_tokens`/recusa vira erro claro. Botão "Gerar a trilha de hoje" no /aprender quando a do dia não saiu. Vercel sem erros em 24h; agenda/compromissos ainda vazios (aguardando o Leo) |
 | 15/11 | 5 + SabIA | `fix/sabia-workers` | — (conferir na trilha de 16/11) | 1º plano automático (dom 21:00 UTC) ok: 40 itens (saúde 14, aprender 14, finanças 9, casa 3), crítica útil (0/8 treinos na semana passada, sem registro de comida, Airbnb R$ 1.074,60 na sexta, sem fixos), US$ 0,056. Trilhas de 12–15/11 ok com cartão em `core.itens` (fix #25 confirmado; 36 min nos dias úteis); structured outputs ok. Problemas: workers com busca na web caíam com "Resposta sem <candidatos>" (1–2 temas por dia) → leitura tolerante + `max_tokens` 3000; imersão de sábado deu 30 min (alvo 60) → soma exigida no prompt. Pushes `daily`/`weekly`/`semana` registrados com `sent = 0`: nenhum aparelho inscrito. Mês: US$ 1,06 |
 | 15/11 | 3 (push) | `feat/hub-push` | — (conferir após o merge) | Hub vira PWA (manifest, ícones com o cérebro, `sw.js` só para push) e ganha "Ativar notificações" no Perfil e um cartão na Hoje enquanto não estiver ligado: grava a inscrição em `airton.push_subscriptions` (RLS do dono) com a chave VAPID do `airton-notify`, que já manda daily/weekly/semana/custo. No iPhone exige o app instalado na tela inicial (iOS 16.4+). Botão "Enviar teste" |
+| 16/11 | Conferência | — | trilha ok, briefing às 10:00 UTC | Trilha de 16/11: `falhas_workers` vazio (fix #34 ok), 8 itens, 47 min (um pouco acima de 45), cartão em `core.itens`, US$ 0,063. Vercel sem erros em 24h. Nenhum aparelho inscrito para push; plano de 16/11 em rascunho; agenda, expediente, lugares e compromissos vazios. Mês: US$ 1,13 |
