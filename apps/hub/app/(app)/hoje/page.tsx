@@ -39,7 +39,7 @@ export default async function Hoje() {
   const me = (await currentUser())!
   const raw = me.sb as unknown as SupabaseClient
   const today = spDate()
-  const [sessoes, alertas, pend, mes, iara, sab, dia, semana] = await Promise.all([
+  const [sessoes, alertas, pend, mes, iara, sab, dia, semana, planosRaw] = await Promise.all([
     seguro(me.sb.from('plan_sessions').select('id, title, status, duration_min').eq('local_date', today).order('id')),
     seguro(raw.rpc('hub_alertas')),
     seguro(raw.schema('airton').rpc('review_counts', { p_user: me.user.id })),
@@ -48,7 +48,15 @@ export default async function Hoje() {
     seguro(raw.rpc('hub_sabia')),
     seguro(raw.rpc('hub_dia')),
     seguro(raw.rpc('hub_semana_hoje')),
+    seguro(raw.rpc('hub_planos')),
   ])
+  // Planos: só as metas fora do ritmo (atrasadas) aparecem; no ritmo, nada.
+  const atrasadas: Linha[] = []
+  if (Array.isArray(planosRaw)) {
+    for (const p of planosRaw as { titulo: string; metas?: Record<string, { titulo: string; ritmo: string; status: string }[]> }[])
+      for (const h of ['curto', 'medio', 'longo']) for (const m of p.metas?.[h] ?? [])
+        if (m.ritmo === 'atrasada' && m.status === 'ativa') atrasadas.push({ texto: `${m.titulo} · ${p.titulo}`, destaque: true, href: '/planos' })
+  }
 
   // ClaudIA: treino do dia e alertas determinísticos (sem IA).
   const claudia: Linha[] = []
@@ -147,7 +155,10 @@ export default async function Hoje() {
         <span className="tag ai">Briefing do dia · IARA</span>
         <div className="row between" style={{ marginTop: 10 }}>
           <h2 style={{ margin: 0, fontSize: '1rem' }}>Seu dia</h2>
-          <Link className="small" href="/semana" style={{ color: 'var(--accent)' }}>Semana →</Link>
+          <span className="row" style={{ gap: 12 }}>
+            <Link className="small" href="/planos" style={{ color: 'var(--accent)' }}>Planos →</Link>
+            <Link className="small" href="/semana" style={{ color: 'var(--accent)' }}>Semana →</Link>
+          </span>
         </div>
         {blocos.length ? <SeuDia blocos={blocos} agora={agoraHHMM} /> : <p className="small muted" style={{ margin: '4px 0 0' }}>Nada agendado hoje.</p>}
         <div className="row between" style={{ margin: '12px 0 4px' }}>
@@ -181,6 +192,8 @@ export default async function Hoje() {
         </div>
       </div>
 
+      {atrasadas.length > 0 && <Bloco app="hq" nome="Planos" papel="Fora do ritmo" href="/planos" rotulo="Ver os planos"
+        linhas={atrasadas} falhou={false} vazio="" />}
       <Bloco app="claudia" nome="ClaudIA" papel="Saúde" href="/saude" rotulo="Abrir a ClaudIA"
         linhas={claudia} falhou={sessoes === 'erro' && alertas === 'erro'} vazio={alertaItens.length ? 'Sem treino hoje.' : 'Sem alertas da ClaudIA.'} />
       {alertas === 'erro' && sessoes !== 'erro' && <p className="small muted">Não consegui carregar os alertas da ClaudIA.</p>}
@@ -196,7 +209,7 @@ export default async function Hoje() {
 }
 
 function Bloco({ app, nome, papel, href, rotulo, linhas, falhou, vazio }: {
-  app: 'claudia' | 'airton' | 'sabia' | 'casa'; nome: string; papel: string; href: string; rotulo: string
+  app: 'hq' | 'claudia' | 'airton' | 'sabia' | 'casa'; nome: string; papel: string; href: string; rotulo: string
   linhas: Linha[]; falhou: boolean; vazio: string
 }) {
   const pend = linhas.filter((l) => l.destaque).length
