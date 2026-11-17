@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { callFunction } from '@/lib/functions'
+import { minutosAte, useAgora } from '@/lib/useAgora'
 import { DIA_CURTO, ddmm, diaSemana, nomeDia, type Fixo, type ItemSemana, type PlanoSemana } from './tipos'
 
 export type { PlanoSemana } from './tipos'
@@ -43,6 +44,20 @@ export function Plano({ plano, fixos, dias }: { plano: PlanoSemana; fixos: Fixo[
   const [editando, setEditando] = useState<number | null>(null)
   const rascunho = plano.status === 'rascunho'
   const sb = () => supabaseBrowser() as unknown as SupabaseClient
+  const [cartao, setCartao] = useState<{ id: number; pergunta: string; expira: string } | null>(null)
+  const [desfazer, setDesfazer] = useState<{ id: number; ate: string } | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
+  const agora = useAgora(!!(cartao || desfazer))
+
+  // Confirmação pendente recuperada ao abrir a página (se ainda vale).
+  useEffect(() => {
+    sb().rpc('hub_acao_pendente').then(({ data }) => {
+      const a = data as { acao_id: number; intencao: string; status: string; pergunta: string | null; expira_em: string; args?: { p_plano?: number } } | null
+      if (a && a.intencao === 'semana.confirmar' && a.status === 'pendente' && Number(a.args?.p_plano) === plano.id && Date.parse(a.expira_em) > Date.now())
+        setCartao({ id: a.acao_id, pergunta: a.pergunta ?? perguntaSemana, expira: a.expira_em })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plano.id])
 
   async function rpc(rotulo: string, fn: string, args: Record<string, unknown>) {
     setBusy(rotulo); setErro(null)
@@ -52,6 +67,45 @@ export function Plano({ plano, fixos, dias }: { plano: PlanoSemana; fixos: Fixo[
   }
 
   const incluidos = plano.itens.filter((i) => i.incluido).length
+  const porArea = (['saude', 'financas', 'aprender', 'casa'] as const)
+    .map((a) => [a, plano.itens.filter((i) => i.incluido && i.area === a).length] as const).filter(([, n]) => n > 0)
+    .map(([a, n]) => `${n} de ${AREA[a].nome}`)
+  const perguntaSemana = `Confirmo a semana com ${incluidos} ${incluidos === 1 ? 'item' : 'itens'}${porArea.length ? ` (${porArea.join(', ')})` : ''}? Cada item vira tarefa do dia.`
+
+  async function pedir() {
+    setBusy('ok'); setErro(null); setAviso(null)
+    const { data, error } = await sb().rpc('hub_acao_pedir', { p_intencao: 'semana.confirmar', p_args: { p_plano: plano.id }, p_canal: 'hub', p_pergunta: perguntaSemana })
+    setBusy(null)
+    const r = data as { acao_id?: number; pergunta?: string; expira_em?: string } | null
+    if (error || !r?.acao_id || !r.expira_em) { setErro('Não deu para pedir a confirmação. Tente de novo.'); return }
+    setCartao({ id: r.acao_id, pergunta: r.pergunta || perguntaSemana, expira: r.expira_em })
+  }
+  async function sim() {
+    if (!cartao) return
+    setBusy('sim'); setErro(null)
+    const { data, error } = await sb().rpc('hub_acao_confirmar', { p_id: cartao.id })
+    setBusy(null)
+    const r = data as { status?: string; fala?: string; desfazer?: { acao_id: number; ate: string } | null } | null
+    if (error || !r) { setErro('Não deu para confirmar. Tente de novo.'); return }
+    setCartao(null)
+    if (r.status === 'executada') { setDesfazer(r.desfazer ? { id: r.desfazer.acao_id, ate: r.desfazer.ate } : null); setAviso('Semana confirmada.'); router.refresh() }
+    else setErro(r.fala || 'Essa confirmação não vale mais. Peça de novo.')
+  }
+  async function voltar() {
+    if (!cartao) return
+    const id = cartao.id
+    setCartao(null)
+    await sb().rpc('hub_acao_cancelar', { p_id: id })
+  }
+  async function desfazerSemana() {
+    if (!desfazer) return
+    setBusy('undo'); setErro(null)
+    const { data, error } = await sb().rpc('hub_acao_desfazer', { p_id: desfazer.id })
+    setBusy(null)
+    const r = data as { ok?: boolean; fala?: string } | null
+    if (error || !r) { setErro('Não consegui desfazer agora. Tente de novo.'); return }
+    if (r.ok) { setDesfazer(null); setAviso(r.fala || 'Desfeito.'); router.refresh() } else setErro(r.fala || 'Não deu para desfazer.')
+  }
   const linhasDo = (d: string): Linha[] => [
     ...fixos.filter((f) => f.data === d).map((f) => ({ tipo: 'fixo' as const, f, hora: f.inicio })),
     ...plano.itens.filter((i) => i.data === d).map((i) => ({ tipo: 'item' as const, i, hora: i.hora })),
@@ -100,11 +154,29 @@ export function Plano({ plano, fixos, dias }: { plano: PlanoSemana; fixos: Fixo[
           )
         })}
       </div>
+      {aviso && <p className="small" aria-live="polite" style={{ margin: 0 }}>{aviso}</p>}
+      {desfazer && Date.parse(desfazer.ate) > agora && (
+        <div className="row" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+          <button className="btn ghost" disabled={!!busy} onClick={desfazerSemana}>{busy === 'undo' ? 'Desfazendo…' : 'Desfazer'}</button>
+          <span className="small muted">vale por {minutosAte(desfazer.ate, agora)} min</span>
+        </div>
+      )}
       {rascunho ? (
         <div className="stack semana-acoes" style={{ gap: 8 }}>
-          <button className="btn" disabled={!!busy || !incluidos} onClick={() => rpc('ok', 'hub_semana_confirmar', { p_plano: plano.id })}>
-            {busy === 'ok' ? 'Confirmando…' : `Confirmar a semana (${incluidos} ${incluidos === 1 ? 'item' : 'itens'})`}
-          </button>
+          {cartao && Date.parse(cartao.expira) > agora ? (
+            <section className="card ai stack" style={{ gap: 8 }} aria-label="Confirmar a semana">
+              <p style={{ margin: 0, fontWeight: 600 }}>{cartao.pergunta}</p>
+              <p className="small muted" style={{ margin: 0 }}>Vale por {minutosAte(cartao.expira, agora)} min.</p>
+              <div className="grid2">
+                <button className="btn" disabled={!!busy} onClick={sim}>{busy === 'sim' ? 'Confirmando…' : 'Sim, confirmar'}</button>
+                <button className="btn ghost" disabled={!!busy} onClick={voltar}>Voltar</button>
+              </div>
+            </section>
+          ) : (
+            <button className="btn" disabled={!!busy || !incluidos} onClick={pedir}>
+              {busy === 'ok' ? 'Preparando…' : `Confirmar a semana (${incluidos} ${incluidos === 1 ? 'item' : 'itens'})`}
+            </button>
+          )}
           <Gerar rotulo="Sugerir de novo (com o que mudou)" ghost />
           <p className="small muted" style={{ margin: 0 }}>Ao confirmar, cada item vira tarefa do dia, entra na linha do tempo da Hoje e no link da agenda.</p>
         </div>

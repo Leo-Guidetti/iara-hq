@@ -1,5 +1,19 @@
 [
     {
+        "rpc": "public.hub_acao_desfazer_ultima",
+        "slug": "acao.desfazer",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {},
+        "exemplos": [
+            "desfaz",
+            "desfaz isso",
+            "volta atrás"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
         "rpc": "public.hub_compromisso_cancelar",
         "slug": "agenda.compromisso_cancelar",
         "agent": "iara",
@@ -70,8 +84,7 @@
         "slug": "decisoes.status",
         "agent": "iara",
         "risco": "baixo",
-        "slots": {
-        },
+        "slots": {},
         "exemplos": [
             "tem alguma decisão pendente",
             "o que a IARA quer que eu decida",
@@ -144,7 +157,7 @@
             "anota que cheguei na página 200"
         ],
         "confirmacao": "nenhuma",
-        "desfazer_rpc": null
+        "desfazer_rpc": "public.hub_leitura_desfazer"
     },
     {
         "rpc": "public.hub_livro_salvar",
@@ -199,8 +212,7 @@
         "slug": "metas.status",
         "agent": "airton",
         "risco": "baixo",
-        "slots": {
-        },
+        "slots": {},
         "exemplos": [
             "como estão minhas metas?",
             "quanto preciso guardar por mês para o apartamento?",
@@ -280,8 +292,7 @@
         "slug": "planos.status",
         "agent": "iara",
         "risco": "baixo",
-        "slots": {
-        },
+        "slots": {},
         "exemplos": [
             "como estão meus planos",
             "o que falta para o apartamento",
@@ -312,8 +323,7 @@
         "slug": "propostas.status",
         "agent": "iara",
         "risco": "baixo",
-        "slots": {
-        },
+        "slots": {},
         "exemplos": [
             "tem proposta de ajuste nos meus planos",
             "o que a IARA sugeriu na revisão do mês",
@@ -353,7 +363,7 @@
             "fecha o plano da semana"
         ],
         "confirmacao": "sim",
-        "desfazer_rpc": null
+        "desfazer_rpc": "public.hub_semana_desconfirmar"
     },
     {
         "rpc": "public.hub_semana_item",
