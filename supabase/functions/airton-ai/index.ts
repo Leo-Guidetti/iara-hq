@@ -95,6 +95,14 @@ const TOOLS = [
       type: 'object',
       properties: {}
     }
+  },
+  {
+    name: 'goals',
+    description: 'Metas financeiras ativas (imóvel, carro, reserva...): quanto falta, meses até o prazo, aporte mensal necessário, ritmo, poupança prevista e média dos 3 últimos meses, e se a soma dos aportes passa da poupança (conflito). Use para "como estão minhas metas", "quanto guardar por mês".',
+    input_schema: {
+      type: 'object',
+      properties: {}
+    }
   }
 ];
 // a última ferramenta leva o marcador de cache: ferramentas + system viram um prefixo reaproveitado
@@ -157,6 +165,14 @@ async function runTool(userId, name, input) {
       }
     case 'installments':
       return (await db.from('v_installment_schedule').select('label,n,total,date,amount').eq('user_id', userId).gte('date', spDate()).order('date')).data;
+    case 'goals':
+      {
+        const { data, error } = await db.rpc('goals_status', {
+          p_user: userId
+        });
+        if (error) throw error;
+        return data;
+      }
     case 'investments':
       {
         const { data: snaps } = await db.from('inv_snapshot').select('mes,patrimonio').eq('user_id', userId).order('mes');
