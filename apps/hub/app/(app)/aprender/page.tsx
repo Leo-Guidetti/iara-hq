@@ -4,6 +4,7 @@ import { Trilha, type ItemTrilha } from './Trilha'
 import { Md } from '@/lib/md'
 import { GerarTrilha } from './GerarTrilha'
 import { LivrosBloco, type Livros } from './Livros'
+import { PraticaBloco, type Praticas } from './Pratica'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,8 @@ export default async function Aprender() {
   const s = (data ?? null) as Sabia
   const { data: ld, error: lerr } = await (me.sb as unknown as SupabaseClient).rpc('hub_livros')
   const livros = (ld ?? null) as Livros | null
+  const { data: pd, error: perr } = await (me.sb as unknown as SupabaseClient).rpc('hub_praticas')
+  const praticas = (pd ?? null) as Praticas | null
   const t = s?.trilha
   const feitos = (s?.itens ?? []).filter((i) => i.status !== 'pendente').length
 
@@ -32,6 +35,7 @@ export default async function Aprender() {
       {t?.resumo && <section className="card ai"><span className="tag ai">{t.tipo === 'deep_dive' ? 'Síntese do tema' : 'Fio condutor'}</span><div style={{ marginTop: 6 }}><Md texto={t.resumo} /></div></section>}
       <Trilha itens={s?.itens ?? []} />
       <LivrosBloco dados={livros} erro={!!lerr || !livros} />
+      <PraticaBloco dados={praticas} erro={!!perr || !praticas} />
     </div>
   )
 }

@@ -17,6 +17,8 @@
   {"frase": "confirma a semana", "intencao_esperada": "semana.confirmar"},
   {"frase": "adiciona o livro Sapiens na fila", "intencao_esperada": "livro.salvar"},
   {"frase": "adia isso", "intencao_esperada": "casa.item_status", "ambigua": true},
+  {"frase": "pratiquei violão 20 minutos", "intencao_esperada": "pratica.registrar", "slots_esperados": {"p_minutos": 20, "p_habilidade": "violão"}},
+  {"frase": "toquei 30 min hoje", "intencao_esperada": "pratica.registrar", "slots_esperados": {"p_minutos": 30}},
   {"frase": "qual a capital da Mongólia?", "intencao_esperada": "fora"},
   {"frase": "toca uma música animada", "intencao_esperada": "fora"}
 ]
