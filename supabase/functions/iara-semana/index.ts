@@ -6,15 +6,17 @@
 // App: { semana?: 'atual' | 'proxima' } refaz o rascunho. Plano já confirmado nunca é refeito (as tarefas já saíram).
 // UX-14: refazer o rascunho MANTÉM os itens que o Leo moveu ou tirou (planos_semana_itens.editado) e os passa ao modelo como decididos;
 // itens que avançam uma meta do plano de vida levam meta_id (validado contra as metas enviadas em insumos.metas).
+// UX-22: a MESMA chamada devolve também `fala` (até 60 palavras, contrato de fala) e até 3 decisões fechadas (core.planos_semana.fala/decisoes);
+// o Leo as responde por voz ou toque (public.hub_semana_ouvir / hub_semana_responder) e confirma por hub_acao_pedir('semana.confirmar').
 import { agoraSP, authenticate, CORS, DIAS, fecharRun, iniciarRun, json, perfis, sql } from './_shared/common.ts';
 import { anthropicJson, MODELS } from './_shared/ai.ts';
-import { idsParaApagar, semDuplicarEditados, validarMetaId } from './semana-lib.ts';
+import { falaSemana, idsParaApagar, normalizarDecisoes, resolverIds, semDuplicarEditados, validarMetaId } from './semana-lib.ts';
 
 type Perfil = { user_id: string; nome: string | null };
 type Item = {
   data: string; hora: string | null; area: string; titulo: string; detalhe: string | null;
   minutos: number | null; valor: number | null; ref: string | null;
-  treino: { esporte: string; intensidade: string } | null; meta_id: number | null;
+  treino: { esporte: string; intensidade: string } | null; meta_id: number | null; idx: number;
 };
 
 const AREAS = new Set(['saude', 'financas', 'aprender', 'casa']);
@@ -93,6 +95,17 @@ const SEMANA_SCHEMA = obj({
       titulo: { type: 'string' }, detalhe: ouNulo({ type: 'string' }),
       minutos: ouNulo({ type: 'integer' }), valor: ouNulo({ type: 'number' }), ref: ouNulo({ type: 'string' }), meta_id: ouNulo({ type: 'integer' }),
       treino: ouNulo(obj({ esporte: { type: 'string', enum: [...ESPORTES] }, intensidade: { type: 'string', enum: [...INTENSIDADES] } })),
+    }),
+  },
+  fala: { type: 'string' },
+  decisoes: {
+    type: 'array',
+    items: obj({
+      pergunta: { type: 'string' }, opcoes: { type: 'array', items: { type: 'string' } }, padrao: { type: 'string' },
+      efeito: obj({
+        tipo: { type: 'string', enum: ['mover', 'tirar', 'manter'] }, item_idx: { type: 'array', items: { type: 'integer' } },
+        data: ouNulo({ type: 'string' }), hora: ouNulo({ type: 'string' }), opcao: ouNulo({ type: 'string' }),
+      }),
     }),
   },
 });
@@ -196,8 +209,15 @@ compromissos sociais vs. meta de dieta e o livre por dia, dias sem respiro, desl
 
 "resumo": 100–170 palavras em markdown com **negrito**: o fio da semana em 1 frase (como treino, dieta e o resto se encaixam)
 e 1 linha por área (Saúde, Finanças, Aprender, Casa), dizendo o que foi adaptado e por quê.
+
+"fala": a semana dita em voz alta, até 50 palavras, sem markdown, lista nem emoji: o fio da semana e, se houver, o que precisa de decisão.
+"decisoes": 0 a 3 exceções que SÓ o Leo pode resolver (conflito real: treino colado em compromisso, dia estourado, gasto que não cabe). Sem conflito, lista vazia.
+Cada uma: "pergunta" curta (até 15 palavras) que já cita as opções ("Mover a corrida de terça para quinta ou manter?"); "opcoes" com 2 ou 3 rótulos
+curtos (até 3 palavras); "padrao" = uma das opções (a que você recomenda); "efeito" = o que a opção "opcao" faz: tipo "mover" (com "data" aaaa-mm-dd na semana
+e "hora" HH:MM ou null) ou "tirar", "item_idx" = posições (começando em 0) dos itens na lista "itens" que você devolveu, "opcao" = o rótulo exato que dispara o efeito;
+as outras opções mantêm tudo como está. Use "manter" (item_idx [], opcao null) só se a pergunta não muda nenhum item.
 Responda no formato JSON pedido, por exemplo:
-{"resumo":"...","critica":"- ...","itens":[{"data":"aaaa-mm-dd","hora":"HH:MM ou null","area":"saude|financas|aprender|casa","titulo":"curto","detalhe":"1 frase ou null","minutos":45,"valor":null,"ref":null,"meta_id":null,"treino":null}]}`;
+{"resumo":"...","critica":"- ...","fala":"...","decisoes":[{"pergunta":"...","opcoes":["Mover","Manter"],"padrao":"Mover","efeito":{"tipo":"mover","item_idx":[3],"data":"aaaa-mm-dd","hora":null,"opcao":"Mover"}}],"itens":[{"data":"aaaa-mm-dd","hora":"HH:MM ou null","area":"saude|financas|aprender|casa","titulo":"curto","detalhe":"1 frase ou null","minutos":45,"valor":null,"ref":null,"meta_id":null,"treino":null}]}`;
 
     const saida = await anthropicJson({
       model: MODELS.smart,
@@ -209,7 +229,7 @@ Responda no formato JSON pedido, por exemplo:
     }, { run, feature: 'plano-semana', papel: 'orquestrador' });
 
     const itensBrutos: Item[] = [];
-    for (const i of Array.isArray(saida.itens) ? saida.itens : []) {
+    for (const [idx, i] of (Array.isArray(saida.itens) ? saida.itens : []).entries()) {
       const d = String(i.data ?? '');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < desde || d > fim || !AREAS.has(i.area)) continue;
       const titulo = String(i.titulo ?? '').trim().slice(0, 120);
@@ -218,7 +238,7 @@ Responda no formato JSON pedido, por exemplo:
       const min = Math.round(Number(i.minutos));
       const valor = i.area === 'financas' && Number.isFinite(Number(i.valor)) && i.valor !== null ? Number(i.valor) : null;
       itensBrutos.push({
-        data: d, hora, area: i.area, titulo,
+        idx, data: d, hora, area: i.area, titulo,
         detalhe: typeof i.detalhe === 'string' && i.detalhe.trim() ? i.detalhe.trim().slice(0, 400) : null,
         minutos: min >= 1 && min <= 240 ? min : null,
         valor,
@@ -234,6 +254,8 @@ Responda no formato JSON pedido, por exemplo:
     if (itens.length < 3) throw new Error(`Poucos itens válidos (${itens.length})`);
     const resumo = typeof saida.resumo === 'string' ? saida.resumo.slice(0, 3000) : null;
     const critica = typeof saida.critica === 'string' ? saida.critica.slice(0, 3000) : null;
+    const fala = falaSemana(saida.fala);
+    const decisoesBrutas = normalizarDecisoes(saida.decisoes, new Set(itens.map((it) => it.idx)), { desde, fim });
 
     // Rascunho refeito: atualiza o plano da semana no lugar, apaga só os itens que o Leo NÃO mexeu (editado = false) e grava os novos.
     const planoId = await sql.begin(async (tx) => {
@@ -243,24 +265,29 @@ Responda no formato JSON pedido, por exemplo:
         const atuais = await tx`select id, editado from core.planos_semana_itens where plano_id = ${pid}`;
         const apagar = idsParaApagar(atuais as unknown as { id: number; editado: boolean }[]);
         if (apagar.length) await tx`delete from core.planos_semana_itens where id in ${tx(apagar)}`;
-        await tx`update core.planos_semana set resumo = ${resumo}, critica = ${critica}, insumos = ${tx.json(insumos)}, run_id = ${run.id}, created_at = now() where id = ${pid}`;
+        await tx`update core.planos_semana set resumo = ${resumo}, critica = ${critica}, fala = ${fala}, insumos = ${tx.json(insumos)}, run_id = ${run.id}, created_at = now() where id = ${pid}`;
       } else {
-        const [p] = await tx`insert into core.planos_semana (user_id, semana, status, resumo, critica, insumos, run_id)
-          values (${userId}, ${inicio}, 'rascunho', ${resumo}, ${critica}, ${tx.json(insumos)}, ${run.id}) returning id`;
+        const [p] = await tx`insert into core.planos_semana (user_id, semana, status, resumo, critica, fala, insumos, run_id)
+          values (${userId}, ${inicio}, 'rascunho', ${resumo}, ${critica}, ${fala}, ${tx.json(insumos)}, ${run.id}) returning id`;
         pid = Number(p.id);
       }
       const [{ m }] = await tx`select coalesce(max(ordem), -1) + 1 as m from core.planos_semana_itens where plano_id = ${pid}`;
+      const idPorIdx = new Map<number, number>();
       for (const [n, it] of itens.entries()) {
-        await tx`insert into core.planos_semana_itens (plano_id, user_id, data, hora, area, titulo, detalhe, minutos, valor, ref, treino, meta_id, ordem)
+        const [novo] = await tx`insert into core.planos_semana_itens (plano_id, user_id, data, hora, area, titulo, detalhe, minutos, valor, ref, treino, meta_id, ordem)
           values (${pid}, ${userId}, ${it.data}, ${it.hora}, ${it.area}, ${it.titulo}, ${it.detalhe}, ${it.minutos}, ${it.valor}, ${it.ref},
-            ${it.treino ? tx.json(it.treino) : null}, ${it.meta_id}, ${Number(m) + n})`;
+            ${it.treino ? tx.json(it.treino) : null}, ${it.meta_id}, ${Number(m) + n}) returning id`;
+        idPorIdx.set(it.idx, Number(novo.id));
       }
+      // Decisões com os ids reais dos itens; refazer o rascunho substitui as decisões (escolha volta a null).
+      const decisoes = resolverIds(decisoesBrutas, idPorIdx);
+      await tx`update core.planos_semana set decisoes = ${tx.json(decisoes as never)} where id = ${pid}`;
       return pid;
     });
 
     const porArea: Record<string, number> = {};
     for (const it of itens) porArea[it.area] = (porArea[it.area] ?? 0) + 1;
-    await fecharRun(run, 'ok', { output: { semana: inicio, plano_id: Number(planoId), itens: itens.length, por_area: porArea } });
+    await fecharRun(run, 'ok', { output: { semana: inicio, plano_id: Number(planoId), itens: itens.length, decisoes: decisoesBrutas.length, fala: !!fala, por_area: porArea } });
   } catch (e) {
     await fecharRun(run, 'erro', { erro: String(e), descartado: true });
   }

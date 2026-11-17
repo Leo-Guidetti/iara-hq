@@ -318,6 +318,7 @@ const REVISAO_SCHEMA = obj({
         reais_mes: ouNulo({ type: 'number' }), minutos_semana: ouNulo({ type: 'integer' }), alvo: ouNulo({ type: 'number' }),
       }),
       motivo: { type: 'string' },
+      fala: { type: 'string' },
     }),
   },
 });
@@ -329,7 +330,7 @@ Cada proposta: meta_id (id exato de uma meta recebida), campo e valor:
 - demanda: valor.reais_mes e/ou valor.minutos_semana (o que a meta passa a pedir por mês/semana; renda ou tempo livre mudaram).
 - medida: valor.alvo = novo alvo numérico.
 - status: valor.status = pausada, concluida ou cancelada (use com parcimônia; só para meta parada, já cumprida ou que disputa recurso).
-Preencha com null os campos do valor que não se aplicam. motivo: 1 frase com o número que justifica (progresso, ritmo, gatilho). Use só os dados recebidos.
+Preencha com null os campos do valor que não se aplicam. motivo: 1 frase com o número que justifica (progresso, ritmo, gatilho). fala: a mesma proposta dita em voz alta, 1 frase de até 20 palavras, sem markdown, começando pela conclusão ("Adiar o prazo da meta X para março, porque ..."). Use só os dados recebidos.
 Não proponha o que já está em "propostas_abertas" nem repita o valor atual. Português do Brasil.`;
 
 async function revisar(caller: { kind: string; userId?: string }) {

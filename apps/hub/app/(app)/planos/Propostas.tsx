@@ -2,12 +2,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase/client'
+import { Falar } from './Falar'
 import { ddmm } from '../semana/tipos'
 
 export type Proposta = {
   id: number; plano_id: number; plano: string; meta_id: number; meta: string
   campo: 'prazo' | 'demanda' | 'medida' | 'status'
-  atual: unknown; valor: unknown; motivo: string; status: string; origem: string; created_at: string
+  atual: unknown; valor: unknown; motivo: string; fala?: string | null; status: string; origem: string; created_at: string
 }
 
 const STATUS: Record<string, string> = { pausada: 'pausada', concluida: 'concluída', cancelada: 'cancelada', ativa: 'ativa' }
@@ -50,8 +51,17 @@ function Cartao({ p }: { p: Proposta }) {
   return (
     <section className="card stack" style={{ gap: 8 }}>
       <span className="tag ai">{p.plano} › {p.meta}</span>
-      <p style={{ margin: 0 }}><strong>De {de} para {para}</strong> <span className="small muted">({ROTULO[p.campo] ?? p.campo})</span></p>
-      <p className="small" style={{ margin: 0 }}>{p.motivo}</p>
+      {p.fala ? (
+        <>
+          <p style={{ margin: 0 }}><strong>{p.fala}</strong></p>
+          <p className="small muted" style={{ margin: 0 }}>De {de} para {para} ({ROTULO[p.campo] ?? p.campo})</p>
+        </>
+      ) : (
+        <>
+          <p style={{ margin: 0 }}><strong>De {de} para {para}</strong> <span className="small muted">({ROTULO[p.campo] ?? p.campo})</span></p>
+          <p className="small" style={{ margin: 0 }}>{p.motivo}</p>
+        </>
+      )}
       {feito ? <p className="small" style={{ margin: 0 }}>{feito}</p> : conf ? (
         <div className="stack" style={{ gap: 6 }}>
           <p style={{ margin: 0 }}><strong>Mudar {ROTULO[p.campo] ?? p.campo} de {p.meta} de {de} para {para}?</strong></p>
@@ -64,6 +74,7 @@ function Cartao({ p }: { p: Proposta }) {
         <div className="row">
           <button className="btn" disabled={busy} onClick={() => setConf(true)}>Aceitar</button>
           <button className="btn ghost" disabled={busy} onClick={() => decidir(false)}>{busy ? 'Registrando…' : 'Recusar'}</button>
+          <Falar texto={p.fala || `${p.motivo}. De ${de} para ${para}.`} />
         </div>
       )}
       {erro && <p className="error">{erro}</p>}

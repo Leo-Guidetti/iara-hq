@@ -46,3 +46,13 @@ Deno.test('teto da revisão: US$ 0,08 por execução', () => {
   try { garantirTeto(0.03, estimarSmart(100000, 1500), TETO_REVISAO_USD); } catch { abortou = true; }
   ok(abortou, 'contexto enorme aborta antes de chamar');
 });
+
+Deno.test('UX-22: cada proposta leva fala curta (1 frase, <= 25 palavras, sem markdown); sem fala vira null e a proposta fica', () => {
+  const r = normalizarPropostas({ propostas: [
+    { meta_id: 1, campo: 'prazo', valor: { prazo: '2027-12-01' }, motivo: 'atrasada', fala: '**Adiar** o prazo da meta para dezembro de 2027. ' + Array(40).fill('Mais').join(' ') + '.' },
+    { meta_id: 2, campo: 'prazo', valor: { prazo: '2027-12-01' }, motivo: 'sem fala' },
+  ] }, METAS, HOJE);
+  ok(r.length === 2, 'as duas ficam');
+  ok(r[0].fala === 'Adiar o prazo da meta para dezembro de 2027.' && !/[*#]/.test(r[0].fala!), `fala: ${r[0].fala}`);
+  ok(r[1].fala === null, 'sem fala = null');
+});

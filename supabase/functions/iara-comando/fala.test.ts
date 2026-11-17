@@ -63,9 +63,10 @@ Deno.test('canal e sufixo', () => {
   ok(!/\$\{|Date|\d{4}-\d{2}/.test(SUFIXO_FALA), 'sufixo fixo, sem parte variável (cache)');
 });
 
-Deno.test('fala.ts idêntico em iara-comando, airton-ai e iara-plano', async () => {
+Deno.test('fala.ts idêntico em iara-comando, airton-ai, iara-plano e iara-semana', async () => {
   const ler = (f: string) => Deno.readTextFile(new URL(`../${f}/_shared/fala.ts`, import.meta.url));
   const base = await ler('iara-comando');
   ok(base === await ler('airton-ai'), 'airton-ai difere');
   ok(base === await ler('iara-plano'), 'iara-plano difere');
+  ok(base === await ler('iara-semana'), 'iara-semana difere');
 });
