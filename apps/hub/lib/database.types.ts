@@ -156,6 +156,7 @@ export type Database = {
       hub_livros: { Args: never; Returns: Json }
       hub_leitura_registrar: { Args: { p_pagina: number; p_livro?: number; p_minutos?: number }; Returns: Json }
       hub_livro_salvar: { Args: { p: Json }; Returns: Json }
+      hub_peso_registrar: { Args: { p_kg: number }; Returns: Json }
       hub_conflitos: { Args: never; Returns: Json }
       hub_decisoes: { Args: never; Returns: Json }
       hub_decidir: { Args: { p_id: number; p_escolha: string }; Returns: Json }

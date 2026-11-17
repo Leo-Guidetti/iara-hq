@@ -1,0 +1,391 @@
+[
+    {
+        "rpc": "public.hub_compromisso_cancelar",
+        "slug": "agenda.compromisso_cancelar",
+        "agent": "iara",
+        "risco": "medio",
+        "slots": {
+            "p_id": "bigint"
+        },
+        "exemplos": [
+            "cancela o dentista",
+            "desmarca a reunião de quinta"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_compromisso_salvar",
+        "slug": "agenda.compromisso_salvar",
+        "agent": "iara",
+        "risco": "medio",
+        "slots": {
+            "p": "jsonb{id?:bigint,titulo:text,data:date,inicio?:time,fim?:time,tipo?:text,local?:text}"
+        },
+        "exemplos": [
+            "marca dentista quinta às 15h",
+            "cria um compromisso amanhã às 9h",
+            "muda o horário da reunião"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": "public.hub_compromisso_cancelar"
+    },
+    {
+        "rpc": "public.hub_item_status",
+        "slug": "casa.item_status",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {
+            "p_id": "bigint",
+            "p_status": "text(pendente|feito|adiado|ignorado)",
+            "p_adiar_para": "date?"
+        },
+        "exemplos": [
+            "marca a tarefa da casa como feita",
+            "adia isso para amanhã",
+            "ignora esse item da casa"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": "public.hub_item_status"
+    },
+    {
+        "rpc": "public.hub_decidir",
+        "slug": "decisao.decidir",
+        "agent": "iara",
+        "risco": "alto",
+        "slots": {
+            "p_id": "bigint",
+            "p_escolha": "text"
+        },
+        "exemplos": [
+            "decide pela opção de adiar o prazo",
+            "fico com a recomendação da IARA",
+            "pausa o plano do carro e segue com o apartamento"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_decisoes",
+        "slug": "decisoes.status",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {
+        },
+        "exemplos": [
+            "tem alguma decisão pendente",
+            "o que a IARA quer que eu decida",
+            "qual o conflito entre os planos"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "fn:airton-ai/chat",
+        "slug": "financas.quanto_posso_gastar",
+        "agent": "airton",
+        "risco": "baixo",
+        "slots": {
+            "pergunta": "text"
+        },
+        "exemplos": [
+            "quanto posso gastar hoje?",
+            "quanto sobra esse mês?",
+            "posso gastar 200 num jantar?"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "airton.set_category",
+        "slug": "lancamento.categorizar",
+        "agent": "airton",
+        "risco": "medio",
+        "slots": {
+            "p_ids": "text[]",
+            "p_learn": "boolean?",
+            "p_category": "text"
+        },
+        "exemplos": [
+            "põe o mercado na categoria alimentação",
+            "categoriza esse lançamento como transporte"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "airton.confirm",
+        "slug": "lancamento.confirmar",
+        "agent": "airton",
+        "risco": "medio",
+        "slots": {
+            "p_ids": "text[]"
+        },
+        "exemplos": [
+            "confirma esses lançamentos",
+            "está tudo certo, pode confirmar"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_leitura_registrar",
+        "slug": "leitura.registrar",
+        "agent": "sabia",
+        "risco": "baixo",
+        "slots": {
+            "p_livro": "bigint?",
+            "p_pagina": "int",
+            "p_minutos": "int?"
+        },
+        "exemplos": [
+            "li até a página 150",
+            "parei na 80 do livro X",
+            "anota que cheguei na página 200"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_livro_salvar",
+        "slug": "livro.salvar",
+        "agent": "sabia",
+        "risco": "medio",
+        "slots": {
+            "p": "jsonb{id?:bigint,titulo:text,autor?:text,paginas?:int,status?:text(quero_ler|lendo|pausado|lido|abandonado),meta_ano?:int}"
+        },
+        "exemplos": [
+            "adiciona o livro Sapiens na fila",
+            "minha meta é 12 livros este ano",
+            "comecei a ler Dom Casmurro"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "airton.goal_salvar",
+        "slug": "meta.salvar",
+        "agent": "airton",
+        "risco": "alto",
+        "slots": {
+            "p": "jsonb{id?:text,name:text,target_amount:numeric,target_date?:date,current_amount?:numeric,kind?:text(imovel|carro|reserva|viagem|outro),priority?:int,status?:text(ativa|concluida|cancelada)}"
+        },
+        "exemplos": [
+            "cria uma meta de R$ 80 mil para o carro até 2028",
+            "muda o prazo da meta do apartamento",
+            "cancela a meta de viagem"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_meta_salvar",
+        "slug": "meta.salvar_plano",
+        "agent": "iara",
+        "risco": "alto",
+        "slots": {
+            "p": "jsonb{id?:bigint,plano_id:bigint,horizonte:text(curto|medio|longo),dono:text,titulo:text,parent_id?:bigint,medida?:jsonb,prazo?:date,cadencia?:text,demanda?:jsonb,ref?:text,status?:text(ativa|pausada|concluida|cancelada)}"
+        },
+        "exemplos": [
+            "adiciona a meta de juntar a entrada do apartamento",
+            "muda o prazo dessa meta",
+            "cancela essa meta"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "airton.goals_status",
+        "slug": "metas.status",
+        "agent": "airton",
+        "risco": "baixo",
+        "slots": {
+        },
+        "exemplos": [
+            "como estão minhas metas?",
+            "quanto preciso guardar por mês para o apartamento?",
+            "minhas metas cabem na poupança?"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_peso_registrar",
+        "slug": "peso.registrar",
+        "agent": "claudia",
+        "risco": "baixo",
+        "slots": {
+            "p_kg": "numeric"
+        },
+        "exemplos": [
+            "registra 82,4 quilos",
+            "pesei 81,9 hoje",
+            "anota meu peso: 83 kg"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_plano_confirmar",
+        "slug": "plano.confirmar",
+        "agent": "iara",
+        "risco": "alto",
+        "slots": {
+            "p_id": "bigint"
+        },
+        "exemplos": [
+            "confirma o plano do apartamento",
+            "pode ativar esse plano",
+            "sim, ativa o plano"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "fn:iara-plano/criar",
+        "slug": "plano.criar",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {
+            "frase": "text",
+            "respostas": "jsonb[]?",
+            "rascunho_id": "bigint?"
+        },
+        "exemplos": [
+            "quero comprar um apartamento de 800 mil até 2030",
+            "cria um plano para trocar de carro em 2027",
+            "quero aprender violão este ano"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_plano_salvar",
+        "slug": "plano.salvar",
+        "agent": "iara",
+        "risco": "alto",
+        "slots": {
+            "p": "jsonb{titulo:text,tipo?:text(imovel|carro|carreira|habilidade|habito|outro),status?:text(rascunho|ativo|pausado|concluido|abandonado),prioridade?:int,alvo?:jsonb{valor?:number,data?:date},porque?:text,proxima_revisao?:date}"
+        },
+        "exemplos": [
+            "quero comprar um apartamento até 2031",
+            "cria um plano para trocar de carro",
+            "pausa o plano do carro"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_planos",
+        "slug": "planos.status",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {
+        },
+        "exemplos": [
+            "como estão meus planos",
+            "o que falta para o apartamento",
+            "quais planos estão atrasados"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_proposta_decidir",
+        "slug": "proposta.decidir",
+        "agent": "iara",
+        "risco": "alto",
+        "slots": {
+            "p_id": "bigint",
+            "p_aceitar": "boolean"
+        },
+        "exemplos": [
+            "aceita a proposta de adiar o prazo",
+            "recusa essa sugestão da revisão",
+            "pode aplicar o ajuste que a IARA propôs"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_propostas",
+        "slug": "propostas.status",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {
+        },
+        "exemplos": [
+            "tem proposta de ajuste nos meus planos",
+            "o que a IARA sugeriu na revisão do mês",
+            "quais ajustes estão pendentes"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_sabia_item",
+        "slug": "sabia.item",
+        "agent": "sabia",
+        "risco": "baixo",
+        "slots": {
+            "p_id": "bigint",
+            "p_reacao": "int(-1|0|1)?",
+            "p_status": "text(pendente|feito|pulado)"
+        },
+        "exemplos": [
+            "terminei a leitura de hoje",
+            "pula esse item da trilha",
+            "gostei desse conteúdo"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": "public.hub_sabia_item"
+    },
+    {
+        "rpc": "public.hub_semana_confirmar",
+        "slug": "semana.confirmar",
+        "agent": "iara",
+        "risco": "alto",
+        "slots": {
+            "p_plano": "bigint"
+        },
+        "exemplos": [
+            "confirma a semana",
+            "fecha o plano da semana"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_semana_item",
+        "slug": "semana.item",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {
+            "p_id": "bigint",
+            "p_incluido": "boolean"
+        },
+        "exemplos": [
+            "tira esse item do plano da semana",
+            "inclui de volta no plano da semana"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": "public.hub_semana_item"
+    },
+    {
+        "rpc": "public.hub_semana_item_editar",
+        "slug": "semana.item_editar",
+        "agent": "iara",
+        "risco": "medio",
+        "slots": {
+            "p_id": "bigint",
+            "p_data": "date",
+            "p_hora": "text(HH:MM)"
+        },
+        "exemplos": [
+            "passa esse item da semana para sexta",
+            "muda a hora desse item para 18h"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
+    }
+]
