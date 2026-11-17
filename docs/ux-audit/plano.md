@@ -395,35 +395,20 @@ plano de prática ficam em `fast`; progresso, conflito, gatilhos, avisos e toda 
 
 ## Decisões do Leo
 
-Respostas do Leo em 17/11/2026. D1, D4 e D5 estão decididas; D2 e D3 foram reescritas em linguagem direta e seguem em aberto.
+As cinco decisões foram tomadas pelo Leo em 17/11/2026. Nenhum item do plano está mais bloqueado por decisão.
 
-| # | Decisão | Situação | Resposta do Leo | Bloqueia |
-| --- | --- | --- | --- | --- |
-| D1 | Quem é dono do que não tem agente (carreira, hobbies). | **Decidida** | Fica com a IARA, sem agente novo. Ela é a dona desses planos e das metas deles e chama a SabIA (conteúdo, registro de prática) e o AIrton (fôlego financeiro) quando precisar. | — (libera UX-08, UX-17) |
-| D2 | O que fazer quando dois planos não cabem juntos no mesmo dinheiro ou no mesmo tempo. | **Em aberto** | Ver "D2 em uma frase" abaixo. | UX-11, UX-13 |
-| D3 | Quanto a IARA faz sozinha e quantas vezes por dia ela pode te chamar. | **Em aberto** | Ver "D3 em três perguntas" abaixo. | UX-16, UX-20 |
-| D4 | Canal e provedor de voz. | **Decidida** | Segue a recomendação: Atalho/Siri primeiro; protótipo de 1 dia nos dois provedores de voz em tempo real só depois de a UX-19 estar em uso; teto de US$ 5/mês para voz. A criação da chave do provedor escolhido continua sendo um pedido ao Leo na hora da UX-21. | — (libera UX-19; UX-21 espera o protótipo) |
-| D5 | Persona única. | **Decidida** | A IARA é o canal único de conversa e chama os outros agentes quando precisar de mais refino. As abas por app continuam como telas de consulta. | — (libera UX-15) |
+| # | Decisão | Resposta do Leo | Itens liberados |
+| --- | --- | --- | --- |
+| D1 | Quem é dono do que não tem agente (carreira, hobbies). | Fica com a IARA, sem agente novo. Ela é a dona desses planos e das metas deles e chama a SabIA (conteúdo, registro de prática) e o AIrton (fôlego financeiro) quando precisar. | UX-08, UX-17 |
+| D2 | O que fazer quando dois planos não cabem juntos no mesmo dinheiro ou no mesmo tempo. | Sem decisão antecipada: a IARA pergunta valor e prazo na criação de cada plano; em conflito, nunca escolhe sozinha, mostra o painel e o Leo escolhe na hora; não há ordem fixa de prioridade, a menos que o Leo dite uma depois. | UX-11, UX-13 |
+| D3 | Quanto a IARA faz sozinha e quantas vezes por dia ela pode chamar. | Sem perguntar: só anotações (peso, páginas lidas, prática, marcar feito, adiar), com aviso do que anotou e "desfaz" por 10 minutos. Só com "sim": tudo que mexe em dinheiro, treino, plano ou meta, e confirmar a semana inteira. Avisos: no máximo 3 por dia, silêncio das 23h às 7h. | UX-16, UX-20 |
+| D4 | Canal e provedor de voz. | Atalho/Siri primeiro; protótipo de 1 dia nos dois provedores de voz em tempo real só depois de a UX-19 estar em uso; teto de US$ 5/mês para voz. A chave do provedor escolhido é pedida ao Leo na hora da UX-21. | UX-19 (UX-21 espera o protótipo) |
+| D5 | Persona única. | A IARA é o canal único de conversa e chama os outros agentes quando precisar de mais refino. As abas por app continuam como telas de consulta. | UX-15 |
 
-Efeito de D1 no modelo (§3.4): nos planos de carreira e de hobbies, o `dono` das metas é `iara`; onde a tabela mostra SabIA
-ou AIrton como donos nesses dois planos, leia "apoio chamado pela IARA". A UX-17 continua criando o registro de prática na
-SabIA, mas a meta que ele alimenta é da IARA.
+Efeitos no plano:
 
-**D2 em uma frase.** Exemplo: você quer um apartamento em 2030 e um carro em 2027, e o que você guarda por mês não paga os
-dois nesses prazos. Alguém precisa dizer qual dos dois atrasa. Proposta para você não ter que decidir nada agora:
-
-| Ponto | Padrão proposto |
-| --- | --- |
-| Valor e prazo de cada plano | A IARA pergunta na hora em que você cria o plano ("quanto?" e "até quando?"). Nada a preencher antes. |
-| Dois planos que não cabem juntos | A IARA nunca escolhe sozinha: mostra o conflito com a opinião de cada agente (o painel) e você escolhe na hora. |
-| Ordem fixa de prioridade | Não existe por padrão. Se um dia você quiser ("o imóvel sempre ganha"), é só dizer e ela passa a aplicar sem perguntar. |
-
-Basta um "ok" para fechar D2 assim.
-
-**D3 em três perguntas.** Cada uma já vem com a sugestão; responda "ok" ou troque o que quiser.
-
-| Pergunta | Sugestão |
-| --- | --- |
-| O que a IARA pode fazer sem te perguntar? | Só anotações: peso, páginas lidas, prática, marcar algo como feito, adiar. Ela avisa o que anotou e "desfaz" vale por 10 minutos. |
-| O que ela só faz depois de você dizer "sim"? | Tudo que mexe em dinheiro, em treino, em um plano ou meta, e confirmar a semana inteira. |
-| Quantas vezes por dia ela pode te chamar, e em que horário fica calada? | No máximo 3 avisos por dia; silêncio das 22h às 7h. |
+| Decisão | Onde muda | O que vale |
+| --- | --- | --- |
+| D1 | §3.4 e UX-17 | Nos planos de carreira e de hobbies, o `dono` das metas é `iara`; onde a tabela mostra SabIA ou AIrton como donos nesses dois planos, leia "apoio chamado pela IARA". A UX-17 continua criando o registro de prática na SabIA, mas a meta que ele alimenta é da IARA. |
+| D2 | §3.5 e UX-11 a UX-13 | A regra 3 (prioridade dada pelo Leo) fica opcional: `core.planos.prioridade` nasce vazia e, sem ela, todo conflito que as regras 1 e 2 não resolvem vai direto para o painel. A UX-11 pergunta valor e prazo na criação. |
+| D3 | §3.6, UX-16 e UX-20 | Valores iniciais de `core.perfil.config.interrupcoes`: `max_dia = 3`, silêncio de 23:00 a 07:00. A tabela de risco do §3.6 vale como está. |
