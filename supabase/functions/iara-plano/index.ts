@@ -1,9 +1,12 @@
 // IARA · plano nasce de uma frase (UX-11). POST /functions/v1/iara-plano, só usuário logado (JWT de core.members).
-// Ações: criar {frase, respostas?, rascunho_id?} | confirmar {plano_id} | descartar {plano_id}.
+// Ações: criar {frase, respostas?, rascunho_id?} | confirmar {plano_id} | descartar {plano_id} | painel {decisao_id} (UX-13).
 // Resposta sempre {fala, tela, pendente} (contrato de fala, plano.md §3.6).
 // criar: 1 `fast` (Haiku) extrai tipo/título/valor/prazo e pode devolver 1 pergunta (até 3 rodadas, contadas em código);
 //        SQL junta o resumo de cada agente (sem IA); 1 `smart` (Sonnet) propõe as metas; grava RASCUNHO (nada em core.itens).
 // confirmar/descartar: SQL puro (core.plano_confirmar cria a airton.goals ligada por ref; descartar = status 'abandonado').
+// painel: decisão aberta -> 1 `fast` por agente com interesse (2 a 4, isolados, só o próprio domínio) + 1 `smart` de síntese;
+//         grava posições e síntese (status 'painel'); teto US$ 0,03 por execução; chave IARA_ANTHROPIC_KEY_PAINEL. Usuário logado ou cron.
+//         Quem decide é o Leo (public.hub_decidir); a IARA nunca escolhe (D2).
 // Orçamento: US$ 0,10 por execução (aborta antes de passar); chave IARA_ANTHROPIC_KEY_PLANO (fallback ANTHROPIC_API_KEY).
 import { agoraSP, authenticate, CORS, fecharRun, iniciarRun, json, sql } from './_shared/common.ts';
 import { anthropicJson, MODELS } from './_shared/ai.ts';
@@ -11,6 +14,9 @@ import {
   decidirRodada, estimarSmart, falaRascunho, garantirTeto, limparFala, normalizarExtracao, normalizarMetas, viabilidade,
   DONOS, HORIZONTES, TIPOS, type Extracao,
 } from './plano-lib.ts';
+import {
+  dominioDe, estimarFast, MAX_PAINEIS_MES, normalizarPosicoes, normalizarSintese, quemVota, TETO_PAINEL_USD, type Agente, type Ctx,
+} from './painel-lib.ts';
 
 const obj = (props: Record<string, unknown>) => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false });
 const ouNulo = (t: Record<string, unknown>) => ({ anyOf: [t, { type: 'null' }] });
@@ -84,12 +90,13 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return erro(405, 'Use POST.');
   const caller = await authenticate(req);
   if (caller instanceof Response) return caller;
-  if (caller.kind !== 'user') return erro(403, 'Esta função só aceita usuário logado.');
   const body = await req.json().catch(() => ({}));
   try {
+    if (body.acao === 'painel') return await painel(caller, body);
+    if (caller.kind !== 'user') return erro(403, 'Esta função só aceita usuário logado.');
     if (body.acao === 'criar') return await criar(caller.userId as string, body);
     if (body.acao === 'confirmar' || body.acao === 'descartar') return await decidir(caller.userId as string, body);
-    return erro(400, 'acao deve ser criar, confirmar ou descartar.');
+    return erro(400, 'acao deve ser criar, confirmar, descartar ou painel.');
   } catch (e) {
     console.error('iara-plano', e);
     return erro(500, 'Não consegui montar o plano agora. Tente de novo em instantes.');
@@ -191,6 +198,98 @@ ${ext.tipo === 'carreira' || ext.tipo === 'habilidade' ? 'D1: este plano é de c
       tela: { ...tela, viabilidade: viab, avisos: norm.avisos },
       pendente: { tipo: 'confirmacao', pergunta: 'Posso ativar esse plano?', opcoes: ['sim', 'não'], plano_id: planoId },
     });
+  } catch (e) {
+    await fecharRun(run, 'erro', { erro: String(e), descartado: true });
+    throw e;
+  }
+}
+
+// ---------------------------------------------------------------- painel (UX-13)
+const POSICAO_SCHEMA = obj({
+  posicao: { type: 'string', enum: ['favor', 'contra', 'neutro'] },
+  confianca: { type: 'integer' },
+  argumento: { type: 'string' },
+  condicao: ouNulo({ type: 'string' }),
+});
+const SINTESE_SCHEMA = obj({
+  concordancia: { type: 'string' }, divergencia: { type: 'string' }, recomendacao: { type: 'string' },
+  fala: { type: 'string' }, opcao_recomendada: ouNulo({ type: 'string' }),
+});
+const NOME: Record<Agente, string> = { airton: 'AIrton (dinheiro)', claudia: 'ClaudIA (saúde, sono e treino)', sabia: 'SabIA (estudo e leitura)', iara: 'IARA (rotina, agenda e casa)' };
+
+const AGENTE_SYSTEM = (a: Agente) => `Você é o ${NOME[a]}, um especialista do Leo. Dois ou mais planos dele disputam o mesmo recurso. Dê a SUA posição sobre o conflito, olhando só os dados do seu domínio.
+- posicao: favor (ajustar os planos é bom para o seu domínio), contra (prejudica) ou neutro.
+- confianca: inteiro de 0 a 10 (quanto você tem certeza com os dados que viu).
+- argumento: 1 frase com número do seu domínio, sem markdown. condicao: quando você mudaria de posição, ou null.
+Use só os dados recebidos; não invente valores. Português do Brasil, direto.`;
+
+const SINTESE_SYSTEM = `Você é a IARA, orquestradora da rotina do Leo (direta, nunca bajuladora). Recebe as posições dos especialistas sobre um conflito entre planos e sintetiza. Você NÃO decide: o Leo escolhe.
+- concordancia: no que todos concordam (1 frase). divergencia: onde discordam (1 frase, ou "" se ninguém discorda).
+- recomendacao: qual opção você recomenda e por quê (1 a 2 frases); opcao_recomendada: o id exato de uma das opções, ou null.
+- fala: no máximo 2 frases, conclusão primeiro, sem markdown nem listas, valores arredondados, termina oferecendo detalhe. Use só os números recebidos.`;
+
+function respostaPainel(d: Record<string, any>, posicoes: unknown[], sintese: unknown, custo: number | null) {
+  const opcoes = (d.opcoes ?? []).map((o: any) => ({ id: o.id, rotulo: o.rotulo }));
+  const fala = ((sintese as { fala?: string } | null)?.fala) || 'O painel está pronto. Qual opção você escolhe?';
+  return {
+    fala,
+    tela: { decisao: { id: Number(d.id), pergunta: d.pergunta, status: d.status, plano_id: d.plano_id ?? null, opcoes }, posicoes, sintese, custo_usd: custo },
+    pendente: { tipo: 'decisao', decisao_id: Number(d.id), opcoes },
+  };
+}
+
+async function painel(caller: { kind: string; userId?: string }, body: { decisao_id?: unknown }) {
+  const id = Number(body.decisao_id);
+  if (!Number.isInteger(id) || id <= 0) return erro(400, 'decisao_id obrigatório.');
+  const [{ c }] = await sql`select core.decisao_contexto(${id}::bigint) as c`;
+  const ctx = c as (Ctx & { decisao: Ctx['decisao'] & { user_id: string; status: string } }) | null;
+  if (!ctx || (caller.kind === 'user' && ctx.decisao.user_id !== caller.userId)) return erro(404, 'Decisão não encontrada.');
+  const userId = ctx.decisao.user_id;
+  const d = ctx.decisao as Record<string, any>;
+  if (d.status === 'decidida') return json(409, { ...respostaPainel(d, [], d.sintese, null), fala: 'Essa decisão já foi tomada.' });
+  if (d.status === 'expirada') return erro(409, 'Esse conflito não existe mais; a decisão expirou.');
+  if (d.status === 'painel') { // já montado: devolve sem chamar IA
+    const posicoes = await sql`select agent, posicao, confianca, argumento, condicao from core.decisao_posicoes where decisao_id = ${id} order by id`;
+    return json(200, respostaPainel(d, posicoes, d.sintese, null));
+  }
+  const [{ n }] = await sql`select count(*)::int as n from core.agent_runs where user_id = ${userId} and tipo = 'painel' and status = 'ok'
+    and started_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo'`;
+  if (n >= MAX_PAINEIS_MES) return erro(429, `Já montei ${MAX_PAINEIS_MES} painéis este mês. Decida pelas opções ou espere o mês virar.`);
+
+  const run = await iniciarRun('iara', userId, 'painel', { decisao_id: id, gatilho: d.gatilho });
+  try {
+    const votantes = quemVota(ctx);
+    const opcoesTxt = ctx.decisao.opcoes.map((o) => `- ${o.id}: ${o.rotulo}`).join('\n');
+    const MAX_FAST = 400, MAX_SMART = 1500;
+    const pedidos = votantes.map((a) => ({
+      a, user: `Hoje é ${agoraSP().data}.\nConflito: ${ctx.decisao.pergunta}\nOpções em discussão:\n${opcoesTxt}\nDados do seu domínio (JSON): ${JSON.stringify(dominioDe(a, ctx))}`,
+    }));
+    // Teto por execução: o pior caso de todas as chamadas (fast em paralelo + smart) tem de caber em US$ 0,03 ANTES de gastar.
+    const piorFast = pedidos.reduce((s, p) => s + estimarFast(p.user.length + AGENTE_SYSTEM(p.a).length, MAX_FAST), 0);
+    const SINTESE_CHARS = 2500 + opcoesTxt.length + SINTESE_SYSTEM.length + votantes.length * 900;
+    garantirTeto(run.custo, piorFast + estimarSmart(SINTESE_CHARS, MAX_SMART), TETO_PAINEL_USD);
+
+    const saidas = await Promise.allSettled(pedidos.map((p) => anthropicJson({
+      model: MODELS.fast, max_tokens: MAX_FAST, system: AGENTE_SYSTEM(p.a),
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: POSICAO_SCHEMA } },
+      messages: [{ role: 'user', content: p.user }],
+    }, { run, feature: 'painel', papel: 'worker' })));
+    saidas.forEach((s, i) => { if (s.status === 'rejected') console.error('painel', pedidos[i].a, s.reason); });
+    const posicoes = normalizarPosicoes(pedidos.map((p, i) => ({ agent: p.a, raw: saidas[i].status === 'fulfilled' ? (saidas[i] as PromiseFulfilledResult<unknown>).value : null })));
+
+    const pedidoSintese = `Conflito: ${ctx.decisao.pergunta}\nOpções:\n${opcoesTxt}\nPosições (JSON): ${JSON.stringify(posicoes)}`;
+    garantirTeto(run.custo, estimarSmart(pedidoSintese.length + SINTESE_SYSTEM.length, MAX_SMART), TETO_PAINEL_USD);
+    const bruta = await anthropicJson({
+      model: MODELS.smart, max_tokens: MAX_SMART, system: SINTESE_SYSTEM,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: SINTESE_SCHEMA } },
+      messages: [{ role: 'user', content: pedidoSintese }],
+    }, { run, feature: 'painel', papel: 'orquestrador' });
+    const sintese = normalizarSintese(bruta, ctx.decisao.opcoes, posicoes);
+
+    await sql`select core.painel_gravar(${id}::bigint, ${sql.json(posicoes as any)}::jsonb, ${sql.json(sintese as any)}::jsonb)`;
+    const custo = Math.round(run.custo * 10000) / 10000;
+    await fecharRun(run, 'ok', { output: { decisao_id: id, agentes: posicoes.map((p) => p.agent), custo_usd: custo } });
+    return json(200, respostaPainel({ ...d, status: 'painel', sintese }, posicoes, sintese, custo));
   } catch (e) {
     await fecharRun(run, 'erro', { erro: String(e), descartado: true });
     throw e;
