@@ -4,6 +4,23 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type Database = {
   __InternalSupabase: { PostgrestVersion: "14.17" }
+  airton: {
+    Tables: {
+      goals: {
+        Row: { created_at: string; current_amount: number; id: string; kind: "imovel" | "carro" | "reserva" | "viagem" | "outro" | null; name: string; priority: number | null; status: "ativa" | "concluida" | "cancelada"; target_amount: number; target_currency: "BRL" | "USD"; target_date: string | null; updated_at: string; user_id: string }
+        Insert: { created_at?: string; current_amount?: number; id?: string; kind?: "imovel" | "carro" | "reserva" | "viagem" | "outro" | null; name: string; priority?: number | null; status?: "ativa" | "concluida" | "cancelada"; target_amount: number; target_currency?: "BRL" | "USD"; target_date?: string | null; updated_at?: string; user_id?: string }
+        Update: Partial<Database["airton"]["Tables"]["goals"]["Insert"]>
+        Relationships: []
+      }
+    }
+    Views: { [_ in never]: never }
+    Functions: {
+      goal_salvar: { Args: { p: Json }; Returns: Json }
+      goals_status: { Args: { p_user?: string }; Returns: Json }
+    }
+    Enums: { [_ in never]: never }
+    CompositeTypes: { [_ in never]: never }
+  }
   public: {
     Tables: {
       activities: {
