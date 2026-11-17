@@ -166,6 +166,8 @@ export type Database = {
       hub_habilidade_salvar: { Args: { p: Json }; Returns: Json }
       hub_praticas: { Args: never; Returns: Json }
       hub_semana_desconfirmar: { Args: { p_semana_id: number }; Returns: Json }
+      hub_semana_ouvir: { Args: never; Returns: Json }
+      hub_semana_responder: { Args: { p_plano: number; p_escolha: string; p_decisao?: string }; Returns: Json }
       hub_acao_pedir: { Args: { p_intencao: string; p_args?: Json; p_canal?: string; p_pergunta?: string }; Returns: Json }
       hub_acao_confirmar: { Args: { p_id: number }; Returns: Json }
       hub_acao_cancelar: { Args: { p_id: number }; Returns: Json }

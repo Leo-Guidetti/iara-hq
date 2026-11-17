@@ -13,6 +13,22 @@ const semMarkdown = (t: string) => t
   .replace(/\n{2,}/g, '. ')
   .trim()
 
+export const temVoz = () => typeof window !== 'undefined' && 'speechSynthesis' in window
+export function pararVoz() { try { window.speechSynthesis?.cancel() } catch { /* sem voz */ } }
+/** Fala o texto em pt-BR com a voz do navegador; sem voz, não faz nada. */
+export function falar(texto: string, aoFim?: () => void) {
+  if (!temVoz() || !texto.trim()) { aoFim?.(); return }
+  const ss = window.speechSynthesis
+  const u = new SpeechSynthesisUtterance(texto.trim())
+  u.lang = 'pt-BR'
+  const v = ss.getVoices().find((x) => x.lang.toLowerCase().startsWith('pt-br')) ?? ss.getVoices().find((x) => x.lang.toLowerCase().startsWith('pt'))
+  if (v) u.voice = v
+  u.onend = () => aoFim?.()
+  u.onerror = () => aoFim?.()
+  ss.cancel()
+  ss.speak(u)
+}
+
 /** Lê o briefing em voz alta com a voz do navegador (sem custo). Segundo toque para. */
 export function Ouvir({ id, fala, texto }: { id: number; fala?: string | null; texto: string }) {
   const [ok, setOk] = useState(false)

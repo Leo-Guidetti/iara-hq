@@ -208,6 +208,7 @@ const IDS: Record<string, { slot: string; lista?: boolean; cand: (c: Contexto) =
   'sabia.item': { slot: 'p_id', cand: (c) => (c.trilha ?? []).map((i) => i.id) },
   'agenda.compromisso_cancelar': { slot: 'p_id', cand: (c) => (c.compromissos ?? []).map((i) => i.id) },
   'semana.confirmar': { slot: 'p_plano', cand: (c) => (c.semana ? [c.semana.id] : []) },
+  'semana.responder': { slot: 'p_plano', cand: (c) => (c.semana ? [c.semana.id] : []) },
   'plano.confirmar': { slot: 'p_id', cand: (c) => (c.planos ?? []).map((i) => i.id) },
   'lancamento.categorizar': { slot: 'p_ids', lista: true, cand: (c) => (c.lancamentos ?? []).map((i) => i.id) },
   'lancamento.confirmar': { slot: 'p_ids', lista: true, cand: (c) => (c.lancamentos ?? []).map((i) => i.id) },
@@ -248,7 +249,7 @@ export function corpoFn(destino: { funcao: string; acao: string }, args: Record<
 /** Política (UX-16): risco alto ou confirmacao 'sim' só executa depois de "sim" (linha confirmada em core.acoes_pendentes). */
 export const exigeSim = (i: Pick<Intencao, 'risco' | 'confirmacao'>) => i.risco === 'alto' || i.confirmacao === 'sim';
 /** Intenções só de leitura: não geram ação registrada. */
-export const SO_LEITURA = new Set(['planos.status', 'metas.status', 'decisoes.status', 'propostas.status']);
+export const SO_LEITURA = new Set(['planos.status', 'metas.status', 'decisoes.status', 'propostas.status', 'semana.ouvir']);
 
 export type Plano =
   | { tipo: 'resposta'; resposta: Resposta }
@@ -341,6 +342,13 @@ export function falaExecucao(intencao: Intencao, args: Record<string, unknown>, 
       return `Marquei "${p.titulo}" ${diaSemana(p.data)}, ${dataBR(p.data)}${p.inicio ? ` às ${horaBR(p.inicio)}` : ''}${p.local ? `, ${p.local}` : ''}.`;
     case 'agenda.compromisso_cancelar': return `Cancelei "${ctx.compromissos?.find((i) => i.id === args.p_id)?.titulo ?? 'o compromisso'}".`;
     case 'semana.confirmar': return typeof resultado === 'number' && resultado > 0 ? `Confirmei a semana: ${resultado} ${resultado === 1 ? 'item entrou' : 'itens entraram'} no seu dia.` : 'A semana já estava confirmada.';
+    case 'semana.ouvir': {
+      // UX-22: a fala inteira (60 palavras) é da tela; no comando entra a primeira decisão, uma pergunta só.
+      const prox = (r.proxima ?? null) as { pergunta?: string } | null;
+      if (!r.plano_id) return 'Ainda não há plano da semana para revisar.';
+      return prox?.pergunta ? limparFala(`Tenho ${r.pendentes} ${r.pendentes === 1 ? 'decisão' : 'decisões'} para a semana. ${prox.pergunta}`) : 'A semana está sem conflitos. Confirma a semana?';
+    }
+    case 'semana.responder': return typeof r.fala === 'string' && r.fala ? limparFala(r.fala) : 'Anotei.';
     case 'semana.item': return args.p_incluido ? 'Voltei o item para o plano da semana.' : 'Tirei o item do plano da semana.';
     case 'semana.item_editar': return `Passei o item para ${dataBR(String(args.p_data))} às ${horaBR(String(args.p_hora))}.`;
     case 'lancamento.categorizar': return `Categorizei ${(args.p_ids as unknown[]).length} lançamento(s) como ${ctx.categorias?.find((c) => c.id === args.p_category)?.nome ?? args.p_category}.`;

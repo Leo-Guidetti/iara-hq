@@ -1,13 +1,16 @@
 // IARA · revisão mensal dos planos (UX-14): partes puras (sem banco, sem IA) para testar sem chave.
 // A IARA só PROPÕE (core.plano_propostas); quem aplica é o Leo (public.hub_proposta_decidir).
+// UX-22: cada proposta leva `fala` (uma frase curta para ouvir, no contrato de fala), gerada na mesma chamada.
+import { limparFala } from './_shared/fala.ts';
 
 export const TETO_REVISAO_USD = 0.08;
 export const MAX_PROPOSTAS = 5;
+export const MAX_PALAVRAS_PROPOSTA = 25;
 export const CAMPOS = ['prazo', 'demanda', 'medida', 'status'] as const;
 export const STATUS_PROPOSTOS = ['pausada', 'concluida', 'cancelada'] as const;
 export type Campo = typeof CAMPOS[number];
 export type MetaRev = { id: number; plano_id: number; prazo?: string | null; status?: string; demanda?: Record<string, unknown>; medida?: Record<string, unknown> };
-export type Proposta = { meta_id: number; plano_id: number; campo: Campo; valor: unknown; motivo: string };
+export type Proposta = { meta_id: number; plano_id: number; campo: Campo; valor: unknown; motivo: string; fala: string | null };
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const num = (v: unknown): number | null => (v !== null && v !== '' && v !== undefined && Number.isFinite(Number(v)) ? Number(v) : null);
@@ -50,7 +53,9 @@ export function normalizarPropostas(saida: any, metas: MetaRev[], hoje: string):
     const chave = `${m.id}|${campo}`;
     if (valor === null || vistos.has(chave)) continue;
     vistos.add(chave);
-    out.push({ meta_id: Number(m.id), plano_id: Number(m.plano_id), campo, valor, motivo });
+    // fala vazia ou ausente vira null (a tela cai no motivo); nunca derruba a proposta.
+    const fala = limparFala(typeof p?.fala === 'string' ? p.fala : '', 1, MAX_PALAVRAS_PROPOSTA) || null;
+    out.push({ meta_id: Number(m.id), plano_id: Number(m.plano_id), campo, valor, motivo, fala });
     if (out.length >= MAX_PROPOSTAS) break;
   }
   return out;

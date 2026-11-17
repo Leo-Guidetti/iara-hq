@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { callFunction } from '@/lib/functions'
 import { minutosAte, useAgora } from '@/lib/useAgora'
+import { Revisar } from './Revisar'
 import { DIA_CURTO, ddmm, diaSemana, nomeDia, type Fixo, type ItemSemana, type PlanoSemana } from './tipos'
 
 export type { PlanoSemana } from './tipos'
@@ -46,6 +47,7 @@ export function Plano({ plano, fixos, dias }: { plano: PlanoSemana; fixos: Fixo[
   const sb = () => supabaseBrowser() as unknown as SupabaseClient
   const [cartao, setCartao] = useState<{ id: number; pergunta: string; expira: string } | null>(null)
   const [desfazer, setDesfazer] = useState<{ id: number; ate: string } | null>(null)
+  const [revisando, setRevisando] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
   const agora = useAgora(!!(cartao || desfazer))
 
@@ -172,11 +174,14 @@ export function Plano({ plano, fixos, dias }: { plano: PlanoSemana; fixos: Fixo[
                 <button className="btn ghost" disabled={!!busy} onClick={voltar}>Voltar</button>
               </div>
             </section>
+          ) : revisando ? (
+            <Revisar planoId={plano.id} busy={!!busy} onConfirmar={pedir} onFechar={() => setRevisando(false)} />
           ) : (
             <button className="btn" disabled={!!busy || !incluidos} onClick={pedir}>
               {busy === 'ok' ? 'Preparando…' : `Confirmar a semana (${incluidos} ${incluidos === 1 ? 'item' : 'itens'})`}
             </button>
           )}
+          {!revisando && !(cartao && Date.parse(cartao.expira) > agora) && <button className="btn ghost" disabled={!!busy} onClick={() => setRevisando(true)}>Revisar falando</button>}
           <Gerar rotulo="Sugerir de novo (com o que mudou)" ghost />
           <p className="small muted" style={{ margin: 0 }}>Ao confirmar, cada item vira tarefa do dia, entra na linha do tempo da Hoje e no link da agenda.</p>
         </div>
