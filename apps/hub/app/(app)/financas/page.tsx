@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { currentUser } from '@/lib/supabase/server'
+import { Revisao, type RevisaoDados } from './Revisao'
 import { MetasBloco, type MetasStatus } from './Metas'
 
 export const dynamic = 'force-dynamic'
@@ -25,12 +26,13 @@ const dm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 export default async function Financas() {
   const me = (await currentUser())!
   const air = (me.sb as unknown as SupabaseClient).schema('airton')
-  const [mp, wk, rc, tx, gl] = await Promise.all([
+  const [mp, wk, rc, tx, gl, rv] = await Promise.all([
     air.rpc('month_plan', { p_user: me.user.id }),
     air.rpc('week_summary', { p_user: me.user.id }),
     air.rpc('review_counts', { p_user: me.user.id }),
     air.from('v_tx').select('id, date, description, merchant, spend, category_name, nature').order('date', { ascending: false }).limit(8),
     air.rpc('goals_status', { p_user: me.user.id }),
+    air.rpc('review_list', { p_limit: 30, p_user: me.user.id }),
   ])
   const p = (mp.data ?? {}) as Plano
   const w = (wk.data ?? {}) as Semana
@@ -38,7 +40,7 @@ export default async function Financas() {
   const gastos = ((tx.data ?? []) as Tx[]).filter((t) => Number(t.spend) > 0)
   const livre = Number(p.available ?? 0)
   const semana = Number(w.spent ?? 0), normal = Number(w.typical ?? 0) * 7
-  const revisar = Number(r.pending ?? 0) + Number(r.unconfirmed ?? 0)
+  const revisar = rv.error ? Number(r.pending ?? 0) + Number(r.unconfirmed ?? 0) : Number((rv.data as RevisaoDados | null)?.total ?? 0)
 
   return (
     <div className="stack">
@@ -72,6 +74,8 @@ export default async function Financas() {
           </div>
         </section>
       )}
+
+      <Revisao dados={rv.error ? null : ((rv.data ?? null) as RevisaoDados | null)} erro={!!rv.error} appAntigo={AIRTON_COMPLETO} />
 
       <MetasBloco dados={gl.error ? null : ((gl.data ?? null) as MetasStatus | null)} erro={!!gl.error} />
 
