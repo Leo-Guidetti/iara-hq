@@ -2,6 +2,9 @@
 // Fluxo: catálogo + turnos -> 1 chamada fast (roteador) -> validação de slots em CÓDIGO -> decisão por risco -> executa a RPC
 // como o próprio usuário (index.ts) -> fala curta. A IA só roteia; quem executa e valida é o código.
 
+import { canalFala, limparFalaHub as limparFala } from './_shared/fala.ts';
+import { arredondarReais } from './_shared/fala.ts';
+
 export type Intencao = {
   slug: string; agent: string; exemplos: string[]; rpc: string; slots: Record<string, string>;
   risco: 'baixo' | 'medio' | 'alto'; confirmacao: 'nenhuma' | 'repetir' | 'sim'; desfazer_rpc?: string | null;
@@ -236,8 +239,9 @@ export function resolverDestino(rpc: string): Destino {
   return b ? { via: 'rpc', schema: a === 'public' ? null : a, nome: b } : { via: 'rpc', schema: null, nome: a };
 }
 /** Corpo da chamada a uma Edge Function do catálogo (cada função tem seu estilo: acao/action). */
-export function corpoFn(destino: { funcao: string; acao: string }, args: Record<string, unknown>, textoLeo: string): Record<string, unknown> {
-  if (destino.funcao === 'airton-ai') return { action: destino.acao, message: `${String(args.pergunta ?? textoLeo)}\n(Resposta para voz: até 2 frases, o número principal primeiro, sem listas nem markdown, valores em reais inteiros.)`, channel: 'chat' };
+export function corpoFn(destino: { funcao: string; acao: string }, args: Record<string, unknown>, textoLeo: string, canal = 'hub'): Record<string, unknown> {
+  // UX-18: no canal que fala, o airton-ai usa o system de voz (contrato §3.6, cacheado); no hub segue o chat em texto.
+  if (destino.funcao === 'airton-ai') return { action: destino.acao, message: String(args.pergunta ?? textoLeo), channel: canalFala(canal) ? 'voice' : 'chat' };
   return { acao: destino.acao, ...args };
 }
 
@@ -298,20 +302,7 @@ export function planejar(rota: Rota, catalogo: Intencao[], ctx: Contexto, textoL
 
 // ---------- fala (contrato §3.6: até 2 frases, conclusão primeiro, sem markdown, valores arredondados) ----------
 
-export function arredondarReais(s: string): string {
-  return s.replace(/R\$\s?(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})/g, (_m, i: string, c: string) => {
-    const n = Number(i.replace(/\./g, '')) + (Number(c) >= 50 ? 1 : 0);
-    return `R$ ${n.toLocaleString('pt-BR')}`;
-  });
-}
-export function limparFala(s: string, max = 2): string {
-  const t = arredondarReais(String(s ?? '')
-    .replace(/```[\s\S]*?```/g, ' ').replace(/[*_`#>]+/g, '').replace(/^\s*[-•]\s+/gm, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/\s+/g, ' ').trim());
-  const frases = t.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ"])/); // não corta em "R$ 2.340"
-  const corte = frases.slice(0, max).map((f) => f.trim()).join(' ');
-  return corte.length > 240 ? corte.slice(0, 237).replace(/\s+\S*$/, '') + '...' : corte;
-}
+export { arredondarReais, limparFala };
 
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 export const diaSemana = (data: string) => DIAS[new Date(`${data}T12:00:00Z`).getUTCDay()];

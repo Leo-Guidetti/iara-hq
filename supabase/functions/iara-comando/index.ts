@@ -5,10 +5,13 @@
 // Fluxo: catálogo ativo + turnos de 30 min + candidatos -> 1 `fast` (Haiku, effort low, structured outputs, system cacheado) roteia ->
 //        slots validados em código -> risco baixo/médio executa a RPC COMO O USUÁRIO (hub_acao_pedir com o JWT dele), alto grava a ação
 //        pendente e devolve pendente {tipo:'confirmacao', acao_id}; só o "sim" executa -> pergunta ao especialista (airton-ai) ou fala curta.
+// UX-18: canal voz/atalho -> fala limpa (<= 2 frases, 40 palavras, sem markdown, R$ arredondado) e pergunta ao airton-ai em modo voz;
+//        latencia_ms gravada em core.agent_runs.output (e started_at/finished_at já medem a duração).
 // Custo: rota <= US$ 0,001 (ai_usage feature `comando-rota`, worker, chave IARA_ANTHROPIC_KEY_COMANDO com reserva em ANTHROPIC_API_KEY).
 // Pergunta ao especialista é registrada pela função dele (airton-ai: feature `chat`). agent_runs tipo `comando`.
 import { createClient } from 'npm:@supabase/supabase-js@2.46.1';
 import { agoraSP, authenticate, CORS, fecharRun, iniciarRun, json, sql } from './_shared/common.ts';
+import { canalFala, limparFala, limparFalaHub } from './_shared/fala.ts';
 import { anthropicJson, MODELS } from './_shared/ai.ts';
 import { corpoFn, processar, ROTA_SCHEMA, SO_LEITURA, type Acoes, type AcaoInfo, type Contexto, type Destino, type Intencao, type Turno } from './comando-lib.ts';
 
@@ -31,6 +34,7 @@ Deno.serve(async (req) => {
   const url = Deno.env.get('SUPABASE_URL')!;
   const anon = Deno.env.get('SUPABASE_ANON_KEY')!;
   const inicio = new Date().toISOString();
+  const t0 = Date.now();
   const { data: hoje } = agoraSP();
   const run = await iniciarRun('iara', userId, 'comando', { canal, texto: texto.slice(0, 200), dry_run: dryRun });
   try {
@@ -61,7 +65,7 @@ Deno.serve(async (req) => {
       const r = await fetch(`${url}/functions/v1/${d.funcao}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${jwt}`, apikey: anon, 'content-type': 'application/json' },
-        body: JSON.stringify(corpoFn(d, args, textoLeo)),
+        body: JSON.stringify(corpoFn(d, args, textoLeo, canal)),
       });
       if (!r.ok) throw new Error(`${d.funcao} ${r.status}`);
       return await r.json();
@@ -84,12 +88,14 @@ Deno.serve(async (req) => {
 
     const saida = await processar(texto, { catalogo, turnos, contexto: (c ?? {}) as Contexto, hoje, rotear, chamar, acoes }, { dryRun });
     const { rota, ...resposta } = saida;
+    resposta.fala = canalFala(canal) ? limparFala(resposta.fala) : limparFalaHub(resposta.fala); // defesa final: voz/atalho <= 2 frases e 40 palavras; hub = UX-15/16 (240 caracteres)
+    saida.fala = resposta.fala;
     if (!dryRun) {
       await sql`insert into core.conversas (user_id, canal, papel, texto, at) values (${userId}, ${canal}, 'leo', ${texto}, ${inicio})`;
       await sql`insert into core.conversas (user_id, canal, papel, texto, intencao, slots, pendente) values
         (${userId}, ${canal}, 'iara', ${saida.fala}, ${saida.intencao}, ${saida.slots ? sql.json(saida.slots as never) : null}, ${saida.pendente ? sql.json(saida.pendente as never) : null})`;
     }
-    await fecharRun(run, 'ok', { output: { intencao: saida.intencao, executou: (saida.tela as any)?.executou ?? false, confianca: rota?.confianca } });
+    await fecharRun(run, 'ok', { output: { latencia_ms: Date.now() - t0, intencao: saida.intencao, executou: (saida.tela as any)?.executou ?? false, confianca: rota?.confianca } });
     return json(200, dryRun ? { ...resposta, tela: { ...(resposta.tela ?? {}), rota } } : resposta);
   } catch (e) {
     console.error('iara-comando', e);

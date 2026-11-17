@@ -12,7 +12,8 @@
 //         NÃO aplica nada (o Leo decide em public.hub_proposta_decidir). Teto US$ 0,08 por execução; agent_runs tipo plano_revisar;
 //         ai_usage feature `revisao`; chave IARA_ANTHROPIC_KEY_REVISAO (cai em ANTHROPIC_API_KEY).
 // Orçamento: US$ 0,10 por execução (aborta antes de passar); chave IARA_ANTHROPIC_KEY_PLANO (fallback ANTHROPIC_API_KEY).
-import { agoraSP, authenticate, CORS, fecharRun, iniciarRun, json, perfis, sql } from './_shared/common.ts';
+import { agoraSP, authenticate, CORS, fecharRun, iniciarRun, json as jsonBase, perfis, sql } from './_shared/common.ts';
+import { limparFala as limparFalaVoz, SUFIXO_FALA } from './_shared/fala.ts';
 import { anthropicJson, MODELS } from './_shared/ai.ts';
 import {
   decidirRodada, estimarSmart, falaRascunho, garantirTeto, limparFala, normalizarExtracao, normalizarMetas, viabilidade,
@@ -22,6 +23,9 @@ import { ehPrimeiroDomingo, incluiLongo, normalizarPropostas, TETO_REVISAO_USD, 
 import {
   dominioDe, estimarFast, MAX_PAINEIS_MES, normalizarPosicoes, normalizarSintese, quemVota, TETO_PAINEL_USD, type Agente, type Ctx,
 } from './painel-lib.ts';
+
+// UX-18: toda fala de criar/painel/revisar passa pelo contrato de fala (sem markdown, <= 2 frases, <= 40 palavras, R$ arredondado).
+const json = (status: number, body: any) => jsonBase(status, body && typeof body.fala === 'string' ? { ...body, fala: limparFalaVoz(body.fala) } : body);
 
 const obj = (props: Record<string, unknown>) => ({ type: 'object', properties: props, required: Object.keys(props), additionalProperties: false });
 const ouNulo = (t: Record<string, unknown>) => ({ anyOf: [t, { type: 'null' }] });
@@ -232,7 +236,7 @@ Use só os dados recebidos; não invente valores. Português do Brasil, direto.`
 const SINTESE_SYSTEM = `Você é a IARA, orquestradora da rotina do Leo (direta, nunca bajuladora). Recebe as posições dos especialistas sobre um conflito entre planos e sintetiza. Você NÃO decide: o Leo escolhe.
 - concordancia: no que todos concordam (1 frase). divergencia: onde discordam (1 frase, ou "" se ninguém discorda).
 - recomendacao: qual opção você recomenda e por quê (1 a 2 frases); opcao_recomendada: o id exato de uma das opções, ou null.
-- fala: no máximo 2 frases, conclusão primeiro, sem markdown nem listas, valores arredondados, termina oferecendo detalhe. Use só os números recebidos.`;
+- fala: no máximo 2 frases, conclusão primeiro, sem markdown nem listas, valores arredondados, termina oferecendo detalhe. Use só os números recebidos.\n${SUFIXO_FALA}`;
 
 function respostaPainel(d: Record<string, any>, posicoes: unknown[], sintese: unknown, custo: number | null) {
   const opcoes = (d.opcoes ?? []).map((o: any) => ({ id: o.id, rotulo: o.rotulo }));

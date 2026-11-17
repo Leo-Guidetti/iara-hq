@@ -4,6 +4,7 @@
 import { addDays, admin, authenticate, CORS, json, spDate } from './_shared/common.ts';
 import { anthropic, MODELS, textOf } from './_shared/ai.ts';
 import { categorize } from './_shared/categorize.ts';
+import { limparFala, SUFIXO_FALA } from './_shared/fala.ts';
 const TOOLS = [
   {
     name: 'month_plan',
@@ -198,6 +199,8 @@ const SYSTEM = `Você é o AIrton, assistente financeiro pessoal do Leonardo (PM
 Responda em português do Brasil, direto e confiante, com números em R$ no formato brasileiro.
 SEMPRE use as ferramentas para buscar números — nunca invente. O "disponível" do mês = renda prevista − meta de poupança − comprometido (fixos + parcelas + eventos) − gasto do dia a dia.
 Quando der conselho, seja concreto (quanto, onde, até quando). Respostas curtas; use listas quando ajudar.`;
+// UX-18: no canal voz o system é outro texto FIXO (cache próprio): sem listas, persona IARA, contrato de fala. O chat em texto não muda.
+const SYSTEM_VOZ = SYSTEM.replace('Você é o AIrton, assistente financeiro', 'Você é a IARA, falando com os dados financeiros').replace('Respostas curtas; use listas quando ajudar.', 'Respostas curtas.') + '\n' + SUFIXO_FALA;
 /** Coloca o marcador de cache no último bloco da última mensagem: cada passo do loop reaproveita o anterior. */ function withCacheTail(messages) {
   const out = messages.map((m)=>({
       ...m,
@@ -246,7 +249,7 @@ Quando der conselho, seja concreto (quanto, onde, até quando). Respostas curtas
   const system = [
     {
       type: 'text',
-      text: SYSTEM,
+      text: feature === 'voice' ? SYSTEM_VOZ : SYSTEM,
       cache_control: {
         type: 'ephemeral'
       }
@@ -265,7 +268,8 @@ Quando der conselho, seja concreto (quanto, onde, até quando). Respostas curtas
       feature
     });
     if (r.stop_reason !== 'tool_use') {
-      const text = textOf(r) || '(sem resposta)';
+      const bruto = textOf(r) || '(sem resposta)';
+      const text = feature === 'voice' ? limparFala(bruto) : bruto;
       await db.from('chat_messages').insert({
         user_id: userId,
         role: 'assistant',
