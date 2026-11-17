@@ -3,6 +3,7 @@ import { currentUser } from '@/lib/supabase/server'
 import { spDate } from '@/lib/dates'
 import { appDoAgent } from '@/components/SeuDia'
 import { ddmm } from '../semana/tipos'
+import { NovoPlano, AcoesRascunho } from './Novo'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +37,7 @@ export default async function PlanosPage() {
         <h1>Planos</h1>
         <p className="muted small" style={{ margin: 0 }}>Do objetivo de longo prazo até o que fazer esta semana.</p>
       </div>
+      <NovoPlano />
       {error ? (
         <div className="card alert"><p className="small" style={{ margin: 0 }}>Não consegui carregar os planos agora.</p></div>
       ) : !planos.length ? (
@@ -50,7 +52,7 @@ export default async function PlanosPage() {
           <section key={p.id} className="card stack" style={{ gap: 10 }}>
             <div className="row between">
               <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{p.titulo}</h2>
-              <span className="tag progress">{p.status}</span>
+              <span className={`tag ${p.status === 'rascunho' ? 'ai' : 'progress'}`}>{p.status === 'rascunho' ? 'Rascunho' : p.status}</span>
             </div>
             <p className="small muted" style={{ margin: 0 }}>
               {p.tipo}
@@ -67,6 +69,7 @@ export default async function PlanosPage() {
                 </div>
               )
             })}
+            {p.status === 'rascunho' && <AcoesRascunho planoId={p.id} />}
             {prox && <p className="small" style={{ margin: 0 }}>Próximo passo: {prox.titulo} · {ddmm(prox.data)}{prox.hora ? ` ${prox.hora}` : ''}</p>}
           </section>
         )
