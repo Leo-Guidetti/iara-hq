@@ -3,6 +3,7 @@
 // e escreve o briefing da manhã ou o fechamento da noite em core.briefings.
 import { agoraSP, authenticate, CORS, DIAS, fecharRun, iniciarRun, json, perfis, sql } from './_shared/common.ts';
 import { anthropic, MODELS, textOf } from './_shared/ai.ts';
+import { limparFala, MARCA_FALA, separarFala } from './_shared/fala.ts';
 const IARA_SYSTEM = `Você é a IARA, assistente pessoal e orquestradora da rotina do Leo — no espírito do Jarvis: proativa, direta, com um toque leve de humor, nunca bajuladora.
 Você fala pelos especialistas: ClaudIA (saúde, treino, dieta), AIrton (finanças e investimentos), SabIA (estudos e livros) e você mesma (casa e rotina).
 - Priorize: no máximo 3 destaques; o resto em uma linha por área.
@@ -55,7 +56,9 @@ async function briefing(userId, nome, tipo) {
 **Bom dia, ${nome}.** + 1 linha sobre o tom do dia
 **Hoje importa:** até 3 bullets, cruzando as áreas quando fizer sentido (use a rotina e o plano da semana, que o Leo combinou no domingo, para sugerir encaixes, mas NÃO liste a agenda: o app já mostra a linha do tempo do dia)
 Depois 1 linha por área, só com o que é acionável hoje: **Saúde** · **Finanças** (livre no mês, por dia e contas dos próximos dias) · **Aprender** · **Casa**. Área sem dados: omita a linha.
-**À noite:** 1 linha do que fechar antes de dormir (leitura, preparar o treino de amanhã, revisar gastos).` : `Escreva o FECHAMENTO DO DIA:
+**À noite:** 1 linha do que fechar antes de dormir (leitura, preparar o treino de amanhã, revisar gastos).
+
+Depois do briefing, numa linha só com ${MARCA_FALA}, escreva a VERSÃO FALADA para o app ler em voz alta: até 70 palavras, texto corrido, SEM markdown, listas, emojis ou símbolos, frases curtas, autocontida: o primeiro compromisso do dia (hora e nome, dos fixos_hoje), 1 prioridade, 1 número que importa e, se fizer sentido, 1 pergunta no máximo. Escreva por extenso o que a voz lê mal (R$ 252,55 vira "duzentos e cinquenta e dois reais"). Nada depois dela.` : `Escreva o FECHAMENTO DO DIA:
 **Fechamento** — feito vs. o que ficou (trilha, treino, casa)
 **Amanhã:** 1 ajuste concreto
 **Leitura:** lembrete com meta de páginas se houver livro em andamento; sequência de trilhas ≥ 3 dias merece meia frase.`;
@@ -78,14 +81,17 @@ Depois 1 linha por área, só com o que é acionável hoje: **Saúde** · **Fina
       feature: `briefing-${tipo}`,
       papel: 'orquestrador'
     });
-    const texto = textOf(r.content);
-    await sql`insert into core.briefings (user_id, data, tipo, insumos, texto, lido_em)
-      values (${userId}, ${data}, ${tipo}, ${sql.json(insumos)}, ${texto}, null)
-      on conflict (user_id, data, tipo) do update set insumos = excluded.insumos, texto = excluded.texto, lido_em = null, created_at = now()`;
+    // A mesma chamada devolve texto + fala separados por MARCA_FALA; sem a marca, o texto segue e a fala fica nula.
+    const { texto, fala: falaBruta } = separarFala(textOf(r.content));
+    const fala = tipo === 'manha' ? limparFala(falaBruta) : null;
+    await sql`insert into core.briefings (user_id, data, tipo, insumos, texto, fala, lido_em)
+      values (${userId}, ${data}, ${tipo}, ${sql.json(insumos)}, ${texto}, ${fala}, null)
+      on conflict (user_id, data, tipo) do update set insumos = excluded.insumos, texto = excluded.texto, fala = excluded.fala, lido_em = null, created_at = now()`;
     await fecharRun(run, 'ok', {
       output: {
         tipo,
-        caracteres: texto.length
+        caracteres: texto.length,
+        fala_palavras: fala ? fala.split(' ').length : 0
       }
     });
   } catch (e) {

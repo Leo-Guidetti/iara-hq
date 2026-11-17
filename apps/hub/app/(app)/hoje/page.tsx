@@ -8,12 +8,13 @@ import { ICON } from '@/lib/icons'
 import { Md } from '@/lib/md'
 import { SeuDia, appDoAgent, type Bloco } from '@/components/SeuDia'
 import { Notificacoes } from '@/components/Notificacoes'
+import { Ouvir } from '@/components/Ouvir'
 
 export const dynamic = 'force-dynamic'
 
 type Linha = { texto: string; destaque?: boolean }
 type CasaResumo = {
-  briefings: { id: number; tipo: string; data: string; texto: string | null; lido: boolean }[]
+  briefings: { id: number; tipo: string; data: string; texto: string | null; fala?: string | null; lido: boolean }[]
   itens: { origem: string; titulo: string; minutos: number | null; status: string }[]
 } | null
 type SabiaResumo = {
@@ -148,7 +149,10 @@ export default async function Hoje() {
           <Link className="small" href="/semana" style={{ color: 'var(--accent)' }}>Semana →</Link>
         </div>
         {blocos.length ? <SeuDia blocos={blocos} agora={agoraHHMM} /> : <p className="small muted" style={{ margin: '4px 0 0' }}>Nada agendado hoje.</p>}
-        <h2 style={{ margin: '12px 0 4px', fontSize: '1rem' }}>O que importa</h2>
+        <div className="row between" style={{ margin: '12px 0 4px' }}>
+          <h2 style={{ margin: 0, fontSize: '1rem' }}>O que importa</h2>
+          {briefing?.texto && <Ouvir id={briefing.id} fala={briefing.fala} texto={briefing.texto} />}
+        </div>
         {briefing?.texto ? (
           <>
             <Md texto={briefing.texto.split('\n').slice(0, 7).join('\n')} />
