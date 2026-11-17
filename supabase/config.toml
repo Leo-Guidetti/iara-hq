@@ -58,3 +58,6 @@ verify_jwt = false   # autentica sozinha: só JWT de core.members (_shared/commo
 
 [functions.hub-senha]
 verify_jwt = false   # autentica sozinha: só o e-mail do Leo + código do secret HUB_CADASTRO_CODIGO
+
+[functions.iara-comando]
+verify_jwt = false   # autentica sozinha: só JWT de core.members (_shared/common.ts); chama as RPCs com o JWT do usuário

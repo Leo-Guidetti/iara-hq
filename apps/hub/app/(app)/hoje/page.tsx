@@ -8,6 +8,7 @@ import { Md } from '@/lib/md'
 import { SeuDia, appDoAgent, type Bloco } from '@/components/SeuDia'
 import { Notificacoes } from '@/components/Notificacoes'
 import { Ouvir } from '@/components/Ouvir'
+import { PecaIara } from '@/components/PecaIara'
 import { Fila, type Item } from '../casa/Fila'
 
 export const dynamic = 'force-dynamic'
@@ -152,6 +153,7 @@ export default async function Hoje() {
         <p className="muted small" style={{ margin: 0 }}>{total ? `${plural(total, 'missão pede', 'missões pedem')} você hoje.` : 'Tudo em órbita: nada pendente agora.'}</p>
       </div>
 
+      <PecaIara />
       <Notificacoes compacto />
       {decAbertas > 0 && (
         <Link href="/planos#decisoes" className="card ai row between" style={{ textDecoration: 'none' }}>
