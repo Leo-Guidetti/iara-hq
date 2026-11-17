@@ -7,6 +7,7 @@ import { ICON } from '@/lib/icons'
 import { Md } from '@/lib/md'
 import { SeuDia, appDoAgent, type Bloco } from '@/components/SeuDia'
 import { Notificacoes } from '@/components/Notificacoes'
+import { Perguntas, type Aviso } from '@/components/Perguntas'
 import { Ouvir } from '@/components/Ouvir'
 import { PecaIara } from '@/components/PecaIara'
 import { Fila, type Item } from '../casa/Fila'
@@ -36,11 +37,13 @@ async function seguro<T>(p: PromiseLike<{ data: T | null; error: unknown }>): Pr
   }
 }
 
-export default async function Hoje() {
+export default async function Hoje({ searchParams }: { searchParams: Promise<{ pergunta?: string }> }) {
+  const { pergunta } = await searchParams
+  const foco = /^\d+$/.test(pergunta ?? '') ? Number(pergunta) : null
   const me = (await currentUser())!
   const raw = me.sb as unknown as SupabaseClient
   const today = spDate()
-  const [sessoes, alertas, pend, mes, iara, sab, dia, semana, planosRaw, decRaw] = await Promise.all([
+  const [sessoes, alertas, pend, mes, iara, sab, dia, semana, planosRaw, decRaw, avisosRaw] = await Promise.all([
     seguro(me.sb.from('plan_sessions').select('id, title, status, duration_min').eq('local_date', today).order('id')),
     seguro(raw.rpc('hub_alertas')),
     seguro(raw.schema('airton').rpc('review_counts', { p_user: me.user.id })),
@@ -51,7 +54,9 @@ export default async function Hoje() {
     seguro(raw.rpc('hub_semana_hoje')),
     seguro(raw.rpc('hub_planos')),
     seguro(raw.rpc('hub_decisoes')),
+    seguro(raw.rpc('hub_avisos')),
   ])
+  const avisos = avisosRaw && avisosRaw !== 'erro' ? ((avisosRaw as { itens?: Aviso[] }).itens ?? []) : []
   const decAbertas = Array.isArray(decRaw) ? decRaw.length : 0
   // Planos: só as metas fora do ritmo (atrasadas) aparecem; no ritmo, nada.
   const atrasadas: Linha[] = []
@@ -153,7 +158,9 @@ export default async function Hoje() {
         <p className="muted small" style={{ margin: 0 }}>{total ? `${plural(total, 'missão pede', 'missões pedem')} você hoje.` : 'Tudo em órbita: nada pendente agora.'}</p>
       </div>
 
+      {foco != null && <Perguntas avisos={avisos} foco={foco} falhou={avisosRaw === 'erro'} />}
       <PecaIara />
+      {foco == null && <Perguntas avisos={avisos} foco={null} falhou={false} />}
       <Notificacoes compacto />
       {decAbertas > 0 && (
         <Link href="/planos#decisoes" className="card ai row between" style={{ textDecoration: 'none' }}>

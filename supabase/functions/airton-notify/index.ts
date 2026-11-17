@@ -248,6 +248,33 @@ async function send(userId, msg, ttl = 6 * 3600) {
     failed
   };
 }
+// UX-20: avisos proativos (core.avisos). A seleção (teto diário, silêncio, prioridade) é SQL: core.avisos_reservar.
+// Os pushes antigos (diária, semanal, custo, semana) contam no teto, mas não são bloqueados por ele.
+async function enviarAvisos(uid) {
+  const db = admin().schema('public');
+  const { data: lote, error } = await db.rpc('avisos_reservar', {
+    p_user: uid
+  });
+  if (error) throw new Error(`avisos_reservar: ${error.message}`);
+  const nao = [];
+  for (const a of lote ?? []){
+    const r = await send(uid, {
+      title: a.titulo,
+      body: [
+        a.corpo,
+        a.pergunta
+      ].filter(Boolean).join(' '),
+      url: `${HUB_URL}/hoje?pergunta=${a.id}`,
+      tag: `aviso-${a.id}`,
+      badge: undefined
+    }, 24 * 3600);
+    if (r.sent === 0) nao.push(a.id);
+  }
+  // nenhum aparelho recebeu: volta para a fila e não gasta o teto
+  if (nao.length) await db.rpc('avisos_devolver', {
+    p_ids: nao
+  });
+}
 async function tick() {
   const now = localNow();
   for (const uid of (await memberIds())){
@@ -303,6 +330,11 @@ async function tick() {
           body: `erro: ${err instanceof Error ? err.message : err}`
         }).eq('user_id', uid).eq('kind', kind).eq('local_date', now.date);
       }
+    }
+    try {
+      await enviarAvisos(uid);
+    } catch (err) {
+      console.error('avisos', err instanceof Error ? err.message : err);
     }
   }
 }
