@@ -156,6 +156,14 @@ export type Database = {
       hub_livros: { Args: never; Returns: Json }
       hub_leitura_registrar: { Args: { p_pagina: number; p_livro?: number; p_minutos?: number }; Returns: Json }
       hub_livro_salvar: { Args: { p: Json }; Returns: Json }
+      hub_leitura_desfazer: { Args: { p_leitura: number }; Returns: Json }
+      hub_semana_desconfirmar: { Args: { p_semana_id: number }; Returns: Json }
+      hub_acao_pedir: { Args: { p_intencao: string; p_args?: Json; p_canal?: string; p_pergunta?: string }; Returns: Json }
+      hub_acao_confirmar: { Args: { p_id: number }; Returns: Json }
+      hub_acao_cancelar: { Args: { p_id: number }; Returns: Json }
+      hub_acao_desfazer: { Args: { p_id: number }; Returns: Json }
+      hub_acao_desfazer_ultima: { Args: never; Returns: Json }
+      hub_acao_pendente: { Args: never; Returns: Json }
       hub_peso_registrar: { Args: { p_kg: number }; Returns: Json }
       hub_conflitos: { Args: never; Returns: Json }
       hub_decisoes: { Args: never; Returns: Json }

@@ -1,5 +1,5 @@
 // deno test --allow-read supabase/functions/iara-comando/comando-lib.test.ts  (sem banco, sem IA, sem rede)
-import { estimarRotaUsd, limparFala, montarSystem, montarUsuario, numerosDoTexto, processar, validarSlots, type Contexto, type Deps, type Destino, type Intencao, type Turno } from './comando-lib.ts';
+import { estimarRotaUsd, pedidoDesfazer, limparFala, montarSystem, montarUsuario, numerosDoTexto, processar, validarSlots, type AcaoInfo, type Acoes, type Contexto, type Deps, type Destino, type Intencao, type Turno } from './comando-lib.ts';
 
 const ok = (c: unknown, m: string) => { if (!c) throw new Error(m); };
 const eq = (a: unknown, b: unknown, m: string) => ok(JSON.stringify(a) === JSON.stringify(b), `${m}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`);
@@ -10,9 +10,28 @@ const CTX: Contexto = {
   planos: [{ id: 3, titulo: 'Apartamento', status: 'ativo' }], lancamentos: [{ id: 'tx1', descricao: 'Mercado', valor: -120 }], categorias: [{ id: 'alimentacao', nome: 'Alimentação' }],
 };
 type Chamada = { destino: Destino; args: Record<string, unknown> };
-function deps(rota: Record<string, unknown>, resultado: unknown = {}, turnos: Turno[] = []): Deps & { chamadas: Chamada[]; roteou: number } {
+/** Ações em memória que imitam as RPCs hub_acao_*: confirmar executa a ação GRAVADA; expirada não executa. */
+function acoesFake(opts: { expirada?: boolean; resultado?: unknown } = {}) {
+  const f = {
+    criadas: [] as { intencao: string; args: Record<string, unknown>; pergunta: string }[], executadas: [] as number[], canceladas: [] as number[], desfeitas: 0,
+    criar: async (intencao: string, args: Record<string, unknown>, pergunta: string): Promise<AcaoInfo> => {
+      f.criadas.push({ intencao, args, pergunta });
+      return { acao_id: 70 + f.criadas.length, status: 'pendente', expira_em: '2026-11-17T13:00:00Z' };
+    },
+    confirmar: async (id: number): Promise<AcaoInfo> => {
+      const c = f.criadas[id - 71];
+      if (opts.expirada || !c) return { acao_id: id, status: 'expirada', fala: 'Essa confirmação expirou, quer refazer?' };
+      f.executadas.push(id);
+      return { acao_id: id, status: 'executada', intencao: c.intencao, args: c.args, resultado: opts.resultado ?? 4, desfazer: { acao_id: id, ate: '2026-11-17T13:10:00Z' } };
+    },
+    cancelar: async (id: number): Promise<AcaoInfo> => { f.canceladas.push(id); return { acao_id: id, status: 'cancelada' }; },
+    desfazerUltima: async () => { f.desfeitas++; return { ok: true, fala: 'Desfiz a leitura. Voltou para a página 120.' }; },
+  } satisfies Acoes & Record<string, unknown>;
+  return f;
+}
+function deps(rota: Record<string, unknown>, resultado: unknown = {}, turnos: Turno[] = []): Deps & { chamadas: Chamada[]; roteou: number; acoes: ReturnType<typeof acoesFake> } {
   const d = {
-    catalogo: CATALOGO, turnos, contexto: CTX, hoje: '2026-11-17', chamadas: [] as Chamada[], roteou: 0,
+    catalogo: CATALOGO, turnos, contexto: CTX, hoje: '2026-11-17', chamadas: [] as Chamada[], roteou: 0, acoes: acoesFake(),
     rotear: async () => { d.roteou++; return { pergunta_esclarecimento: null, opcoes: [], ...rota, slots_json: JSON.stringify(rota.slots ?? {}) }; },
     chamar: async (destino: Destino, args: Record<string, unknown>) => { d.chamadas.push({ destino, args }); return resultado; },
   };
@@ -92,25 +111,82 @@ Deno.test('ambiguidade: confiança baixa devolve a pergunta fechada do roteador 
   eq(r.fala, 'Qual item você adiou?', 'fala');
 });
 
-Deno.test('risco alto (confirmar semana): NÃO executa, devolve pendente de confirmação', async () => {
+Deno.test('(1) risco alto (confirmar semana): NÃO executa; grava a ação pendente e devolve acao_id', async () => {
   const d = deps({ intencao: 'semana.confirmar', slots: { p_plano: 9 }, confianca: 0.95 });
   const r = await processar('confirma a semana', d);
-  ok(d.chamadas.length === 0, 'não executou');
-  eq(r.pendente, { tipo: 'confirmacao', intencao: 'semana.confirmar', slots: { p_plano: 9 }, pergunta: 'Vou confirmar o plano da semana. Confirma?' }, 'pendente');
+  ok(d.chamadas.length === 0 && d.acoes.executadas.length === 0, 'não executou');
+  eq(d.acoes.criadas, [{ intencao: 'semana.confirmar', args: { p_plano: 9 }, pergunta: 'Vou confirmar o plano da semana. Confirma?' }], 'ação gravada');
+  eq(r.pendente, { tipo: 'confirmacao', intencao: 'semana.confirmar', slots: { p_plano: 9 }, pergunta: 'Vou confirmar o plano da semana. Confirma?', acao_id: 71, expira_em: '2026-11-17T13:00:00Z' }, 'pendente');
   // plano da semana único: completa o id sozinho
   const d2 = deps({ intencao: 'semana.confirmar', slots: {}, confianca: 0.95 });
   const r2 = await processar('fecha a semana', d2);
   eq((r2.pendente as any).slots, { p_plano: 9 }, 'id completado');
 });
 
-Deno.test('"sim" com confirmação pendente: sem executar neste item (UX-16), pendente preservado; "não" cancela', async () => {
-  const pend = { tipo: 'confirmacao', intencao: 'semana.confirmar', slots: { p_plano: 9 }, pergunta: 'Vou confirmar. Confirma?' };
-  const turnos: Turno[] = [{ papel: 'leo', texto: 'confirma a semana' }, { papel: 'iara', texto: 'Vou confirmar. Confirma?', pendente: pend, at: new Date().toISOString() }];
+Deno.test('todo risco alto ou confirmacao "sim" do catálogo só grava pendente, nunca chama a RPC', async () => {
+  const altos = CATALOGO.filter((c) => c.risco === 'alto' || c.confirmacao === 'sim');
+  ok(altos.length >= 7, `catálogo tem ${altos.length} intenções de risco alto`);
+  const slotsOk: Record<string, Record<string, unknown>> = {
+    'semana.confirmar': { p_plano: 9 }, 'plano.confirmar': { p_id: 3 }, 'decisao.decidir': { p_id: 1, p_escolha: 'a' }, 'proposta.decidir': { p_id: 2, p_aceitar: true },
+    'plano.salvar': { p: { titulo: 'X' } }, 'meta.salvar_plano': { p: { plano_id: 3, horizonte: 'curto', dono: 'iara', titulo: 'Y' } }, 'meta.salvar': { p: { name: 'Carro', target_amount: 80000 } },
+  };
+  for (const c of altos) {
+    const d = deps({ intencao: c.slug, slots: slotsOk[c.slug] ?? {}, confianca: 0.95 });
+    const r = await processar('faz isso, 80000', d);
+    ok(d.chamadas.length === 0 && d.acoes.executadas.length === 0, `${c.slug} não executou`);
+    ok(r.tela?.executou !== true, `${c.slug} executou=false`);
+  }
+});
+
+Deno.test('(1) "sim" dentro dos 10 min executa a ação GRAVADA (status confirmada -> executada) e devolve desfazer', async () => {
+  const d = deps({ intencao: 'semana.confirmar', slots: { p_plano: 9 }, confianca: 0.95 });
+  const r1 = await processar('confirma a semana', d);
+  const turnos: Turno[] = [{ papel: 'leo', texto: 'confirma a semana' }, { papel: 'iara', texto: r1.fala, pendente: r1.pendente, at: new Date().toISOString() }];
+  const d2 = { ...deps({ intencao: 'fora', slots: {}, confianca: 1 }, {}, turnos), acoes: d.acoes };
+  const r = await processar('sim', d2);
+  eq(d.acoes.executadas, [71], 'executou a ação 71'); ok(d2.roteou === 0 && d2.chamadas.length === 0, 'sem IA e sem chamada direta');
+  eq(r.fala, 'Confirmei a semana: 4 itens entraram no seu dia.', 'fala'); eq(r.desfazer, { acao_id: 71, ate: '2026-11-17T13:10:00Z' }, 'desfazer'); ok(r.pendente === null, 'sem pendente');
+});
+
+Deno.test('(3) "sim" depois dos 10 min (ação expirada) não executa nada', async () => {
+  const pend = { tipo: 'confirmacao', intencao: 'semana.confirmar', slots: { p_plano: 9 }, pergunta: 'Vou confirmar. Confirma?', acao_id: 71 };
+  const turnos: Turno[] = [{ papel: 'iara', texto: 'Vou confirmar. Confirma?', pendente: pend, at: new Date().toISOString() }];
   const d = deps({ intencao: 'fora', slots: {}, confianca: 1 }, {}, turnos);
+  d.acoes = acoesFake({ expirada: true });
   const r = await processar('sim', d);
-  ok(d.chamadas.length === 0 && d.roteou === 0 && r.pendente?.tipo === 'confirmacao', 'sem execução nem IA');
-  const r2 = await processar('não', deps({ intencao: 'fora', slots: {}, confianca: 1 }, {}, turnos));
-  ok(r2.pendente === null, 'cancelado');
+  ok(d.acoes.executadas.length === 0 && d.chamadas.length === 0 && d.roteou === 0, 'nada executou');
+  eq(r.fala, 'Essa confirmação expirou, quer refazer?', 'fala'); ok(r.pendente === null, 'sem pendente');
+});
+
+Deno.test('"não" cancela a ação pendente; confirmação sem acao_id (legado) nunca executa', async () => {
+  const pend = { tipo: 'confirmacao', intencao: 'semana.confirmar', slots: { p_plano: 9 }, pergunta: 'x', acao_id: 71 };
+  const turnos: Turno[] = [{ papel: 'iara', texto: 'x', pendente: pend, at: new Date().toISOString() }];
+  const d = deps({ intencao: 'fora', slots: {}, confianca: 1 }, {}, turnos);
+  const r = await processar('não', d);
+  eq(d.acoes.canceladas, [71], 'cancelou'); eq(r.fala, 'Certo, não fiz nada.', 'fala'); ok(r.pendente === null, 'sem pendente');
+  const { acao_id: _, ...semId } = pend;
+  const d2 = deps({ intencao: 'fora', slots: {}, confianca: 1 }, {}, [{ papel: 'iara', texto: 'x', pendente: semId, at: new Date().toISOString() }]);
+  const r2 = await processar('sim', d2);
+  ok(d2.acoes.executadas.length === 0 && r2.fala.includes('expirou'), 'sem acao_id não executa');
+});
+
+Deno.test('"desfaz" é reconhecido em código (sem IA) e desfaz a última ação', async () => {
+  for (const f of ['desfaz', 'Desfaz isso', 'desfazer', 'volta atrás']) ok(pedidoDesfazer(f), f);
+  ok(!pedidoDesfazer('desfaz o plano do apartamento') && !pedidoDesfazer('não'), 'só a frase curta');
+  const d = deps({ intencao: 'fora', slots: {}, confianca: 1 });
+  const r = await processar('desfaz', d);
+  ok(d.acoes.desfeitas === 1 && d.roteou === 0, 'chamou desfazerUltima sem IA'); eq(r.fala, 'Desfiz a leitura. Voltou para a página 120.', 'fala');
+});
+
+Deno.test('risco baixo executa e devolve desfazer {acao_id, ate} quando o banco registra a ação', async () => {
+  const d = deps({ intencao: 'leitura.registrar', slots: { p_pagina: 150 }, confianca: 0.95 },
+    { acao_id: 12, status: 'executada', resultado: { fala: 'Anotei: página 150.' }, desfazer: { acao_id: 12, ate: '2026-11-17T13:10:00Z' } });
+  const r = await processar('li até a página 150', d);
+  eq(r.fala, 'Anotei: página 150.', 'fala'); eq(r.desfazer, { acao_id: 12, ate: '2026-11-17T13:10:00Z' }, 'desfazer');
+  // o banco manda pendente (política única): vira confirmação, não execução
+  const d2 = deps({ intencao: 'peso.registrar', slots: { p_kg: 82.4 }, confianca: 0.9 }, { acao_id: 13, status: 'pendente', pergunta: 'Confirma?' });
+  const r2 = await processar('registra 82,4 quilos', d2);
+  ok(r2.pendente?.tipo === 'confirmacao' && r2.pendente?.acao_id === 13 && r2.tela?.executou === false, 'banco exigiu sim');
 });
 
 Deno.test('erro da RPC vira fala, nunca exceção', async () => {

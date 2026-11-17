@@ -15,7 +15,20 @@ export type Contexto = {
 };
 export type Rota = { intencao: string; slots: Record<string, unknown>; confianca: number; pergunta: string | null; opcoes: string[] };
 export type Destino = { via: 'rpc'; schema: string | null; nome: string } | { via: 'fn'; funcao: string; acao: string };
-export type Resposta = { fala: string; tela: Record<string, unknown> | null; pendente: Record<string, unknown> | null };
+export type Desfazer = { acao_id: number; ate: string };
+export type Resposta = { fala: string; tela: Record<string, unknown> | null; pendente: Record<string, unknown> | null; desfazer?: Desfazer | null };
+/** Retorno das RPCs hub_acao_* (UX-16). status: pendente | executada | cancelada | expirada | desfeita | nao_encontrada | erro. */
+export type AcaoInfo = {
+  acao_id?: number; status: string; intencao?: string; args?: Record<string, unknown>; pergunta?: string | null; expira_em?: string;
+  resultado?: unknown; desfazer?: Desfazer | null; fala?: string | null; erro?: string; requer_sim?: boolean;
+};
+/** Acesso às ações pendentes/executadas (no index.ts: RPCs hub_acao_* chamadas COM o JWT do usuário). */
+export type Acoes = {
+  criar: (intencao: string, args: Record<string, unknown>, pergunta: string) => Promise<AcaoInfo>;
+  confirmar: (id: number) => Promise<AcaoInfo>;
+  cancelar: (id: number) => Promise<AcaoInfo>;
+  desfazerUltima: () => Promise<{ ok: boolean; fala: string }>;
+};
 
 export const LIMIAR = 0.6;
 export const JANELA_MIN = 30;
@@ -228,6 +241,11 @@ export function corpoFn(destino: { funcao: string; acao: string }, args: Record<
   return { acao: destino.acao, ...args };
 }
 
+/** Política (UX-16): risco alto ou confirmacao 'sim' só executa depois de "sim" (linha confirmada em core.acoes_pendentes). */
+export const exigeSim = (i: Pick<Intencao, 'risco' | 'confirmacao'>) => i.risco === 'alto' || i.confirmacao === 'sim';
+/** Intenções só de leitura: não geram ação registrada. */
+export const SO_LEITURA = new Set(['planos.status', 'metas.status', 'decisoes.status', 'propostas.status']);
+
 export type Plano =
   | { tipo: 'resposta'; resposta: Resposta }
   | { tipo: 'confirmar'; resposta: Resposta }
@@ -271,7 +289,7 @@ export function planejar(rota: Rota, catalogo: Intencao[], ctx: Contexto, textoL
     const q = rota.pergunta ?? (idCandidatos(intencao.slug, ctx) === 0 ? `Não achei ${rotulo(alvo)} aberto agora. Pode dizer qual?` : `Qual é ${rotulo(alvo)}?${aviso}`);
     return pergunta(q, rota.opcoes);
   }
-  if (intencao.risco === 'alto' || intencao.confirmacao === 'sim') {
+  if (exigeSim(intencao)) {
     const q = `Vou ${descreverAcao(intencao.slug, v.args)}. Confirma?`;
     return { tipo: 'confirmar', resposta: { fala: q, tela: { intencao: intencao.slug, risco: intencao.risco, executou: false }, pendente: { tipo: 'confirmacao', intencao: intencao.slug, slots: v.args, pergunta: q } } };
   }
@@ -330,6 +348,7 @@ export function falaExecucao(intencao: Intencao, args: Record<string, unknown>, 
     case 'agenda.compromisso_salvar':
       return `Marquei "${p.titulo}" ${diaSemana(p.data)}, ${dataBR(p.data)}${p.inicio ? ` às ${horaBR(p.inicio)}` : ''}${p.local ? `, ${p.local}` : ''}.`;
     case 'agenda.compromisso_cancelar': return `Cancelei "${ctx.compromissos?.find((i) => i.id === args.p_id)?.titulo ?? 'o compromisso'}".`;
+    case 'semana.confirmar': return typeof resultado === 'number' && resultado > 0 ? `Confirmei a semana: ${resultado} ${resultado === 1 ? 'item entrou' : 'itens entraram'} no seu dia.` : 'A semana já estava confirmada.';
     case 'semana.item': return args.p_incluido ? 'Voltei o item para o plano da semana.' : 'Tirei o item do plano da semana.';
     case 'semana.item_editar': return `Passei o item para ${dataBR(String(args.p_data))} às ${horaBR(String(args.p_hora))}.`;
     case 'lancamento.categorizar': return `Categorizei ${(args.p_ids as unknown[]).length} lançamento(s) como ${ctx.categorias?.find((c) => c.id === args.p_category)?.nome ?? args.p_category}.`;
@@ -346,13 +365,18 @@ export function falaExecucao(intencao: Intencao, args: Record<string, unknown>, 
   }
 }
 
-// ---------- resposta a uma confirmação pendente (a execução após "sim" e o desfazer vêm no UX-16) ----------
+// ---------- resposta a uma confirmação pendente e "desfaz" (UX-16) ----------
 
 export function respostaCurta(texto: string): 'sim' | 'nao' | null {
   const t = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, '').trim();
   if (/^(sim|pode|pode sim|confirmo|confirma|isso|ok|claro|manda ver)$/.test(t)) return 'sim';
   if (/^(nao|nao pode|cancela|deixa|esquece)$/.test(t)) return 'nao';
   return null;
+}
+/** "desfaz" reconhecido em código, antes do roteador (nenhuma IA). */
+export function pedidoDesfazer(texto: string): boolean {
+  const t = texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z ]/g, '').trim();
+  return /^(desfaz|desfazer|desfaz isso|desfaz essa|desfaz ai|pode desfazer|volta atras|anula|anula isso)$/.test(t);
 }
 export function ultimoPendente(turnos: Turno[], agora = Date.now()): Record<string, any> | null {
   const t = [...turnos].reverse().find((x) => x.papel === 'iara');
@@ -374,30 +398,90 @@ export function estimarRotaUsd(systemChars: number, usuarioChars: number, saidaT
 export type Deps = {
   catalogo: Intencao[]; turnos: Turno[]; contexto: Contexto; hoje: string;
   rotear: (system: string, usuario: string) => Promise<unknown>;
-  chamar: (destino: Destino, args: Record<string, unknown>, textoLeo: string) => Promise<unknown>;
+  chamar: (destino: Destino, args: Record<string, unknown>, textoLeo: string, intencao: string) => Promise<unknown>;
+  acoes: Acoes;
 };
 export type Saida = Resposta & { intencao: string | null; slots: Record<string, unknown> | null; rota?: Rota };
 
+const MSG_ERRO = 'Não consegui fazer isso agora. Tente de novo ou abra a tela do módulo.';
+const MSG_EXPIROU = 'Essa confirmação expirou, quer refazer?';
+
+/** Retorno de hub_acao_pedir (acao_id + status) ou de uma RPC comum: separa resultado, desfazer e pendência. */
+export function desempacotar(r: unknown): { resultado: unknown; desfazer: Desfazer | null; acao: AcaoInfo | null } {
+  if (r && typeof r === 'object' && !Array.isArray(r) && 'acao_id' in r && 'status' in r) {
+    const a = r as AcaoInfo;
+    if (a.status === 'erro') throw new Error(a.erro ?? 'erro');
+    return { resultado: a.resultado ?? null, desfazer: a.desfazer ?? null, acao: a };
+  }
+  return { resultado: r, desfazer: null, acao: null };
+}
+
+function pendenteConfirmacao(intencao: string, slots: Record<string, unknown>, pergunta: string, acao?: AcaoInfo | null): Record<string, unknown> {
+  return { tipo: 'confirmacao', intencao, slots, pergunta, ...(acao?.acao_id != null ? { acao_id: acao.acao_id, expira_em: acao.expira_em } : {}) };
+}
+
 export async function processar(texto: string, d: Deps, opts: { dryRun?: boolean } = {}): Promise<Saida> {
+  // "desfaz": desfaz a última ação executada nos últimos 10 min (sem IA).
+  if (!opts.dryRun && pedidoDesfazer(texto)) {
+    const r = await d.acoes.desfazerUltima();
+    return { fala: limparFala(r.fala), tela: { intencao: 'acao.desfazer', executou: r.ok }, pendente: null, desfazer: null, intencao: 'acao.desfazer', slots: null };
+  }
   const pend = ultimoPendente(d.turnos);
   const curta = respostaCurta(texto);
-  if (pend?.tipo === 'confirmacao' && curta) {
-    if (curta === 'nao') return { fala: 'Certo, não fiz nada.', tela: null, pendente: null, intencao: null, slots: null };
-    return { fala: limparFala('Entendi o sim, mas confirmar por aqui ainda não está ligado. Confirme na tela do módulo.'), tela: null, pendente: pend, intencao: pend.intencao ?? null, slots: pend.slots ?? null };
+  if (!opts.dryRun && pend?.tipo === 'confirmacao' && curta) {
+    const id = Number(pend.acao_id);
+    const base = { intencao: pend.intencao ?? null, slots: pend.slots ?? null };
+    if (!Number.isFinite(id)) return { fala: MSG_EXPIROU, tela: null, pendente: null, ...base };
+    try {
+      if (curta === 'nao') {
+        await d.acoes.cancelar(id);
+        return { fala: 'Certo, não fiz nada.', tela: null, pendente: null, intencao: null, slots: null };
+      }
+      const r = await d.acoes.confirmar(id);
+      if (r.status !== 'executada') {
+        const fala = r.status === 'erro' ? MSG_ERRO : r.status === 'expirada' ? MSG_EXPIROU : (r.fala ?? MSG_EXPIROU);
+        return { fala: limparFala(fala), tela: r.status === 'erro' ? { intencao: pend.intencao, executou: false, erro: String(r.erro ?? '').slice(0, 200) } : null, pendente: null, ...base };
+      }
+      const intencao = d.catalogo.find((c) => c.slug === (r.intencao ?? pend.intencao));
+      const args = (r.args ?? pend.slots ?? {}) as Record<string, unknown>;
+      const fala = intencao ? falaExecucao(intencao, args, r.resultado, d.contexto) : 'Pronto, feito.';
+      return { fala, tela: { intencao: intencao?.slug, risco: intencao?.risco, executou: true, resultado: r.resultado }, pendente: null, desfazer: r.desfazer ?? null, ...base, slots: args };
+    } catch (e) {
+      console.error('iara-comando confirmar', e);
+      return { fala: MSG_ERRO, tela: { intencao: pend.intencao, executou: false, erro: String((e as Error).message ?? e).slice(0, 200) }, pendente: null, ...base };
+    }
   }
   const system = montarSystem(d.catalogo);
   const usuario = montarUsuario(texto, d.hoje, diaSemana(d.hoje), d.turnos, d.contexto);
   const rota = normalizarRota(await d.rotear(system, usuario), d.catalogo);
   const plano = planejar(rota, d.catalogo, d.contexto, texto, d.turnos.filter((t) => t.papel === 'leo').map((t) => t.texto));
   const base = { intencao: resolverSlug(rota, d.catalogo), slots: rota.slots };
+  if (plano.tipo === 'confirmar') {
+    // Grava a ação pendente (expira em 10 min); o "sim" seguinte executa a ação GRAVADA, não o que o modelo disser de novo.
+    const p = plano.resposta.pendente as { intencao: string; slots: Record<string, unknown>; pergunta: string };
+    if (opts.dryRun) return { ...plano.resposta, ...base, rota };
+    try {
+      const acao = await d.acoes.criar(p.intencao, p.slots, p.pergunta);
+      return { ...plano.resposta, pendente: pendenteConfirmacao(p.intencao, p.slots, p.pergunta, acao), ...base, rota };
+    } catch (e) {
+      console.error('iara-comando criar acao', e);
+      return { fala: MSG_ERRO, tela: { intencao: p.intencao, executou: false }, pendente: null, ...base, rota };
+    }
+  }
   if (plano.tipo !== 'executar') return { ...plano.resposta, ...base, rota };
+  if (exigeSim(plano.intencao)) throw new Error(`risco alto sem confirmação: ${plano.intencao.slug}`); // nunca executa sem "sim" gravado
   if (opts.dryRun) return { fala: '(simulação)', tela: { destino: plano.destino, args: plano.args }, pendente: null, ...base, rota };
   try {
-    const resultado = await d.chamar(plano.destino, plano.args, texto);
+    const bruto = await d.chamar(plano.destino, plano.args, texto, plano.intencao.slug);
+    const { resultado, desfazer, acao } = desempacotar(bruto);
+    if (acao?.status === 'pendente') { // o banco exigiu "sim" (política única): vira confirmação, não execução
+      const q = acao.pergunta ?? `Vou ${descreverAcao(plano.intencao.slug, plano.args)}. Confirma?`;
+      return { fala: limparFala(q), tela: { intencao: plano.intencao.slug, risco: plano.intencao.risco, executou: false }, pendente: pendenteConfirmacao(plano.intencao.slug, plano.args, q, acao), ...base, slots: plano.args, rota };
+    }
     const fala = falaExecucao(plano.intencao, plano.args, resultado, d.contexto);
-    return { fala, tela: { intencao: plano.intencao.slug, risco: plano.intencao.risco, executou: true, resultado }, pendente: null, ...base, slots: plano.args, rota };
+    return { fala, tela: { intencao: plano.intencao.slug, risco: plano.intencao.risco, executou: true, resultado }, pendente: null, desfazer, ...base, slots: plano.args, rota };
   } catch (e) {
     console.error('iara-comando executar', plano.intencao.slug, e);
-    return { fala: 'Não consegui fazer isso agora. Tente de novo ou abra a tela do módulo.', tela: { intencao: plano.intencao.slug, executou: false, erro: String((e as Error).message ?? e).slice(0, 200) }, pendente: null, ...base, rota };
+    return { fala: MSG_ERRO, tela: { intencao: plano.intencao.slug, executou: false, erro: String((e as Error).message ?? e).slice(0, 200) }, pendente: null, ...base, rota };
   }
 }
