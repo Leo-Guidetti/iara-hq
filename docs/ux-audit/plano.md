@@ -319,7 +319,7 @@ Antes de editar `airton-ai` (UX-03, UX-18): comparar a versão no ar com o repo 
 | UX-01 | supabase-dev | — | (1) CI verde, migration só aditiva. (2) `core.intencoes` tem ≥ 7 linhas e todo `rpc` existe em `pg_proc`. (3) `authenticated` só tem `select`. | P | Médio (habilita a onda 2) | % das ações principais do hub com linha no catálogo; alvo 100% ao fim da onda 2 | US$ 0 |
 | UX-02 | ambos | UX-01 | (1) `hub_leitura_registrar(120)` cria 1 linha em `sabia.leituras` e o livro em leitura fica com `pagina_atual = 120`. (2) `hub_livros()` devolve `meta_ano`, `lidos_ano` e `paginas_dia`. (3) `/aprender` mostra o bloco, com estados vazio e erro. (4) Intenções `leitura.registrar` e `livro.salvar` no catálogo. | M | Alto (fecha o plano 5 no curto prazo) | Dias por semana com linha em `sabia.leituras`; alvo ≥ 5 | US$ 0 |
 | UX-03 | ambos | UX-01 | (1) Criar meta pela tela grava em `airton.goals`. (2) `goals_status()` devolve aporte = (alvo − atual) ÷ meses. (3) Duas metas cuja soma de aportes passa da poupança prevista vêm com `conflito = true`. (4) "Como estão minhas metas?" no chat usa a ferramenta `goals` (linha em `airton.ai_usage`). | M | Alto (imóvel e carro saem do zero) | Metas ativas com prazo e aporte calculado; alvo ≥ 2 | US$ 0 novo (chat já existente) |
-| UX-04 | hub-ui | — (o Leo precisa instalar o app no iPhone e permitir avisos) | (1) `/manifest.webmanifest` responde 200. (2) Ativar avisos cria 1 linha em `airton.push_subscriptions`. (3) `airton-notify` com `action: 'test'` gera linha em `notify_log` com `sent ≥ 1`. (4) Tocar no aviso abre a rota do `link`. | M | Alto (pré-requisito de toda proatividade) | `sent` ÷ envios em `notify_log` ≥ 90% em 7 dias | US$ 0 |
+| UX-04 | hub-ui (entregue pelo PR #35 em 15/11; falta só verificar os critérios) | — (o Leo precisa instalar o app no iPhone e permitir avisos) | (1) `/manifest.webmanifest` responde 200. (2) Ativar avisos cria 1 linha em `airton.push_subscriptions`. (3) `airton-notify` com `action: 'test'` gera linha em `notify_log` com `sent ≥ 1`. (4) Tocar no aviso abre a rota do `link`. | M | Alto (pré-requisito de toda proatividade) | `sent` ÷ envios em `notify_log` ≥ 90% em 7 dias | US$ 0 |
 | UX-05 | ambos | — | (1) Depois do cron, `core.briefings.fala` do dia não é nulo, não tem `*` nem `#` e tem até 70 palavras. (2) Custo de `briefing-manha` ≤ US$ 0,015 por execução em `core.ai_usage`. (3) "Ouvir" lê o texto, para no segundo toque e preenche `lido_em`. | P | Médio (primeira saída falada) | Dias por semana com `lido_em` preenchido; alvo ≥ 5 | ~US$ 0,04 (≈ 120 tokens de saída `smart` por dia) |
 | UX-06 | ambos | — | (1) Rodar o job duas vezes não duplica item. (2) Ignorar um alerta tira o item da contagem do badge até a janela seguinte. (3) `/hoje` deixa de fazer as 9 consultas de `lib/alerts.ts`. | M | Médio | Badge da ClaudIA zerado em ≥ 3 dias por semana | US$ 0 |
 | UX-07 | ambos | UX-01 | (1) Categorizar pela tela reduz `review_counts`. (2) O número de `/hoje` bate com o tamanho da lista. (3) Intenção `lancamento.categorizar` no catálogo. | M | Médio | Pendentes em `review_counts` ≤ 5 ao fim de cada semana | US$ 0 (usa a sugestão que o `categorize` já grava) |
@@ -395,10 +395,35 @@ plano de prática ficam em `fast`; progresso, conflito, gatilhos, avisos e toda 
 
 ## Decisões do Leo
 
-| # | Decisão que só o Leo pode tomar | Recomendação | Bloqueia |
-| --- | --- | --- | --- |
-| D1 | **Quem é dono do que não tem agente** (carreira, hobbies). Opções: a IARA guarda o plano e a SabIA cuida das habilidades; ou um agente novo. | IARA guarda, SabIA executa habilidades e prática, AIrton cuida do fôlego financeiro. Sem agente novo. | UX-08, UX-17 |
-| D2 | **Alvos reais e ordem de prioridade** dos planos que disputam o mesmo dinheiro e o mesmo tempo (imóvel, carro, instrumento, carreira): valor, prazo e quem cede primeiro. | Informar valor e prazo dos 5 planos de teste e uma ordem de 1 a 5; o painel só entra onde a ordem não resolve. | UX-11, UX-13 |
-| D3 | **Autonomia e interrupções**: o que a IARA executa sem perguntar, o que exige "sim", quantos avisos por dia e em que horário não falar. | Registros sem perguntar, com desfazer; dinheiro, treino e plano sempre com "sim"; 3 avisos por dia; silêncio das 22h às 7h. | UX-16, UX-20 |
-| D4 | **Canal e provedor de voz**: começar pelo Atalho/Siri (custo zero) antes da voz em tempo real? Qual provedor, com criação de chave e teto mensal? | Atalho primeiro; protótipo de 1 dia nos dois provedores só depois de a UX-19 estar em uso; teto de US$ 5/mês para voz. | UX-19, UX-21 |
-| D5 | **Persona única**: a IARA passa a ser a única voz e os especialistas viram origem do dado, ou cada agente mantém voz própria e chat próprio? | IARA única em todo canal de conversa; as abas por app continuam como telas de consulta. | UX-15 |
+Respostas do Leo em 17/11/2026. D1, D4 e D5 estão decididas; D2 e D3 foram reescritas em linguagem direta e seguem em aberto.
+
+| # | Decisão | Situação | Resposta do Leo | Bloqueia |
+| --- | --- | --- | --- | --- |
+| D1 | Quem é dono do que não tem agente (carreira, hobbies). | **Decidida** | Fica com a IARA, sem agente novo. Ela é a dona desses planos e das metas deles e chama a SabIA (conteúdo, registro de prática) e o AIrton (fôlego financeiro) quando precisar. | — (libera UX-08, UX-17) |
+| D2 | O que fazer quando dois planos não cabem juntos no mesmo dinheiro ou no mesmo tempo. | **Em aberto** | Ver "D2 em uma frase" abaixo. | UX-11, UX-13 |
+| D3 | Quanto a IARA faz sozinha e quantas vezes por dia ela pode te chamar. | **Em aberto** | Ver "D3 em três perguntas" abaixo. | UX-16, UX-20 |
+| D4 | Canal e provedor de voz. | **Decidida** | Segue a recomendação: Atalho/Siri primeiro; protótipo de 1 dia nos dois provedores de voz em tempo real só depois de a UX-19 estar em uso; teto de US$ 5/mês para voz. A criação da chave do provedor escolhido continua sendo um pedido ao Leo na hora da UX-21. | — (libera UX-19; UX-21 espera o protótipo) |
+| D5 | Persona única. | **Decidida** | A IARA é o canal único de conversa e chama os outros agentes quando precisar de mais refino. As abas por app continuam como telas de consulta. | — (libera UX-15) |
+
+Efeito de D1 no modelo (§3.4): nos planos de carreira e de hobbies, o `dono` das metas é `iara`; onde a tabela mostra SabIA
+ou AIrton como donos nesses dois planos, leia "apoio chamado pela IARA". A UX-17 continua criando o registro de prática na
+SabIA, mas a meta que ele alimenta é da IARA.
+
+**D2 em uma frase.** Exemplo: você quer um apartamento em 2030 e um carro em 2027, e o que você guarda por mês não paga os
+dois nesses prazos. Alguém precisa dizer qual dos dois atrasa. Proposta para você não ter que decidir nada agora:
+
+| Ponto | Padrão proposto |
+| --- | --- |
+| Valor e prazo de cada plano | A IARA pergunta na hora em que você cria o plano ("quanto?" e "até quando?"). Nada a preencher antes. |
+| Dois planos que não cabem juntos | A IARA nunca escolhe sozinha: mostra o conflito com a opinião de cada agente (o painel) e você escolhe na hora. |
+| Ordem fixa de prioridade | Não existe por padrão. Se um dia você quiser ("o imóvel sempre ganha"), é só dizer e ela passa a aplicar sem perguntar. |
+
+Basta um "ok" para fechar D2 assim.
+
+**D3 em três perguntas.** Cada uma já vem com a sugestão; responda "ok" ou troque o que quiser.
+
+| Pergunta | Sugestão |
+| --- | --- |
+| O que a IARA pode fazer sem te perguntar? | Só anotações: peso, páginas lidas, prática, marcar algo como feito, adiar. Ela avisa o que anotou e "desfaz" vale por 10 minutos. |
+| O que ela só faz depois de você dizer "sim"? | Tudo que mexe em dinheiro, em treino, em um plano ou meta, e confirmar a semana inteira. |
+| Quantas vezes por dia ela pode te chamar, e em que horário fica calada? | No máximo 3 avisos por dia; silêncio das 22h às 7h. |
