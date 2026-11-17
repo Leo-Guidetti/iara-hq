@@ -39,7 +39,7 @@ export default async function Hoje() {
   const me = (await currentUser())!
   const raw = me.sb as unknown as SupabaseClient
   const today = spDate()
-  const [sessoes, alertas, pend, mes, iara, sab, dia, semana, planosRaw] = await Promise.all([
+  const [sessoes, alertas, pend, mes, iara, sab, dia, semana, planosRaw, decRaw] = await Promise.all([
     seguro(me.sb.from('plan_sessions').select('id, title, status, duration_min').eq('local_date', today).order('id')),
     seguro(raw.rpc('hub_alertas')),
     seguro(raw.schema('airton').rpc('review_counts', { p_user: me.user.id })),
@@ -49,7 +49,9 @@ export default async function Hoje() {
     seguro(raw.rpc('hub_dia')),
     seguro(raw.rpc('hub_semana_hoje')),
     seguro(raw.rpc('hub_planos')),
+    seguro(raw.rpc('hub_decisoes')),
   ])
+  const decAbertas = Array.isArray(decRaw) ? decRaw.length : 0
   // Planos: só as metas fora do ritmo (atrasadas) aparecem; no ritmo, nada.
   const atrasadas: Linha[] = []
   if (Array.isArray(planosRaw)) {
@@ -151,6 +153,12 @@ export default async function Hoje() {
       </div>
 
       <Notificacoes compacto />
+      {decAbertas > 0 && (
+        <Link href="/planos#decisoes" className="card ai row between" style={{ textDecoration: 'none' }}>
+          <span className="small"><strong>{plural(decAbertas, 'decisão espera', 'decisões esperam')} você</strong> · os agentes têm opinião</span>
+          <span className="small" style={{ color: 'var(--accent)' }}>Ver →</span>
+        </Link>
+      )}
       <section className="card ai brief-card">
         <span className="tag ai">Briefing do dia · IARA</span>
         <div className="row between" style={{ marginTop: 10 }}>
