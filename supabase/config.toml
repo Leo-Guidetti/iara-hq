@@ -53,5 +53,8 @@ verify_jwt = false   # GET do feed iCal autentica pelo token; POST sync pelo x-i
 [functions.iara-semana]
 verify_jwt = false   # autentica sozinha: x-iara-cron do pg_cron ou JWT de core.members (_shared/common.ts)
 
+[functions.iara-plano]
+verify_jwt = false   # autentica sozinha: só JWT de core.members (_shared/common.ts)
+
 [functions.hub-senha]
 verify_jwt = false   # autentica sozinha: só o e-mail do Leo + código do secret HUB_CADASTRO_CODIGO
