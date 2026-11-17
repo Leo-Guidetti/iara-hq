@@ -156,6 +156,9 @@ export type Database = {
       hub_livros: { Args: never; Returns: Json }
       hub_leitura_registrar: { Args: { p_pagina: number; p_livro?: number; p_minutos?: number }; Returns: Json }
       hub_livro_salvar: { Args: { p: Json }; Returns: Json }
+      hub_planos: { Args: never; Returns: Json }
+      hub_plano_salvar: { Args: { p: Json }; Returns: Json }
+      hub_meta_salvar: { Args: { p: Json }; Returns: Json }
       ingest_health: { Args: { p_activities?: Json; p_daily?: Json; p_token: string }; Returns: Json }
       ingest_weight: { Args: { p_measured_at?: string; p_source?: string; p_token: string; p_weight_kg: number }; Returns: Json }
       strava_disconnect: { Args: never; Returns: undefined }
