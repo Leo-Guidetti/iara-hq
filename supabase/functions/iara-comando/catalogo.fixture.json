@@ -397,5 +397,39 @@
         ],
         "confirmacao": "repetir",
         "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_pratica_registrar",
+        "slug": "pratica.registrar",
+        "agent": "sabia",
+        "risco": "baixo",
+        "slots": {
+            "p_minutos": "int",
+            "p_habilidade": "text?",
+            "p_nota": "text?"
+        },
+        "exemplos": [
+            "pratiquei violão 20 minutos",
+            "toquei 30 min hoje",
+            "estudei inglês por 45 minutos"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": "public.hub_pratica_desfazer"
+    },
+    {
+        "rpc": "public.hub_habilidade_salvar",
+        "slug": "habilidade.salvar",
+        "agent": "sabia",
+        "risco": "medio",
+        "slots": {
+            "p": "jsonb{id?:bigint,nome:text,tipo?:text(instrumento|carreira|idioma|outro),nivel?:text,objetivo?:text,minutos_semana_alvo?:int}"
+        },
+        "exemplos": [
+            "quero praticar violão 60 minutos por semana",
+            "cria a habilidade inglês, meta de 90 minutos por semana",
+            "arquiva a habilidade violão"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
     }
 ]

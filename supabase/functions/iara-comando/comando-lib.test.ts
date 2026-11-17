@@ -224,3 +224,16 @@ Deno.test('(5) custo da rota <= US$ 0,001 por comando (com e sem cache)', () => 
   ok(comCache <= 0.001 && semCache <= 0.001, `custo ${semCache}`);
   eq(sys, montarSystem([...CATALOGO].reverse()), 'system estável (independe da ordem do banco) -> cacheável');
 });
+
+Deno.test('UX-17: "pratiquei violão 20 minutos" chama hub_pratica_registrar e devolve o desfazer; "toquei 30 min hoje" sem habilidade', async () => {
+  const d = deps({ intencao: 'pratica.registrar', slots: { p_minutos: 20, p_habilidade: 'violão' }, confianca: 0.95 },
+    { acao_id: 21, status: 'executada', resultado: { pratica_id: 5, fala: 'Anotei: 20 min de violão. Faltam 40 para a meta da semana.' }, desfazer: { acao_id: 21, ate: '2026-11-17T13:10:00Z' } });
+  const r = await processar('pratiquei violão 20 minutos', d);
+  eq(d.chamadas, [{ destino: { via: 'rpc', schema: null, nome: 'hub_pratica_registrar' }, args: { p_minutos: 20, p_habilidade: 'violão' } }], 'chamada');
+  eq(r.fala, 'Anotei: 20 min de violão. Faltam 40 para a meta da semana.', 'fala'); eq(r.desfazer, { acao_id: 21, ate: '2026-11-17T13:10:00Z' }, 'desfazer');
+  const d2 = deps({ intencao: 'pratica.registrar', slots: { p_minutos: 30 }, confianca: 0.9 }, { fala: 'Anotei: 30 min de violão.' });
+  await processar('toquei 30 min hoje', d2);
+  eq(d2.chamadas[0].args, { p_minutos: 30 }, 'habilidade opcional');
+  const c = CATALOGO.find((x) => x.slug === 'pratica.registrar')!;
+  ok(c.risco === 'baixo' && c.confirmacao === 'nenhuma' && c.desfazer_rpc === 'public.hub_pratica_desfazer', 'política da intenção');
+});

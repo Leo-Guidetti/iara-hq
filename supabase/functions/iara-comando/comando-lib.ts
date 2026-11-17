@@ -33,7 +33,7 @@ export type Acoes = {
 export const LIMIAR = 0.6;
 export const JANELA_MIN = 30;
 export const ROTAS_ESPECIAIS = ['pergunta', 'fora'] as const;
-export const MENU_FORA = 'Posso anotar peso ou leitura, criar compromisso, marcar item como feito, tratar lançamentos, falar dos planos ou das finanças. O que você quer?';
+export const MENU_FORA = 'Posso anotar peso, leitura ou prática, criar compromisso, marcar item como feito, tratar lançamentos, falar dos planos ou das finanças. O que você quer?';
 
 // ---------- prompt do roteador (system FIXO e cacheado; a data vai na mensagem do usuário) ----------
 
@@ -340,6 +340,7 @@ export function falaExecucao(intencao: Intencao, args: Record<string, unknown>, 
   switch (intencao.slug) {
     case 'peso.registrar': return `Anotei ${nomeKg(args.p_kg)} kg.`;
     case 'leitura.registrar': return typeof r.fala === 'string' && r.fala ? r.fala : `Anotei: página ${args.p_pagina}.`;
+    case 'pratica.registrar': return typeof r.fala === 'string' && r.fala ? r.fala : `Anotei: ${args.p_minutos} min${args.p_habilidade ? ` de ${args.p_habilidade}` : ''}.`;
     case 'casa.item_status': {
       const t = ctx.itens?.find((i) => i.id === args.p_id)?.titulo ?? 'o item';
       return args.p_status === 'adiado' ? `Adiei "${t}"${args.p_adiar_para ? ` para ${dataBR(String(args.p_adiar_para))}` : ' para amanhã'}.` : `Marquei "${t}" como ${args.p_status}.`;

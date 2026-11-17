@@ -8,6 +8,7 @@
 // Sábado = deep dive; domingo = recap (só a orquestradora, sem busca).
 // Chamada pelo pg_cron (core_private.call_function) ou pelo app com { "force": true }.
 import { agoraSP, authenticate, CORS, DIAS, fecharRun, iniciarRun, json, perfis, sql } from './_shared/common.ts';
+import { HOBBY_SCHEMA, HOBBY_SYSTEM, MAX_TOKENS_HOBBY, montarPromptHobby, normalizarPlano } from './hobby-lib.ts';
 import { anthropic, anthropicJson, comBusca, extrairJson, geminiBusca, hasGemini, MODELS, normalizar, textOf } from './_shared/ai.ts';
 const FORMATOS = new Set([
   'artigo',
@@ -58,6 +59,44 @@ Deno.serve(async (req)=>{
   });
 });
 async function gerar(userId, config, force) {
+  await gerarTrilha(userId, config, force);
+  // UX-17: no domingo, depois do recap, o plano de prática da semana de cada habilidade ativa (falha aqui não afeta a trilha).
+  if (agoraSP().dow === 0) await gerarHobbies(userId, agoraSP().data);
+}
+/** Plano de prática da semana: 1 chamada `fast` (Haiku, effort low, structured outputs) por habilidade ativa ainda sem plano
+ *  (até 4). Idempotente por usuário/semana/habilidade: hobby_pendentes só devolve quem não tem item na trilha 'hobby' do dia.
+ *  Sem habilidade ativa: nenhuma chamada e nenhum run. Custo: ~US$ 0,0003 por habilidade (teto ~US$ 0,002 na semana). */
+async function gerarHobbies(userId, data) {
+  let run = null;
+  try {
+    const [r] = await sql`select sabia.hobby_pendentes(${userId}, ${data}::date) as lista`;
+    const pendentes = r?.lista ?? [];
+    if (!pendentes.length) return;
+    run = await iniciarRun('sabia', userId, 'trilha_hobby', { data, habilidades: pendentes.length });
+    const gravados = [], falhas = [];
+    for (const h of pendentes) {
+      try {
+        const saida = await anthropicJson({
+          model: MODELS.fast,
+          max_tokens: MAX_TOKENS_HOBBY,
+          system: HOBBY_SYSTEM,
+          messages: [{ role: 'user', content: montarPromptHobby(h, data) }],
+          output_config: { effort: 'low', format: { type: 'json_schema', schema: HOBBY_SCHEMA } }
+        }, { run, feature: 'trilha-hobby', papel: 'worker' });
+        const plano = normalizarPlano(saida);
+        const [g] = await sql`select sabia.hobby_plano_gravar(${userId}, ${data}::date, ${h.id}, ${sql.json(plano)}, ${run.id}) as item_id`;
+        gravados.push({ habilidade: h.nome, item_id: g.item_id });
+      } catch (e) {
+        falhas.push(`${h.nome}: ${String(e).slice(0, 160)}`);
+      }
+    }
+    await fecharRun(run, falhas.length && !gravados.length ? 'erro' : 'ok', { output: { data, gravados, falhas }, erro: falhas.length && !gravados.length ? falhas.join(' | ') : undefined });
+  } catch (e) {
+    if (run) await fecharRun(run, 'erro', { erro: String(e), descartado: true });
+    else console.warn(`[sabia] plano de prática falhou: ${String(e).slice(0, 200)}`);
+  }
+}
+async function gerarTrilha(userId, config, force) {
   const { data, dow } = agoraSP();
   const tipo = dow === 6 ? 'deep_dive' : dow === 0 ? 'recap' : 'diaria';
   // Pedido do Leo (09/11): até 40 min por dia; a imersão do sábado tem ~60 min no tema mais quente da semana.
