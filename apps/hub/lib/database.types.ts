@@ -64,8 +64,8 @@ export type Database = {
         Relationships: []
       }
       ingest_tokens: {
-        Row: { created_at: string; id: number; label: string; last_used_at: string | null; revoked_at: string | null; token_hash: string; user_id: string }
-        Insert: { created_at?: string; id?: never; label?: string; last_used_at?: string | null; revoked_at?: string | null; token_hash: string; user_id?: string }
+        Row: { created_at: string; escopos: string[]; id: number; label: string; last_used_at: string | null; revoked_at: string | null; token_hash: string; user_id: string }
+        Insert: { created_at?: string; escopos?: string[]; id?: never; label?: string; last_used_at?: string | null; revoked_at?: string | null; token_hash: string; user_id?: string }
         Update: Partial<Database["public"]["Tables"]["ingest_tokens"]["Insert"]>
         Relationships: []
       }
@@ -151,6 +151,7 @@ export type Database = {
       claudia_is_member: { Args: never; Returns: boolean }
       claudia_ai_cost: { Args: { p_months?: number }; Returns: { mes: string; feature: string; model: string; chamadas: number; input_tokens: number; cache_read_tokens: number; output_tokens: number; custo_usd: number }[] }
       create_ingest_token: { Args: { p_label?: string }; Returns: string }
+      create_ingest_token_iara: { Args: { p_label?: string }; Returns: string }
       hub_briefing_lido: { Args: { p_id: number }; Returns: boolean }
       hub_alertas: { Args: never; Returns: Json }
       hub_livros: { Args: never; Returns: Json }

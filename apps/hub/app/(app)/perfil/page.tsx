@@ -3,7 +3,7 @@ import { SignOut } from '@/components/SignOut'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Notificacoes } from '@/components/Notificacoes'
 import { FUNCTIONS_URL } from '@/lib/env'
-import { ProfileForm, Tokens } from './client'
+import { ProfileForm, Tokens, SiriToken } from './client'
 
 export const dynamic = 'force-dynamic'
 const FEATURE: Record<string, string> = { 'food-parse': 'Registro de comida', diet: 'Dieta', 'photo-review': 'Análise de fotos', coach: 'Plano de treino', 'coach-session': 'Conversa da sessão', 'coach-review': 'Revisão semanal', checkin: 'Check-in' }
@@ -12,7 +12,7 @@ export default async function PerfilPage() {
   const me = (await currentUser())!
   const [{ data: p }, { data: tokens }, { data: cost }] = await Promise.all([
     me.sb.from('profiles').select('display_name, sex, birth_date, height_cm, goal').eq('id', me.user.id).single(),
-    me.sb.from('ingest_tokens').select('id, label, created_at, last_used_at, revoked_at').order('created_at', { ascending: false }),
+    me.sb.from('ingest_tokens').select('id, label, created_at, last_used_at, revoked_at, escopos').order('created_at', { ascending: false }),
     me.sb.rpc('claudia_ai_cost', { p_months: 3 }),
   ])
   const months = [...new Set((cost ?? []).map((c) => c.mes))]
@@ -26,7 +26,8 @@ export default async function PerfilPage() {
       <Notificacoes />
       <p className="small muted">{me.user.email}</p>
       <ProfileForm p={p!} />
-      <Tokens tokens={tokens ?? []} endpoint={`${FUNCTIONS_URL}/claudia-ingest`} />
+      <Tokens tokens={(tokens ?? []).filter((t) => !t.escopos.includes('iara'))} endpoint={`${FUNCTIONS_URL}/claudia-ingest`} />
+      <SiriToken tokens={(tokens ?? []).filter((t) => t.escopos.includes('iara'))} url={`${FUNCTIONS_URL}/iara-comando?formato=texto`} />
       <section className="card">
         <h2>Custo de IA</h2>
         {months.map((m) => {

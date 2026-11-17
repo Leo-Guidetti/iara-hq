@@ -30,6 +30,15 @@ export async function createToken(label: string): Promise<{ token?: string; erro
   return { token: data }
 }
 
+export async function createSiriToken(): Promise<{ token?: string; error?: string }> {
+  const me = await currentUser()
+  if (!me) return { error: 'Sessão expirada.' }
+  const { data, error } = await me.sb.rpc('create_ingest_token_iara', { p_label: 'Siri' })
+  if (error) return { error: error.message }
+  revalidatePath('/perfil')
+  return { token: data }
+}
+
 export async function revokeToken(id: number) {
   const me = await currentUser()
   if (!me) return
