@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { currentUser } from '@/lib/supabase/server'
-import { dailyAlerts } from '@/lib/alerts'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { Fila, type Item } from '../casa/Fila'
 import { addDays, fmtDay, fmtKg, spDate } from '@/lib/dates'
 
 export const dynamic = 'force-dynamic'
@@ -10,7 +11,7 @@ export default async function Inicio() {
   const me = (await currentUser())!
   const today = spDate()
   const ws = addDays(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7))
-  const [{ data: profile }, { data: trend }, { data: comp }, { data: food }, { data: diet }, { data: todaySessions }, { data: week }, { data: daily }, { data: checkin }, { alerts }] = await Promise.all([
+  const [{ data: profile }, { data: trend }, { data: comp }, { data: food }, { data: diet }, { data: todaySessions }, { data: week }, { data: daily }, { data: checkin }, alertasRes] = await Promise.all([
     me.sb.from('profiles').select('display_name').eq('id', me.user.id).single(),
     me.sb.from('weight_with_trend').select('local_date, trend_7d').gte('local_date', addDays(today, -8)).order('local_date'),
     me.sb.from('body_comp_estimates').select('local_date, bf_mean, lean_mass_kg').order('local_date', { ascending: false }).limit(1).maybeSingle(),
@@ -20,8 +21,10 @@ export default async function Inicio() {
     me.sb.from('plan_sessions').select('status').gte('local_date', ws).lte('local_date', addDays(ws, 6)),
     me.sb.from('daily_activity').select('steps, sleep_min, resting_hr').eq('local_date', today).maybeSingle(),
     me.sb.from('weekly_checkins').select('week_start, score, payload').order('week_start', { ascending: false }).limit(1).maybeSingle(),
-    dailyAlerts(me.sb),
+    (me.sb as unknown as SupabaseClient).rpc('hub_alertas'),
   ])
+  const alertas = alertasRes.data as { itens?: Partial<Item>[] } | null
+  const alertaItens = (alertas?.itens ?? []).map((i) => ({ origem: 'claudia', tipo: 'alerta', detalhe: null, minutos: null, acao: {}, ...i }) as Item)
   const last = trend?.at(-1), first = trend?.[0]
   const delta = last?.trend_7d != null && first?.trend_7d != null && last !== first ? Number(last.trend_7d) - Number(first.trend_7d) : null
   const kcal = (food ?? []).reduce((a, f) => a + (f.kcal ?? 0), 0)
@@ -36,12 +39,7 @@ export default async function Inicio() {
         <h1>Olá{profile?.display_name ? `, ${profile.display_name}` : ''}</h1>
       </div>
 
-      {alerts.map((a) => (
-        <Link key={a.text} href={a.href} className={`card ${a.level === 'alert' ? 'alert' : ''}`}>
-          <span className={`tag ${a.level === 'alert' ? 'alert' : ''}`} style={a.level === 'info' ? { color: 'var(--muted)' } : undefined}>{a.level === 'alert' ? 'Atenção' : 'Lembrete'}</span>
-          <p style={{ margin: '4px 0 0' }}>{a.text}</p>
-        </Link>
-      ))}
+      {alertasRes.error ? <p className="small muted">Não consegui carregar os alertas agora.</p> : <Fila itens={alertaItens} vazio="Sem alertas da ClaudIA." />}
 
       <section className="grid2">
         <Link href="/saude/peso" className="card">

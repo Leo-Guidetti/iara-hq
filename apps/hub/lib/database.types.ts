@@ -148,6 +148,7 @@ export type Database = {
       claudia_ai_cost: { Args: { p_months?: number }; Returns: { mes: string; feature: string; model: string; chamadas: number; input_tokens: number; cache_read_tokens: number; output_tokens: number; custo_usd: number }[] }
       create_ingest_token: { Args: { p_label?: string }; Returns: string }
       hub_briefing_lido: { Args: { p_id: number }; Returns: boolean }
+      hub_alertas: { Args: never; Returns: Json }
       hub_livros: { Args: never; Returns: Json }
       hub_leitura_registrar: { Args: { p_pagina: number; p_livro?: number; p_minutos?: number }; Returns: Json }
       hub_livro_salvar: { Args: { p: Json }; Returns: Json }
