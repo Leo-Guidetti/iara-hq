@@ -154,6 +154,9 @@ export type Database = {
       create_ingest_token_iara: { Args: { p_label?: string }; Returns: string }
       hub_briefing_lido: { Args: { p_id: number }; Returns: boolean }
       hub_alertas: { Args: never; Returns: Json }
+      hub_avisos: { Args: never; Returns: Json }
+      hub_aviso_responder: { Args: { p_id: number; p_resposta: string }; Returns: Json }
+      hub_interrupcoes_salvar: { Args: { p: Json }; Returns: Json }
       hub_livros: { Args: never; Returns: Json }
       hub_leitura_registrar: { Args: { p_pagina: number; p_livro?: number; p_minutos?: number }; Returns: Json }
       hub_livro_salvar: { Args: { p: Json }; Returns: Json }
