@@ -3,14 +3,19 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (16/11, 09:55 UTC):**
-1. Esperando o Leo (nada a construir até lá): instalar o hub na tela inicial e **ativar as notificações** (nenhuma linha em
-   `airton.push_subscriptions`; os pushes de 15/11 — daily, weekly, semana, custo — saíram com `sent = 0`); preencher expediente,
-   lugares e compromissos e confirmar o plano de 16/11 (ainda `rascunho`); colar o link iCal em `IARA_AGENDA_ICS_URLS`.
-2. Quando houver aparelho inscrito: conferir `sent > 0` no próximo `daily` (22:00 SP) e o teste do Perfil.
-3. Sábado 21/11: imersão entre 55 e 65 min. Domingo 22/11: plano automático com os fixos do Leo (se preenchidos).
-4. Etapa 2 (publicadores): o cartão do briefing em `core.itens` fica para depois — a Hoje já mostra o briefing e o bloco da
-   casa lê `origem = 'iara'`, então o cartão poluiria a casa. Próximos candidatos: AIrton (lançamentos a revisar) e ClaudIA (treino do dia).
+**Próximo passo (17/11, 19:20 UTC):** plano de UX (`docs/ux-audit/plano.md`) executado: 21 de 22 itens no ar
+(PRs #37 a #57), UX-21 pulado. Diário: `docs/ux-audit/execucao.md`.
+1. Esperando o Leo: instalar o hub e **ativar as notificações** (UX-04/UX-20 dependem disso); montar o Atalho
+   "Falar com a IARA" (Perfil → Falar com a IARA pela Siri, UX-19); cadastrar o livro atual e a meta do ano (UX-02);
+   criar a primeira meta ou plano ("Novo plano" em `/planos`); preencher expediente e lugares; link iCal em `IARA_AGENDA_ICS_URLS`.
+2. Conferir em produção (primeiras execuções): `claudia-alertas` 18/11 09:50 UTC (itens em `core.itens` origem `claudia`);
+   `iara-planos-progresso` 18/11 09:00 UTC (progresso/ritmo e avisos); briefing de 18/11 com `fala`; domingo 22/11: trilha
+   `hobby` (se houver habilidade ativa) e `iara-semana` com `fala` + até 3 decisões (custo extra ≤ US$ 0,005);
+   06/12 (1º domingo): `iara-planos-revisao` com até 5 propostas (≤ US$ 0,08).
+3. Primeiros usos de IA nova para medir em `core.ai_usage`/`core.agent_runs`: `plano`, `painel`, `revisao`, `comando-rota`,
+   `trilha-hobby`, `plano-semana`; rodar a bateria do `iara-comando` (precisa do JWT do Leo; ~US$ 0,25).
+4. Pendências técnicas pequenas: o 409 "decisão já tomada" do painel aparece como "Erro 409" na tela; `core.comando_contexto`
+   pode listar itens da trilha `hobby` como candidatos de `sabia.item`; peso por voz não tem desfazer.
 
 **Execução (09/11):** sessões de Claude Code na nuvem com o repo `Leo-Guidetti/iara-hq` (push, PR e
 auto-merge funcionam). A fonte da verdade é o GitHub. Secrets do Actions e proteção da `main` com checks
@@ -185,3 +190,4 @@ não depende disso enquanto espera.
 | 15/11 | 5 + SabIA | `fix/sabia-workers` | — (conferir na trilha de 16/11) | 1º plano automático (dom 21:00 UTC) ok: 40 itens (saúde 14, aprender 14, finanças 9, casa 3), crítica útil (0/8 treinos na semana passada, sem registro de comida, Airbnb R$ 1.074,60 na sexta, sem fixos), US$ 0,056. Trilhas de 12–15/11 ok com cartão em `core.itens` (fix #25 confirmado; 36 min nos dias úteis); structured outputs ok. Problemas: workers com busca na web caíam com "Resposta sem <candidatos>" (1–2 temas por dia) → leitura tolerante + `max_tokens` 3000; imersão de sábado deu 30 min (alvo 60) → soma exigida no prompt. Pushes `daily`/`weekly`/`semana` registrados com `sent = 0`: nenhum aparelho inscrito. Mês: US$ 1,06 |
 | 15/11 | 3 (push) | `feat/hub-push` | — (conferir após o merge) | Hub vira PWA (manifest, ícones com o cérebro, `sw.js` só para push) e ganha "Ativar notificações" no Perfil e um cartão na Hoje enquanto não estiver ligado: grava a inscrição em `airton.push_subscriptions` (RLS do dono) com a chave VAPID do `airton-notify`, que já manda daily/weekly/semana/custo. No iPhone exige o app instalado na tela inicial (iOS 16.4+). Botão "Enviar teste" |
 | 16/11 | Conferência | — | trilha ok, briefing às 10:00 UTC | Trilha de 16/11: `falhas_workers` vazio (fix #34 ok), 8 itens, 47 min (um pouco acima de 45), cartão em `core.itens`, US$ 0,063. Vercel sem erros em 24h. Nenhum aparelho inscrito para push; plano de 16/11 em rascunho; agenda, expediente, lugares e compromissos vazios. Mês: US$ 1,13 |
+| 17/11 | UX (plano de UX, ondas 1–3) | #37–#57 | deploy de cada PR ok; briefing de 17/11 com `fala` (62 palavras, US$ 0,0121); crons novos em `cron.job`; tokens de peso antigos com escopo `peso` | Execução autônoma de `docs/ux-audit/plano.md`: 21 itens no ar, UX-21 pulado (chave de provedor de voz, D4). Diário em `docs/ux-audit/execucao.md` |

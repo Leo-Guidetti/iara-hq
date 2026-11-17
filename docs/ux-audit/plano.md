@@ -18,6 +18,35 @@ Preços de modelo vêm do `CLAUDE.md` (fato); volumes de uso são sempre hipóte
 | 6 | No texto a IARA já fala por todos (briefing e semana); na navegação e no chat o Leo ainda escolhe o agente. A Fase 7 do ROADMAP manteria essa divisão na voz (`ask_airton`, `ask_claudia`, `ask_iara`). | F |
 | 7 | O caminho mais barato para voz é reaproveitar o que já existe: Atalho do iPhone com token (`claudia-ingest`) apontando para uma porta única em texto. Custo de IA adicional do plano inteiro: cerca de US$ 5/mês, dos quais US$ 3 são voz em tempo real. | H |
 
+## Status da execução (17/11/2026)
+
+Execução autônoma de 17/11: 21 de 22 itens em produção, 1 pulado, nenhum parado. Diário item a item, com a verificação de cada um: `docs/ux-audit/execucao.md`.
+
+| Onda | Item | Status | PR |
+| --- | --- | --- | --- |
+| 1 | UX-01 Catálogo de intenções | feito | #37 |
+| 1 | UX-02 Livros e leitura | feito | #39 |
+| 1 | UX-03 Metas do AIrton | feito | #40 |
+| 1 | UX-04 Avisos (push) | feito (código no #35; falta o Leo ativar no iPhone) | #35, #38 |
+| 1 | UX-05 Briefing falável | feito | #41 |
+| 1 | UX-06 Alertas com memória | feito | #42 |
+| 1 | UX-07 Revisão de lançamentos | feito | #43 |
+| 2 | UX-08 Plano de vida | feito | #44 |
+| 2 | UX-09 Progresso medido | feito | #45 |
+| 2 | UX-10 Tela /planos | feito | #46 |
+| 2 | UX-11 Plano nasce de uma frase | feito | #48 |
+| 2 | UX-12 Conflitos | feito | #47 |
+| 2 | UX-13 Painel de decisão | feito | #49 |
+| 2 | UX-14 Replanejar | feito | #50 |
+| 2 | UX-15 Peça à IARA | feito | #51 |
+| 2 | UX-16 Confirmação e desfazer | feito | #52 |
+| 2 | UX-17 Prática e habilidades | feito | #53 |
+| 3 | UX-18 Contrato de fala | feito | #54 |
+| 3 | UX-19 IARA pela Siri | feito (falta o Leo montar o Atalho) | #55 |
+| 3 | UX-20 Avisos proativos | feito | #56 |
+| 3 | UX-21 Voz em tempo real | pulado: exige chave de provedor de voz novo e, pela D4, o protótipo vem depois de a UX-19 estar em uso | — |
+| 3 | UX-22 Revisar a semana falando | feito | #57 |
+
 ---
 
 ## 1. Diagnóstico: os 5 planos de teste com o que existe hoje
