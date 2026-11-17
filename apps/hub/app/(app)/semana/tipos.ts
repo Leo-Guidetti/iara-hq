@@ -13,6 +13,7 @@ export type Painel = {
 export type ItemSemana = {
   id: number; data: string; hora: string | null; area: 'saude' | 'financas' | 'aprender' | 'casa'
   titulo: string; detalhe: string | null; minutos: number | null; valor: number | null; incluido: boolean; status: string | null
+  meta_id?: number | null; plano?: string | null; editado?: boolean
 }
 export type PlanoSemana = {
   id: number; semana: string; status: 'rascunho' | 'confirmado'; resumo: string | null; critica: string | null; itens: ItemSemana[]
