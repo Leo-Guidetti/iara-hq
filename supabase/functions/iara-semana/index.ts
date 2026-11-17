@@ -4,14 +4,17 @@
 // e monta um rascunho dia a dia em core.planos_semana, tudo junto: carga de treino → dieta do dia → compras,
 // estudo e contas. O Leo revisa e confirma em /semana; as adaptações de treino vão para a ClaudIA ao confirmar.
 // App: { semana?: 'atual' | 'proxima' } refaz o rascunho. Plano já confirmado nunca é refeito (as tarefas já saíram).
+// UX-14: refazer o rascunho MANTÉM os itens que o Leo moveu ou tirou (planos_semana_itens.editado) e os passa ao modelo como decididos;
+// itens que avançam uma meta do plano de vida levam meta_id (validado contra as metas enviadas em insumos.metas).
 import { agoraSP, authenticate, CORS, DIAS, fecharRun, iniciarRun, json, perfis, sql } from './_shared/common.ts';
 import { anthropicJson, MODELS } from './_shared/ai.ts';
+import { idsParaApagar, semDuplicarEditados, validarMetaId } from './semana-lib.ts';
 
 type Perfil = { user_id: string; nome: string | null };
 type Item = {
   data: string; hora: string | null; area: string; titulo: string; detalhe: string | null;
   minutos: number | null; valor: number | null; ref: string | null;
-  treino: { esporte: string; intensidade: string } | null;
+  treino: { esporte: string; intensidade: string } | null; meta_id: number | null;
 };
 
 const AREAS = new Set(['saude', 'financas', 'aprender', 'casa']);
@@ -88,7 +91,7 @@ const SEMANA_SCHEMA = obj({
       data: { type: 'string' }, hora: ouNulo({ type: 'string' }),
       area: { type: 'string', enum: ['saude', 'financas', 'aprender', 'casa'] },
       titulo: { type: 'string' }, detalhe: ouNulo({ type: 'string' }),
-      minutos: ouNulo({ type: 'integer' }), valor: ouNulo({ type: 'number' }), ref: ouNulo({ type: 'string' }),
+      minutos: ouNulo({ type: 'integer' }), valor: ouNulo({ type: 'number' }), ref: ouNulo({ type: 'string' }), meta_id: ouNulo({ type: 'integer' }),
       treino: ouNulo(obj({ esporte: { type: 'string', enum: [...ESPORTES] }, intensidade: { type: 'string', enum: [...INTENSIDADES] } })),
     }),
   },
@@ -139,6 +142,12 @@ async function planejar(userId: string, nome: string, inicio: string, desde: str
       const d = addDias(desde, i);
       return `${DIAS[new Date(`${d}T12:00:00Z`).getUTCDay()]} ${d}`;
     }).join(', ');
+    const metas = (Array.isArray(insumos?.metas) ? insumos.metas : []) as { id: number }[];
+    // Itens que o Leo já moveu ou tirou neste rascunho: ficam como estão e o modelo não os refaz.
+    const editados = existente
+      ? await sql`select id, data::text as data, to_char(hora, 'HH24:MI') as hora, area, titulo, minutos, ref, incluido
+                    from core.planos_semana_itens where plano_id = ${existente.id} and editado order by data, hora`
+      : [];
     const refs = new Set<string>([
       ...(insumos?.saude?.treinos ?? []).map((t: { ref: string }) => t.ref),
       ...(insumos?.financas?.contas_semana ?? []).map((c: { ref: string }) => c.ref),
@@ -154,7 +163,14 @@ depois cada item vira tarefa do dia no app e os treinos vão para a ClaudIA.
    ("desloc_min" = minutos de casa até lá; sem número, estime com folga e diga isso na crítica). Durante o expediente,
    só o que cabe no intervalo (ex.: almoço). Evento com "ocupado": false é informativo.
 
-Planeje TUDO JUNTO em volta dos fixos, nesta ordem, e deixe as áreas conversarem:
+${editados.length ? `0b. Itens JÁ DECIDIDOS pelo Leo neste rascunho (ele moveu ou tirou; "incluido": false = ele tirou). Eles ficam como estão: trate os incluídos como fixos
+   (não marque nada por cima) e NÃO os proponha de novo, nem os que ele tirou:
+${JSON.stringify(editados)}
+
+` : ''}${metas.length ? `0c. Metas ativas dos planos de vida ("metas"). Quando um item avança uma meta (treino de uma meta de saúde, aporte, estudo, marco...),
+   devolva "meta_id" = o id exato da meta; senão null. Nunca invente id. Dê um passo concreto por semana às metas "atrasada" quando couber.
+
+` : ''}Planeje TUDO JUNTO em volta dos fixos, nesta ordem, e deixe as áreas conversarem:
 1. Carga de treino da semana: parta dos treinos previstos (use o "ref" de cada um). Adapte à semana: dias com conta grande,
    compromisso da rotina ou semana passada com treinos pulados pedem ajuste (mover de dia, encurtar). Para mover, mantenha o
    "ref" e mude "data"/"minutos". Se o plano termina antes do fim da semana ("plano_treino_ate"), proponha as sessões que faltam
@@ -181,7 +197,7 @@ compromissos sociais vs. meta de dieta e o livre por dia, dias sem respiro, desl
 "resumo": 100–170 palavras em markdown com **negrito**: o fio da semana em 1 frase (como treino, dieta e o resto se encaixam)
 e 1 linha por área (Saúde, Finanças, Aprender, Casa), dizendo o que foi adaptado e por quê.
 Responda no formato JSON pedido, por exemplo:
-{"resumo":"...","critica":"- ...","itens":[{"data":"aaaa-mm-dd","hora":"HH:MM ou null","area":"saude|financas|aprender|casa","titulo":"curto","detalhe":"1 frase ou null","minutos":45,"valor":null,"ref":null,"treino":null}]}`;
+{"resumo":"...","critica":"- ...","itens":[{"data":"aaaa-mm-dd","hora":"HH:MM ou null","area":"saude|financas|aprender|casa","titulo":"curto","detalhe":"1 frase ou null","minutos":45,"valor":null,"ref":null,"meta_id":null,"treino":null}]}`;
 
     const saida = await anthropicJson({
       model: MODELS.smart,
@@ -192,7 +208,7 @@ Responda no formato JSON pedido, por exemplo:
       messages: [{ role: 'user', content: `Insumos (JSON):\n${JSON.stringify(insumos)}\n\n${pedido}` }],
     }, { run, feature: 'plano-semana', papel: 'orquestrador' });
 
-    const itens: Item[] = [];
+    const itensBrutos: Item[] = [];
     for (const i of Array.isArray(saida.itens) ? saida.itens : []) {
       const d = String(i.data ?? '');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < desde || d > fim || !AREAS.has(i.area)) continue;
@@ -201,33 +217,45 @@ Responda no formato JSON pedido, por exemplo:
       const hora = typeof i.hora === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(i.hora) ? i.hora : null;
       const min = Math.round(Number(i.minutos));
       const valor = i.area === 'financas' && Number.isFinite(Number(i.valor)) && i.valor !== null ? Number(i.valor) : null;
-      itens.push({
+      itensBrutos.push({
         data: d, hora, area: i.area, titulo,
         detalhe: typeof i.detalhe === 'string' && i.detalhe.trim() ? i.detalhe.trim().slice(0, 400) : null,
         minutos: min >= 1 && min <= 240 ? min : null,
         valor,
         ref: typeof i.ref === 'string' && refs.has(i.ref) ? i.ref : null,
+        meta_id: validarMetaId(i.meta_id, metas),
         treino: i.area === 'saude' && !i.ref && ESPORTES.has(i.treino?.esporte)
           ? { esporte: i.treino.esporte, intensidade: INTENSIDADES.has(i.treino?.intensidade) ? i.treino.intensidade : 'moderate' }
           : null,
       });
-      if (itens.length >= 49) break;
+      if (itensBrutos.length >= 49) break;
     }
+    const itens = semDuplicarEditados(itensBrutos, editados as unknown as { area: string; titulo: string; ref: string | null }[]);
     if (itens.length < 3) throw new Error(`Poucos itens válidos (${itens.length})`);
     const resumo = typeof saida.resumo === 'string' ? saida.resumo.slice(0, 3000) : null;
     const critica = typeof saida.critica === 'string' ? saida.critica.slice(0, 3000) : null;
 
-    // Rascunho novo substitui o anterior da mesma semana (os itens saem junto pelo on delete cascade).
+    // Rascunho refeito: atualiza o plano da semana no lugar, apaga só os itens que o Leo NÃO mexeu (editado = false) e grava os novos.
     const planoId = await sql.begin(async (tx) => {
-      if (existente) await tx`delete from core.planos_semana where id = ${existente.id}`;
-      const [p] = await tx`insert into core.planos_semana (user_id, semana, status, resumo, critica, insumos, run_id)
-        values (${userId}, ${inicio}, 'rascunho', ${resumo}, ${critica}, ${tx.json(insumos)}, ${run.id}) returning id`;
-      for (const [n, it] of itens.entries()) {
-        await tx`insert into core.planos_semana_itens (plano_id, user_id, data, hora, area, titulo, detalhe, minutos, valor, ref, treino, ordem)
-          values (${p.id}, ${userId}, ${it.data}, ${it.hora}, ${it.area}, ${it.titulo}, ${it.detalhe}, ${it.minutos}, ${it.valor}, ${it.ref},
-            ${it.treino ? tx.json(it.treino) : null}, ${n})`;
+      let pid: number;
+      if (existente) {
+        pid = Number(existente.id);
+        const atuais = await tx`select id, editado from core.planos_semana_itens where plano_id = ${pid}`;
+        const apagar = idsParaApagar(atuais as unknown as { id: number; editado: boolean }[]);
+        if (apagar.length) await tx`delete from core.planos_semana_itens where id in ${tx(apagar)}`;
+        await tx`update core.planos_semana set resumo = ${resumo}, critica = ${critica}, insumos = ${tx.json(insumos)}, run_id = ${run.id}, created_at = now() where id = ${pid}`;
+      } else {
+        const [p] = await tx`insert into core.planos_semana (user_id, semana, status, resumo, critica, insumos, run_id)
+          values (${userId}, ${inicio}, 'rascunho', ${resumo}, ${critica}, ${tx.json(insumos)}, ${run.id}) returning id`;
+        pid = Number(p.id);
       }
-      return p.id;
+      const [{ m }] = await tx`select coalesce(max(ordem), -1) + 1 as m from core.planos_semana_itens where plano_id = ${pid}`;
+      for (const [n, it] of itens.entries()) {
+        await tx`insert into core.planos_semana_itens (plano_id, user_id, data, hora, area, titulo, detalhe, minutos, valor, ref, treino, meta_id, ordem)
+          values (${pid}, ${userId}, ${it.data}, ${it.hora}, ${it.area}, ${it.titulo}, ${it.detalhe}, ${it.minutos}, ${it.valor}, ${it.ref},
+            ${it.treino ? tx.json(it.treino) : null}, ${it.meta_id}, ${Number(m) + n})`;
+      }
+      return pid;
     });
 
     const porArea: Record<string, number> = {};

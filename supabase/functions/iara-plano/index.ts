@@ -7,13 +7,18 @@
 // painel: decisão aberta -> 1 `fast` por agente com interesse (2 a 4, isolados, só o próprio domínio) + 1 `smart` de síntese;
 //         grava posições e síntese (status 'painel'); teto US$ 0,03 por execução; chave IARA_ANTHROPIC_KEY_PAINEL. Usuário logado ou cron.
 //         Quem decide é o Leo (public.hub_decidir); a IARA nunca escolhe (D2).
+// revisar (UX-14, só cron): 1º domingo do mês (dia <= 7, SP); 1 `smart` (effort low) por usuário com todos os planos ativos
+//         (progresso, ritmo, gatilhos, conflitos; trimestral inclui o horizonte longo) -> até 5 propostas em core.plano_propostas.
+//         NÃO aplica nada (o Leo decide em public.hub_proposta_decidir). Teto US$ 0,08 por execução; agent_runs tipo plano_revisar;
+//         ai_usage feature `revisao`; chave IARA_ANTHROPIC_KEY_REVISAO (cai em ANTHROPIC_API_KEY).
 // Orçamento: US$ 0,10 por execução (aborta antes de passar); chave IARA_ANTHROPIC_KEY_PLANO (fallback ANTHROPIC_API_KEY).
-import { agoraSP, authenticate, CORS, fecharRun, iniciarRun, json, sql } from './_shared/common.ts';
+import { agoraSP, authenticate, CORS, fecharRun, iniciarRun, json, perfis, sql } from './_shared/common.ts';
 import { anthropicJson, MODELS } from './_shared/ai.ts';
 import {
   decidirRodada, estimarSmart, falaRascunho, garantirTeto, limparFala, normalizarExtracao, normalizarMetas, viabilidade,
   DONOS, HORIZONTES, TIPOS, type Extracao,
 } from './plano-lib.ts';
+import { ehPrimeiroDomingo, incluiLongo, normalizarPropostas, TETO_REVISAO_USD, type MetaRev } from './revisao-lib.ts';
 import {
   dominioDe, estimarFast, MAX_PAINEIS_MES, normalizarPosicoes, normalizarSintese, quemVota, TETO_PAINEL_USD, type Agente, type Ctx,
 } from './painel-lib.ts';
@@ -93,10 +98,11 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   try {
     if (body.acao === 'painel') return await painel(caller, body);
+    if (body.acao === 'revisar') return await revisar(caller);
     if (caller.kind !== 'user') return erro(403, 'Esta função só aceita usuário logado.');
     if (body.acao === 'criar') return await criar(caller.userId as string, body);
     if (body.acao === 'confirmar' || body.acao === 'descartar') return await decidir(caller.userId as string, body);
-    return erro(400, 'acao deve ser criar, confirmar, descartar ou painel.');
+    return erro(400, 'acao deve ser criar, confirmar, descartar, painel ou revisar.');
   } catch (e) {
     console.error('iara-plano', e);
     return erro(500, 'Não consegui montar o plano agora. Tente de novo em instantes.');
@@ -293,5 +299,71 @@ async function painel(caller: { kind: string; userId?: string }, body: { decisao
   } catch (e) {
     await fecharRun(run, 'erro', { erro: String(e), descartado: true });
     throw e;
+  }
+}
+
+// ---------------------------------------------------------------- revisar (UX-14)
+const REVISAO_SCHEMA = obj({
+  propostas: {
+    type: 'array',
+    items: obj({
+      meta_id: { type: 'integer' },
+      campo: { type: 'string', enum: ['prazo', 'demanda', 'medida', 'status'] },
+      valor: obj({
+        prazo: ouNulo({ type: 'string' }), status: ouNulo({ type: 'string', enum: ['pausada', 'concluida', 'cancelada'] }),
+        reais_mes: ouNulo({ type: 'number' }), minutos_semana: ouNulo({ type: 'integer' }), alvo: ouNulo({ type: 'number' }),
+      }),
+      motivo: { type: 'string' },
+    }),
+  },
+});
+
+const REVISAO_SYSTEM = `Você é a IARA, orquestradora da rotina do Leo (direta, nunca bajuladora). Faz a revisão mensal dos planos de vida ativos dele.
+Você só PROPÕE ajustes; o Leo decide. No máximo 5 propostas, só as que valem a pena; se nada precisa mudar, devolva a lista vazia.
+Cada proposta: meta_id (id exato de uma meta recebida), campo e valor:
+- prazo: valor.prazo = nova data AAAA-MM-DD no futuro (meta atrasada em checagens seguidas, ou prazo que não cabe no ritmo).
+- demanda: valor.reais_mes e/ou valor.minutos_semana (o que a meta passa a pedir por mês/semana; renda ou tempo livre mudaram).
+- medida: valor.alvo = novo alvo numérico.
+- status: valor.status = pausada, concluida ou cancelada (use com parcimônia; só para meta parada, já cumprida ou que disputa recurso).
+Preencha com null os campos do valor que não se aplicam. motivo: 1 frase com o número que justifica (progresso, ritmo, gatilho). Use só os dados recebidos.
+Não proponha o que já está em "propostas_abertas" nem repita o valor atual. Português do Brasil.`;
+
+async function revisar(caller: { kind: string; userId?: string }) {
+  if (caller.kind !== 'cron') return erro(403, 'A revisão roda só pelo agendamento.');
+  const { data, dow } = agoraSP();
+  if (!ehPrimeiroDomingo(data, dow)) return json(200, { fala: 'Hoje não é o 1º domingo do mês; nada a revisar.', tela: { revisados: 0 }, pendente: null });
+  const longo = incluiLongo(data);
+  const lista = (await perfis(caller)) as unknown as { user_id: string }[];
+  const resultados: { propostas: number; erro?: boolean }[] = [];
+  for (const p of lista) resultados.push(await revisarUsuario(p.user_id, data, longo));
+  return json(200, { fala: 'Revisão mensal feita.', tela: { revisados: resultados.length, longo, resultados }, pendente: null });
+}
+
+async function revisarUsuario(userId: string, hoje: string, longo: boolean): Promise<{ propostas: number; erro?: boolean }> {
+  // Idempotência: uma revisão por mês (o cron só cai no 1º domingo, mas um disparo repetido não gasta de novo).
+  const [{ n }] = await sql`select count(*)::int as n from core.agent_runs where user_id = ${userId} and tipo = 'plano_revisar' and status = 'ok'
+    and started_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo'`;
+  if (n > 0) return { propostas: 0 };
+  const [{ c }] = await sql`select core.revisao_contexto(${userId}::uuid, ${longo}::boolean) as c`;
+  const ctx = c as { planos: unknown[]; metas: MetaRev[] };
+  if (!ctx.planos.length || !ctx.metas.length) return { propostas: 0 };
+  const run = await iniciarRun('iara', userId, 'plano_revisar', { longo, planos: ctx.planos.length, metas: ctx.metas.length });
+  try {
+    const MAX = 1500;
+    const pedido = `Hoje é ${hoje}. Revisão ${longo ? 'TRIMESTRAL (inclui metas de horizonte longo)' : 'mensal'}.\nDados (JSON): ${JSON.stringify(ctx)}`;
+    garantirTeto(run.custo, estimarSmart(pedido.length + REVISAO_SYSTEM.length, MAX), TETO_REVISAO_USD);
+    const saida = await anthropicJson({
+      model: MODELS.smart, max_tokens: MAX, system: REVISAO_SYSTEM,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: REVISAO_SCHEMA } },
+      messages: [{ role: 'user', content: pedido }],
+    }, { run, feature: 'revisao', papel: 'orquestrador' });
+    const propostas = normalizarPropostas(saida, ctx.metas, hoje);
+    const [{ g }] = await sql`select core.propostas_gravar(${userId}::uuid, 'revisao_mensal', ${sql.json(propostas as any)}::jsonb) as g`;
+    await fecharRun(run, 'ok', { output: { propostas: propostas.length, gravadas: Number(g), longo, custo_usd: Math.round(run.custo * 10000) / 10000 } });
+    return { propostas: Number(g) };
+  } catch (e) {
+    console.error('revisar', e);
+    await fecharRun(run, 'erro', { erro: String(e), descartado: true });
+    return { propostas: 0, erro: true };
   }
 }

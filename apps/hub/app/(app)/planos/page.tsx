@@ -5,6 +5,7 @@ import { appDoAgent } from '@/components/SeuDia'
 import { ddmm } from '../semana/tipos'
 import { NovoPlano, AcoesRascunho } from './Novo'
 import { Decisoes, type Decisao } from './Decisoes'
+import { Propostas, type Proposta } from './Propostas'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +28,8 @@ const RITMO: Record<Ritmo, string> = { no_ritmo: 'No ritmo', atrasada: 'Atrasada
 export default async function PlanosPage() {
   const me = (await currentUser())!
   const raw = me.sb as unknown as SupabaseClient
-  const [{ data, error }, { data: sem }, { data: dec }] = await Promise.all([raw.rpc('hub_planos'), raw.rpc('hub_semana'), raw.rpc('hub_decisoes')])
+  const [{ data, error }, { data: sem }, { data: dec }, { data: prop }] = await Promise.all([raw.rpc('hub_planos'), raw.rpc('hub_semana'), raw.rpc('hub_decisoes'), raw.rpc('hub_propostas')])
+  const propostas = (Array.isArray(prop) ? prop : []) as Proposta[]
   const decisoes = (Array.isArray(dec) ? dec : []) as Decisao[]
   const planos = (Array.isArray(data) ? data : []) as Plano[]
   const hoje = spDate()
@@ -40,6 +42,7 @@ export default async function PlanosPage() {
         <p className="muted small" style={{ margin: 0 }}>Do objetivo de longo prazo até o que fazer esta semana.</p>
       </div>
       <Decisoes itens={decisoes} />
+      <Propostas itens={propostas} />
       <NovoPlano />
       {error ? (
         <div className="card alert"><p className="small" style={{ margin: 0 }}>Não consegui carregar os planos agora.</p></div>

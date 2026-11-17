@@ -82,6 +82,7 @@ export function Plano({ plano, fixos, dias }: { plano: PlanoSemana; fixos: Fixo[
                     <span className="t">
                       <strong>{l.i.titulo}</strong>
                       <small>{[AREA[l.i.area].nome, l.i.minutos ? `${l.i.minutos} min` : null, l.i.valor != null ? brl(Number(l.i.valor)) : null].filter(Boolean).join(' · ')}</small>
+                      {(l.i.plano || l.i.editado) && <span className="row" style={{ gap: 6 }}>{l.i.plano && <span className="tag">{l.i.plano}</span>}{l.i.editado && <span className="small muted">ajustado por você</span>}</span>}
                       {l.i.status === 'feito' && <span className="feito">✓ feito</span>}
                       {l.i.detalhe && <span className="d">{l.i.detalhe}</span>}
                       {editando === l.i.id && <Editar item={l.i} dias={dias} busy={!!busy} onSalvar={(data, hora) => rpc(`e${l.i.id}`, 'hub_semana_item_editar', { p_id: l.i.id, p_data: data, p_hora: hora })} onCancelar={() => setEditando(null)} />}

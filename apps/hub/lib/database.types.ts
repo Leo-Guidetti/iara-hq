@@ -159,6 +159,8 @@ export type Database = {
       hub_conflitos: { Args: never; Returns: Json }
       hub_decisoes: { Args: never; Returns: Json }
       hub_decidir: { Args: { p_id: number; p_escolha: string }; Returns: Json }
+      hub_propostas: { Args: never; Returns: Json }
+      hub_proposta_decidir: { Args: { p_id: number; p_aceitar: boolean }; Returns: Json }
       hub_planos: { Args: never; Returns: Json }
       hub_plano_salvar: { Args: { p: Json }; Returns: Json }
       hub_meta_salvar: { Args: { p: Json }; Returns: Json }
