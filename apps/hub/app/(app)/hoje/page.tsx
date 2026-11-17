@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { currentUser } from '@/lib/supabase/server'
-import { dailyAlerts } from '@/lib/alerts'
 import { spDate } from '@/lib/dates'
 
 import { ICON } from '@/lib/icons'
@@ -9,6 +8,7 @@ import { Md } from '@/lib/md'
 import { SeuDia, appDoAgent, type Bloco } from '@/components/SeuDia'
 import { Notificacoes } from '@/components/Notificacoes'
 import { Ouvir } from '@/components/Ouvir'
+import { Fila, type Item } from '../casa/Fila'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,7 +41,7 @@ export default async function Hoje() {
   const today = spDate()
   const [sessoes, alertas, pend, mes, iara, sab, dia, semana] = await Promise.all([
     seguro(me.sb.from('plan_sessions').select('id, title, status, duration_min').eq('local_date', today).order('id')),
-    dailyAlerts(me.sb).then((r) => r.alerts).catch(() => 'erro' as const),
+    seguro(raw.rpc('hub_alertas')),
     seguro(raw.schema('airton').rpc('review_counts', { p_user: me.user.id })),
     seguro(raw.schema('airton').rpc('month_plan', { p_user: me.user.id })),
     seguro(raw.rpc('hub_casa')),
@@ -55,9 +55,10 @@ export default async function Hoje() {
   if (Array.isArray(sessoes)) {
     for (const s of sessoes) claudia.push({ texto: `${s.status === 'done' ? '✓ ' : 'Treino: '}${s.title}${s.duration_min ? ` · ${s.duration_min} min` : ''}`, destaque: s.status !== 'done' })
   }
-  if (Array.isArray(alertas)) {
-    for (const a of [...alertas].sort((x, y) => (x.level === 'alert' ? -1 : 0) - (y.level === 'alert' ? -1 : 0)).slice(0, 3)) claudia.push({ texto: a.text, destaque: a.level === 'alert' })
-  }
+  // Alertas da ClaudIA vêm de public.hub_alertas() (publicados pelo cron diário); o badge usa o total.
+  const al = alertas && alertas !== 'erro' ? (alertas as { total?: number; itens?: unknown[] }) : null
+  const alertaItens: Item[] = ((al?.itens ?? []) as Partial<Item>[]).map((i) => ({ origem: 'claudia', tipo: 'alerta', detalhe: null, minutos: null, acao: {}, ...i }) as Item)
+  const alertasTotal = Number(al?.total) || 0
 
   // AIrton: lançamentos para revisar e quanto ainda cabe no mês.
   const airton: Linha[] = []
@@ -126,7 +127,7 @@ export default async function Hoje() {
 
   const conta = (l: Linha[]) => l.filter((x) => x.destaque).length
   const planetas = [
-    { app: 'claudia' as const, nome: 'ClaudIA', href: '/saude', icon: ICON.saude, n: conta(claudia), x: 50, y: 0 },
+    { app: 'claudia' as const, nome: 'ClaudIA', href: '/saude', icon: ICON.saude, n: conta(claudia) + alertasTotal, x: 50, y: 0 },
     { app: 'airton' as const, nome: 'AIrton', href: '/financas', icon: ICON.financas, n: conta(airton), x: 100, y: 50 },
     { app: 'sabia' as const, nome: 'SabIA', href: '/aprender', icon: ICON.aprender, n: conta(sabia), x: 50, y: 100 },
     { app: 'casa' as const, nome: 'IARA House', href: '/casa', icon: ICON.casa, n: conta(casa), x: 0, y: 50 },
@@ -181,7 +182,9 @@ export default async function Hoje() {
       </div>
 
       <Bloco app="claudia" nome="ClaudIA" papel="Saúde" href="/saude" rotulo="Abrir a ClaudIA"
-        linhas={claudia} falhou={sessoes === 'erro' && alertas === 'erro'} vazio="Tudo em dia na saúde." />
+        linhas={claudia} falhou={sessoes === 'erro' && alertas === 'erro'} vazio={alertaItens.length ? 'Sem treino hoje.' : 'Sem alertas da ClaudIA.'} />
+      {alertas === 'erro' && sessoes !== 'erro' && <p className="small muted">Não consegui carregar os alertas da ClaudIA.</p>}
+      {alertaItens.length > 0 && <Fila itens={alertaItens} />}
       <Bloco app="airton" nome="AIrton" papel="Finanças" href="/financas" rotulo="Abrir o AIrton"
         linhas={airton} falhou={pend === 'erro' && mes === 'erro'} vazio="Nada pendente nas finanças." />
       <Bloco app="sabia" nome="SabIA" papel="Aprender" href="/aprender" rotulo="Abrir a SabIA"
