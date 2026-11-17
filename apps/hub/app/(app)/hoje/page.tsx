@@ -12,7 +12,7 @@ import { Fila, type Item } from '../casa/Fila'
 
 export const dynamic = 'force-dynamic'
 
-type Linha = { texto: string; destaque?: boolean }
+type Linha = { texto: string; destaque?: boolean; href?: string }
 type CasaResumo = {
   briefings: { id: number; tipo: string; data: string; texto: string | null; fala?: string | null; lido: boolean }[]
   itens: { origem: string; titulo: string; minutos: number | null; status: string }[]
@@ -64,8 +64,8 @@ export default async function Hoje() {
   const airton: Linha[] = []
   if (pend && pend !== 'erro') {
     const p = pend as { pending?: number; unconfirmed?: number }
-    if (Number(p.pending) > 0) airton.push({ texto: `${plural(Number(p.pending), 'lançamento precisa', 'lançamentos precisam')} de você`, destaque: true })
-    else if (Number(p.unconfirmed) > 0) airton.push({ texto: `${plural(Number(p.unconfirmed), 'lançamento novo', 'lançamentos novos')} para conferir` })
+    if (Number(p.pending) > 0) airton.push({ texto: `${plural(Number(p.pending), 'lançamento precisa', 'lançamentos precisam')} de você`, destaque: true, href: '/financas#revisao' })
+    else if (Number(p.unconfirmed) > 0) airton.push({ texto: `${plural(Number(p.unconfirmed), 'lançamento novo', 'lançamentos novos')} para conferir`, href: '/financas#revisao' })
   }
   if (mes && mes !== 'erro') {
     const m = mes as { available?: number; perDay?: number | null }
@@ -207,7 +207,7 @@ function Bloco({ app, nome, papel, href, rotulo, linhas, falhou, vazio }: {
         <span className="small muted">{papel}{pend ? ` · ${plural(pend, 'pendência', 'pendências')}` : ''}</span>
       </div>
       {falhou ? <p className="small muted" style={{ margin: 0 }}>Não consegui carregar agora.</p>
-        : linhas.length ? <div className="stack small" style={{ gap: 6 }}>{linhas.map((l, i) => <div key={i} className={`missao${l.texto.startsWith('✓') ? ' feita' : ''}`} style={l.destaque ? { fontWeight: 600 } : undefined}>{l.texto.replace(/^✓ /, '')}</div>)}</div>
+        : linhas.length ? <div className="stack small" style={{ gap: 6 }}>{linhas.map((l, i) => <div key={i} className={`missao${l.texto.startsWith('✓') ? ' feita' : ''}`} style={l.destaque ? { fontWeight: 600 } : undefined}>{l.href ? <Link href={l.href}>{l.texto}</Link> : l.texto.replace(/^✓ /, '')}</div>)}</div>
         : <p className="small muted" style={{ margin: 0 }}>{vazio}</p>}
       <Link className="go" href={href}>{rotulo} →</Link>
     </section>

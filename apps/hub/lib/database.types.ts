@@ -17,6 +17,10 @@ export type Database = {
     Functions: {
       goal_salvar: { Args: { p: Json }; Returns: Json }
       goals_status: { Args: { p_user?: string }; Returns: Json }
+      review_list: { Args: { p_limit?: number; p_user?: string }; Returns: Json }
+      review_counts: { Args: { p_user?: string }; Returns: Json }
+      set_category: { Args: { p_ids: string[]; p_category: string; p_learn?: boolean }; Returns: Json }
+      confirm: { Args: { p_ids: string[] }; Returns: number }
     }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }
