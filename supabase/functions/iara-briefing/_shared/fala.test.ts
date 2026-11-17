@@ -1,0 +1,16 @@
+import { limparFala, separarFala } from './fala.ts';
+const ok = (c: boolean, m: string) => { if (!c) throw new Error('FALHOU: ' + m); };
+const n = (s: string) => s.split(' ').length;
+let f = limparFala('**Bom dia, Leo.**\n- Hoje às 9h tem reunião.\n* Priorize o treino.\n# Título\n1. Sobram R$ 120 por dia.')!;
+ok(!/[*#]/.test(f) && !/^-/.test(f) && !f.includes('\n'), 'markdown: ' + f);
+const longa = Array.from({ length: 12 }, (_, i) => `Frase número ${i} com algumas palavras aqui agora.`).join(' ');
+f = limparFala(longa)!;
+ok(n(f) <= 70 && f.endsWith('.'), 'corte: ' + f);
+ok(longa.startsWith(f), 'corte na frase inteira');
+f = limparFala(Array(100).fill('palavra').join(' '))!;
+ok(n(f) <= 71 && f.endsWith('.'), 'sem pontuação');
+ok(limparFala(null) === null && limparFala('  ') === null, 'vazio');
+const s = separarFala('Texto **longo**\n###FALA###\nBom dia, Leo.');
+ok(s.texto === 'Texto **longo**' && s.fala === 'Bom dia, Leo.', 'separar');
+ok(separarFala('só texto').fala === null, 'sem marca');
+console.log('ok');
