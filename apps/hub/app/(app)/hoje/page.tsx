@@ -5,7 +5,8 @@ import { spDate } from '@/lib/dates'
 
 import { Logo } from '@/components/Logo'
 import { Md } from '@/lib/md'
-import { SeuDia, appDoAgent, type Bloco } from '@/components/SeuDia'
+import { SeuDia } from '@/components/SeuDia'
+import { agoraSP, blocosDoDia } from '@/lib/dia'
 import { Notificacoes } from '@/components/Notificacoes'
 import { Perguntas, type Aviso } from '@/components/Perguntas'
 import { Ouvir } from '@/components/Ouvir'
@@ -113,34 +114,9 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
     for (const i of faltam.slice(0, 2)) sabia.push({ texto: `${i.titulo} · ${i.minutos} min` })
   }
 
-  // Seu dia: rotina com horário + treino e contas de hoje (sem hora marcada).
-  const blocos: Bloco[] = []
-  const trilhaFeita = !!sb?.trilha?.hoje && !!sb.itens.length && sb.itens.every((i) => i.status !== 'pendente')
-  if (Array.isArray(dia)) {
-    for (const r of dia as { hora: string; minutos: number | null; atividade: string; agent: string }[]) {
-      const ehTrilha = r.agent === 'sabia' && /trilha|imers/i.test(r.atividade)
-      blocos.push({ hora: r.hora, minutos: ehTrilha && sb?.trilha?.hoje ? sb.trilha.minutos : r.minutos, texto: r.atividade, app: appDoAgent(r.agent), feito: ehTrilha && trilhaFeita })
-    }
-  }
-  // Plano da semana confirmado: os itens de hoje entram com o horário combinado no domingo.
-  // Treino com ref usa o horário do plano no lugar do bloco sem hora; contas já vêm do AIrton logo abaixo.
-  const planoHoje = Array.isArray(semana) ? (semana as { hora: string | null; area: string; titulo: string; minutos: number | null; ref: string | null; feito: boolean }[]) : []
-  const AREA_APP: Record<string, string> = { saude: 'claudia', financas: 'airton', aprender: 'sabia', casa: 'casa' }
-  const treinoNoPlano = new Map(planoHoje.filter((i) => i.ref?.startsWith('treino:')).map((i) => [Number(i.ref!.slice(7)), i]))
-  for (const i of planoHoje) {
-    if (i.ref?.startsWith('treino:') || i.ref?.startsWith('conta:')) continue
-    blocos.push({ hora: i.hora, minutos: i.minutos, texto: i.titulo, app: AREA_APP[i.area] ?? 'hq', feito: i.feito })
-  }
-  if (Array.isArray(sessoes)) for (const s of sessoes) {
-    const p = treinoNoPlano.get(Number(s.id))
-    blocos.push({ hora: p?.hora ?? null, minutos: s.duration_min, texto: `Treino: ${s.title}`, app: 'claudia', feito: s.status === 'done' })
-  }
-  if (mes && mes !== 'erro') {
-    for (const u of ((mes as { upcoming?: { date: string; label: string; amount: number }[] }).upcoming ?? []).filter((u) => u.date === today)) {
-      blocos.push({ hora: null, texto: `${Number(u.amount) < 0 ? 'Conta' : 'Entrada'}: ${u.label} · ${brl(Math.abs(Number(u.amount)))}`, app: 'airton' })
-    }
-  }
-  const agoraHHMM = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'America/Sao_Paulo' }).format(new Date())
+  // Seu dia: rotina com horário + plano da semana + treino e contas de hoje (sem hora marcada).
+  const blocos = blocosDoDia({ dia, semana, sessoes, mes: mes && mes !== 'erro' ? (mes as never) : null, sabia: sb, hoje: today })
+  const agoraHHMM = agoraSP()
 
   const data = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' }).format(new Date())
   const hora = Number(new Intl.DateTimeFormat('pt-BR', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Sao_Paulo' }).format(new Date()))
