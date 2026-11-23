@@ -8,9 +8,10 @@ export type Formato = 'fisico' | 'kindle' | 'audiobook'
 export type Livro = { id: number; titulo: string; autor: string | null; paginas: number | null; status: string; formato?: Formato | null; capa_url?: string | null }
 export type Atual = Livro & { pagina_atual: number | null; comecou_em: string | null; ultima_leitura: string | null }
 export type Livros = {
-  atual: Atual | null; fila: Livro[]; lidos: (Livro & { nota: number | null; terminou_em: string | null })[]
+  atual: Atual | null; fila: Livro[]; lidos: Lido[]; biblioteca?: Lido[]
   meta_ano: number | null; lidos_ano: number; paginas_dia: number | null
 }
+export type Lido = Livro & { nota: number | null; terminou_em: string | null }
 type Achado = { google_id: string; titulo: string; autor: string | null; paginas: number | null; idioma: string | null; capa_url: string | null }
 
 const sb = () => supabaseBrowser() as unknown as SupabaseClient
@@ -54,7 +55,7 @@ async function openLibrary(q: string): Promise<Achado[]> {
   }))
 }
 
-function Capa({ url, titulo, largura = 72 }: { url?: string | null; titulo: string; largura?: number }) {
+function Capa({ url, titulo, largura = 72 }: { url?: string | null; titulo: string; largura?: number | string }) {
   const estilo = { width: largura, aspectRatio: '2 / 3', borderRadius: 10, flex: 'none', objectFit: 'cover' as const, background: 'linear-gradient(160deg, var(--surface-3), var(--surface-2))' }
   // eslint-disable-next-line @next/next/no-img-element
   return url ? <img src={url} alt={`Capa de ${titulo}`} loading="lazy" style={estilo} /> : <div role="img" aria-label={`Sem capa: ${titulo}`} style={estilo} />
@@ -112,11 +113,11 @@ export function LivrosBloco({ dados, erro }: { dados: Livros | null; erro: boole
           <Registrar atual={atual} busy={busy} onRegistrar={(p) => chamar(() => sb().rpc('hub_leitura_registrar', { p_pagina: p, p_livro: atual.id }), (d) => String(d.fala ?? 'Anotado.'))} />
           <button className="chip" style={{ justifySelf: 'start' }} onClick={() => setForm(atual)}>Editar livro</button>
         </>
-      ) : <p className="small muted" style={{ margin: 0 }}>{fila.length ? 'Nenhum livro em leitura. Comece um da fila.' : 'Nenhum livro ainda. Busque abaixo o que está lendo.'}</p>}
+      ) : <p className="small muted" style={{ margin: 0 }}>{fila.length ? 'Nenhum livro em leitura. Comece um da fila.' : (dados.biblioteca ?? dados.lidos ?? []).length ? 'Nenhum livro em leitura agora. Busque abaixo o próximo.' : 'Nenhum livro ainda. Busque abaixo o que está lendo.'}</p>}
 
-      {form && <LivroForm key={form.id} livro={form} busy={busy} onFechar={() => setForm(null)} onSalvar={(p) => salvar(p, () => setForm(null))} />}
+      {form && <LivroForm id="livro-form" key={form.id} livro={form} busy={busy} onFechar={() => setForm(null)} onSalvar={(p) => salvar(p, () => setForm(null))} />}
 
-      <Adicionar busy={busy} onAdicionar={(a, formato, lendo) => salvar({ titulo: a.titulo, autor: a.autor, ...(a.paginas ? { paginas: a.paginas } : {}), capa_url: a.capa_url, google_id: a.google_id, formato, status: lendo ? 'lendo' : 'quero_ler' })} />
+      <Adicionar busy={busy} onAdicionar={(a, formato, status) => salvar({ titulo: a.titulo, autor: a.autor, ...(a.paginas ? { paginas: a.paginas } : {}), capa_url: a.capa_url, google_id: a.google_id, formato, status })} />
 
       {fila.length > 0 && (
         <section className="card" aria-label="Fila de leitura">
@@ -133,6 +134,8 @@ export function LivrosBloco({ dados, erro }: { dados: Livros | null; erro: boole
           </div>
         </section>
       )}
+
+      <Biblioteca livros={dados.biblioteca ?? dados.lidos ?? []} onAbrir={(l) => { setForm(l); setTimeout(() => document.getElementById('livro-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50) }} />
 
       <section className="card" aria-label="Meta do ano">
         <div className="row between">
@@ -167,7 +170,7 @@ function Registrar({ atual, busy, onRegistrar }: { atual: Atual; busy: boolean; 
 }
 
 /** Adicionar livro: busca no Google Books, escolhe o formato e adiciona (à fila ou já lendo). */
-function Adicionar({ busy, onAdicionar }: { busy: boolean; onAdicionar: (a: Achado, formato: Formato, lendo: boolean) => void }) {
+function Adicionar({ busy, onAdicionar }: { busy: boolean; onAdicionar: (a: Achado, formato: Formato, status: 'quero_ler' | 'lendo' | 'lido') => void }) {
   const [q, setQ] = useState('')
   const [achados, setAchados] = useState<Achado[] | null>(null)
   const [buscando, setBuscando] = useState(false)
@@ -205,13 +208,14 @@ function Adicionar({ busy, onAdicionar }: { busy: boolean; onAdicionar: (a: Acha
             <span className="small" style={{ color: 'var(--dim)' }}>{[a.autor, a.idioma ? IDIOMA[a.idioma] ?? a.idioma : null, a.paginas ? `${a.paginas} págs` : null].filter(Boolean).join(' · ')}</span>
           </span>
           <span className="row" style={{ gap: 6, flex: 'none' }}>
-            <button className="chip" disabled={busy} onClick={() => { onAdicionar(a, formato, false); setQ('') }} aria-label={`Pôr ${a.titulo} na fila`}>Fila</button>
-            <button className="chip on" disabled={busy} onClick={() => { onAdicionar(a, formato, true); setQ('') }} aria-label={`Começar a ler ${a.titulo}`}>Ler</button>
+            <button className="chip" disabled={busy} onClick={() => { onAdicionar(a, formato, 'quero_ler'); setQ('') }} aria-label={`Pôr ${a.titulo} na fila`}>Fila</button>
+            <button className="chip" disabled={busy} onClick={() => { onAdicionar(a, formato, 'lido'); setQ('') }} aria-label={`Já li ${a.titulo}`}>Já li</button>
+            <button className="chip on" disabled={busy} onClick={() => { onAdicionar(a, formato, 'lendo'); setQ('') }} aria-label={`Começar a ler ${a.titulo}`}>Ler</button>
           </span>
         </div>
       ))}
       {manual && <LivroForm livro={null} formatoInicial={formato} titulo={q} busy={busy} onFechar={() => setManual(false)}
-        onSalvar={(p) => { onAdicionar({ google_id: '', titulo: String(p.titulo), autor: (p.autor as string) ?? null, paginas: (p.paginas as number) ?? null, idioma: null, capa_url: null }, (p.formato as Formato) ?? formato, p.status === 'lendo'); setManual(false); setQ('') }} />}
+        onSalvar={(p) => { onAdicionar({ google_id: '', titulo: String(p.titulo), autor: (p.autor as string) ?? null, paginas: (p.paginas as number) ?? null, idioma: null, capa_url: null }, (p.formato as Formato) ?? formato, p.status === 'lendo' || p.status === 'lido' ? p.status : 'quero_ler'); setManual(false); setQ('') }} />}
     </section>
   )
 }
@@ -227,10 +231,10 @@ function MetaForm({ atual, busy, onSalvar, onFechar }: { atual: number | null; b
   )
 }
 
-function LivroForm({ livro, busy, onSalvar, onFechar, formatoInicial, titulo }: { livro: Livro | null; busy: boolean; onSalvar: (p: Record<string, unknown>) => void; onFechar: () => void; formatoInicial?: Formato; titulo?: string }) {
+function LivroForm({ id, livro, busy, onSalvar, onFechar, formatoInicial, titulo }: { id?: string; livro: Livro | null; busy: boolean; onSalvar: (p: Record<string, unknown>) => void; onFechar: () => void; formatoInicial?: Formato; titulo?: string }) {
   const [f, setF] = useState({ titulo: livro?.titulo ?? titulo ?? '', autor: livro?.autor ?? '', paginas: livro?.paginas ? String(livro.paginas) : '', status: livro?.status ?? 'quero_ler', formato: livro?.formato ?? formatoInicial ?? 'fisico' })
   return (
-    <form className="card stack" style={{ gap: 8 }} onSubmit={(e) => {
+    <form id={id} className="card stack" style={{ gap: 8, scrollMarginTop: 80 }} onSubmit={(e) => {
       e.preventDefault()
       onSalvar({ ...(livro ? { id: livro.id } : {}), titulo: f.titulo, autor: f.autor || null, ...(f.paginas ? { paginas: Number(f.paginas) } : {}), status: f.status, formato: f.formato })
     }}>
@@ -246,5 +250,29 @@ function LivroForm({ livro, busy, onSalvar, onFechar, formatoInicial, titulo }: 
         <button type="button" className="btn ghost" onClick={onFechar}>Cancelar</button>
       </div>
     </form>
+  )
+}
+
+/** Minha biblioteca: todos os livros terminados, em capas, como na estante do Apple Books. Toque abre a edição. */
+function Biblioteca({ livros, onAbrir }: { livros: Lido[]; onAbrir: (l: Livro) => void }) {
+  if (!livros.length) return null
+  const quando = (d: string | null) => (d ? `${d.slice(5, 7)}/${d.slice(0, 4)}` : null)
+  return (
+    <section className="card" aria-label="Minha biblioteca">
+      <div className="row between">
+        <span className="small muted">Minha biblioteca</span>
+        <span className="small" style={{ color: 'var(--dim)' }}>{livros.length} {livros.length === 1 ? 'lido' : 'lidos'}</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))', gap: '14px 12px', marginTop: 12 }}>
+        {livros.map((l) => (
+          <button key={l.id} type="button" onClick={() => onAbrir(l)} aria-label={`Editar ${l.titulo}`}
+            style={{ all: 'unset', cursor: 'pointer', display: 'grid', gap: 6, alignContent: 'start', minWidth: 0 }}>
+            <Capa url={l.capa_url} titulo={l.titulo} largura="100%" />
+            <span className="small" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.25 }}>{l.titulo}</span>
+            <span className="small" style={{ color: 'var(--dim)', marginTop: -4 }}>{quando(l.terminou_em)}{l.nota ? <span aria-label={`nota ${l.nota}`} style={{ display: 'block', color: 'var(--accent)' }}>{'★'.repeat(l.nota)}</span> : null}</span>
+          </button>
+        ))}
+      </div>
+    </section>
   )
 }
