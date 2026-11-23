@@ -70,9 +70,15 @@ export default async function SemanaPage() {
         {confirmado && dias.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${dias.length}, 1fr)`, gap: 4, marginTop: 12 }} aria-hidden="true">
             {dias.map((d) => {
+              // Cada dia enche na proporção do que foi feito (antes só acendia com o dia 100% feito, e parecia quebrado).
               const doDia = itens.filter((i) => i.data === d)
-              const ok = doDia.length > 0 && doDia.every((i) => i.status === 'feito')
-              return <i key={d} style={{ height: 6, borderRadius: 3, background: ok ? 'var(--accent)' : d < hoje && doDia.length ? 'var(--alert)' : 'var(--surface-3)' }} />
+              const fr = doDia.length ? doDia.filter((i) => i.status === 'feito').length / doDia.length : 0
+              const atrasado = d < hoje && fr < 1 && doDia.length > 0
+              return (
+                <i key={d} style={{ display: 'block', height: 6, borderRadius: 3, overflow: 'hidden', background: atrasado ? 'color-mix(in srgb, var(--alert) 35%, var(--surface-3))' : 'var(--surface-3)', outline: d === hoje ? '1px solid var(--dim)' : undefined, outlineOffset: 1 }}>
+                  <b style={{ display: 'block', height: '100%', width: `${fr * 100}%`, background: 'var(--accent)', borderRadius: 3 }} />
+                </i>
+              )
             })}
           </div>
         )}
