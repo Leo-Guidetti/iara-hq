@@ -269,3 +269,8 @@ details.card > summary::-webkit-details-marker { display: none; }
   .hoje > .brief-card { grid-row: 2 / span 3; }
   .hoje > .orbit { grid-column: 2 / span 2; }
 }
+
+/* Esqueleto de carregamento (app/(app)/loading.tsx) */
+.esqueleto { border-radius: var(--radius); background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 50%, var(--surface) 100%) 0 0 / 200% 100%; animation: esqueleto 1.2s ease-in-out infinite; }
+@keyframes esqueleto { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; } }

@@ -8,6 +8,13 @@ da UX-24 ativas (`meta.salvar_plano` e `plano.salvar` inativas); origem `respost
 `iara-comando` v10 e `airton-ai` v16 publicados pelo CI. Onda 4 segue com UX-26 e UX-21, que esperam as chaves do Leo.
 Teste do Leo: guia, seções UX-23, UX-24 e UX-25 (o Atalho "IARA" tem o passo a passo no Perfil).
 
+**Superapp (23/11, pedido do Leo):** crítica de usabilidade e sitemap decidido no Claude Doc "Crítica de usabilidade do hub"
+(https://claude.ai/artifact/SvApdLXaygv951gBZm5UCm) e protótipo da nova identidade "HUD de bordo"
+(https://claude.ai/artifact/65cYHubNY2f3FM48Fdg1Ww). Fila: (1) `perf/troca-de-aba` — hub em `gru1` (estava em `iad1`, longe do
+Supabase `sa-east-1`), `loading.tsx`, `staleTimes.dynamic` 30 s, `getClaims` no lugar do 2º `getUser`, `Promise.all` na SabIA;
+(2) identidade visual em `packages/ui` + barra com 6 abas (Planos entra, órbita sai); (3) subabas Hoje, Planos, AIrton, SabIA;
+(4) livros com busca no Google Books, capa, formato e %; (5) revisar lançamentos dentro do hub. Itens 2 a 5 esperam o OK do Leo no protótipo.
+
 **Antes (23/11):** onda 4 do plano de UX registrada (voz em todo lugar: UX-23 microfone no hub, UX-24 edição
 100% por voz, UX-25 Atalho "IARA" + push, UX-26 iPad com "Ei IARA" via Picovoice, UX-21 protótipo Gemini Live × OpenAI
 Realtime). Guia de testes de todos os itens em `docs/ux-audit/guia-testes.md`. Produção 18–22/11: crons sem falha,
