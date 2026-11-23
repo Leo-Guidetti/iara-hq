@@ -51,7 +51,8 @@ async function sincronizar(userId: string, feeds: Feed[]) {
     try {
       const r = await fetch(url.replace(/^webcal:/i, 'https:'), { headers: { accept: 'text/calendar' } });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const evs = lerIcs(await r.text(), de, ate).map((e) => (prefixo ? { ...e, titulo: `${prefixo}${e.titulo}`.slice(0, 200) } : e));
+      // O feed da FotMob já traz o ⚽ no título: só prefixa quando faltar (evita "⚽ ⚽").
+      const evs = lerIcs(await r.text(), de, ate).map((e) => (prefixo && !e.titulo.startsWith(prefixo.trim()) ? { ...e, titulo: `${prefixo}${e.titulo}`.slice(0, 200) } : e));
       await sql.begin(async (tx) => {
         // A janela é regravada inteira: evento apagado ou movido na agenda some daqui também.
         await tx`delete from core.agenda_eventos where user_id = ${userId} and fonte = ${fonte}`;
