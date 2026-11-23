@@ -153,6 +153,29 @@ dialog.folha::backdrop { background: rgb(0 0 0 / 55%); }
 dialog.folha[open] { animation: surgir .35s cubic-bezier(.2,.8,.2,1) both; }
 .folha-corpo { padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); overflow-y: auto; }
 @media (min-width: 900px) { dialog.folha { margin: auto; border-radius: 24px; } }
+/* Orbe de voz (protótipo de 23/11): parado respira devagar; ouvindo solta ondas; pensando gira; falando pulsa. */
+.orbe { position: relative; width: 200px; height: 200px; margin: 8px auto 0; border: 0; padding: 0; background: none; cursor: pointer; border-radius: 50%; -webkit-tap-highlight-color: transparent; }
+.orbe:disabled { cursor: default; }
+.orbe .nucleo { position: absolute; inset: 58px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #F2EEFF 0%, #C9B8FF 22%, #8B7FF0 55%, #3B2F8F 100%);
+  box-shadow: 0 0 44px rgb(139 127 240 / 45%), inset 0 0 18px rgb(255 255 255 / 25%); animation: respirar 4s ease-in-out infinite; }
+.orbe .onda { position: absolute; inset: 40px; border-radius: 50%; border: 1px solid rgb(201 184 255 / 50%); opacity: 0; }
+.orbe .anel-giro { position: absolute; inset: 16px; border-radius: 50%; border: 1px dashed rgb(139 127 240 / 35%); opacity: 0; transition: opacity .3s; }
+.orbe.ouvindo .onda { animation: onda 1.6s ease-out infinite; }
+.orbe.ouvindo .o2 { animation-delay: .53s; }
+.orbe.ouvindo .o3 { animation-delay: 1.06s; }
+.orbe.ouvindo .nucleo { animation-duration: 1.1s; }
+.orbe.pensando .anel-giro { opacity: 1; animation: girar 6s linear infinite; }
+.orbe.falando .nucleo { animation: respirar .8s ease-in-out infinite; }
+.orbe.falando .onda { animation: onda 2.4s ease-out infinite; }
+.orbe.falando .o2 { animation-delay: .8s; }
+.orbe.falando .o3 { animation-delay: 1.6s; }
+.orbe:focus-visible { outline: 2px solid var(--hq); outline-offset: 4px; }
+@keyframes respirar { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes onda { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .orbe .nucleo, .orbe .onda, .orbe .anel-giro { animation: none !important; } }
+.peca .fala { font-size: 1.15rem; font-weight: 300; line-height: 1.4; }
 .topbar .redondo { width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; background: var(--surface-2); color: var(--text); }
 .topbar .avatar { width: 44px; height: 44px; border-radius: 22px; padding: 2px; display: grid; place-items: center;
   background: linear-gradient(135deg, var(--hq), var(--airton)); }
