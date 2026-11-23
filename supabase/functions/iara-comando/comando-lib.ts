@@ -15,6 +15,9 @@ export type Contexto = {
   semana?: { id: number; status: string } | null; planos?: { id: number; titulo: string; status: string }[];
   compromissos?: { id: number; titulo: string; data: string }[];
   lancamentos?: { id: string; descricao: string; valor: number }[]; categorias?: { id: string; nome: string }[];
+  /** UX-24: candidatos para editar metas e decidir sem estar na tela (Atalho, /hoje). */
+  metas?: { id: number; titulo: string; plano?: string; horizonte?: string; status?: string }[];
+  decisoes?: { id: number; pergunta: string }[]; propostas?: { id: number; campo: string; motivo?: string }[];
 };
 /** UX-23: itens marcados na tela do hub (data-iara-*), na ordem da página, visíveis primeiro. Os ids são dica do cliente:
  *  só servem de candidatos e toda escrita roda como o usuário (RLS), então id alheio não acha nada. */
@@ -72,8 +75,10 @@ Regras:
 - Valor em dinheiro, peso, página e prazo NUNCA se adivinham: se não foi dito, omita o slot.
 - confianca de 0 a 1. Ambíguo (dois itens possíveis, intenção duvidosa): confianca baixa, "pergunta_esclarecimento" com UMA pergunta curta e "opcoes" com até 3 respostas curtas. Senão pergunta_esclarecimento null e opcoes [].
 - Use os turnos recentes para entender respostas curtas ("a segunda", "sim", "essa").
-- "Na tela" lista o que o Leo está vendo agora, numerado na ordem da página (os visíveis primeiro). "essa", "esse", "isso", "a primeira", "o segundo" e o nome de um item se referem a esses itens: use o id dele (tipo meta -> p.id de meta.salvar_plano; plano -> plano; semana_item -> p_id de semana.*; meta_financeira -> p.id de meta.salvar; decisao/proposta -> p_id). Se mais de um item visível servir, pergunte qual.
-- Para EDITAR uma meta que já existe (meta.salvar_plano ou meta.salvar com id), mande só o id e os campos que mudam. Nas outras intenções, mande todos os campos obrigatórios.
+- "Na tela" lista o que o Leo está vendo agora, numerado na ordem da página (os visíveis primeiro). "essa", "esse", "isso", "a primeira", "o segundo" e o nome de um item se referem a esses itens: use o id dele (meta -> p_id de meta.editar; plano -> p_id de plano.editar/plano.confirmar/plano.descartar ou p_plano de meta.adicionar; semana_item -> p_id de semana.*; meta_financeira -> p.id de meta.salvar; decisao/proposta -> p_id; decisao -> decisao_id de decisao.painel). Se mais de um item visível servir, pergunte qual.
+- Editar: plano.editar e meta.editar recebem o id e SÓ os campos que mudam ("arquiva" = status abandonado no plano e cancelada na meta; "retoma" = ativo/ativa). meta.salvar (AIrton) com id: só o id e o que muda. Nas outras intenções, mande todos os campos obrigatórios.
+- Dias da semana (p_dias): 1 = segunda, 2 = terça ... 6 = sábado, 7 = domingo.
+- Prazo dito só com o ano ("para 2028"): use 31/12 desse ano; só com mês e ano: o último dia do mês.
 Catálogo:
 ${linhas.join('\n')}`;
 }
@@ -240,15 +245,23 @@ export function validarSlots(spec: Record<string, string>, slots: Record<string,
 
 // ---------- ids que o modelo cita: só valem se estiverem nos candidatos ----------
 
-const IDS: Record<string, { slot: string; lista?: boolean; tela?: string; semCand?: string; cand: (c: Contexto) => (string | number)[] }> = {
+const IDS: Record<string, { slot: string; lista?: boolean; tela?: string; semCand?: string; cand: (c: Contexto) => (string | number)[]; daTela?: (i: ItemTela, c: Contexto) => boolean }> = {
   'casa.item_status': { slot: 'p_id', tela: 'item', cand: (c) => (c.itens ?? []).map((i) => i.id) },
   'sabia.item': { slot: 'p_id', cand: (c) => (c.trilha ?? []).map((i) => i.id) },
   'agenda.compromisso_cancelar': { slot: 'p_id', tela: 'compromisso', cand: (c) => (c.compromissos ?? []).map((i) => i.id) },
   'semana.confirmar': { slot: 'p_plano', cand: (c) => (c.semana ? [c.semana.id] : []) },
   'semana.responder': { slot: 'p_plano', cand: (c) => (c.semana ? [c.semana.id] : []) },
   'plano.confirmar': { slot: 'p_id', tela: 'plano', cand: (c) => (c.planos ?? []).map((i) => i.id) },
-  'decisao.decidir': { slot: 'p_id', tela: 'decisao', semCand: 'Abra Planos e me diga de novo: assim eu vejo de qual decisão você fala.', cand: () => [] },
-  'proposta.decidir': { slot: 'p_id', tela: 'proposta', semCand: 'Abra Planos e me diga de novo: assim eu vejo de qual proposta você fala.', cand: () => [] },
+  'plano.editar': { slot: 'p_id', tela: 'plano', cand: (c) => (c.planos ?? []).map((i) => i.id) },
+  // só rascunho: plano da tela que não é rascunho (pelo status do servidor ou pelo detalhe da tela) não vale; ativo se arquiva por plano.editar
+  'plano.descartar': { slot: 'p_id', tela: 'plano', semCand: 'Não há rascunho de plano agora. Para tirar um plano ativo, diga "arquiva o plano".',
+    cand: (c) => (c.planos ?? []).filter((i) => i.status === 'rascunho').map((i) => i.id),
+    daTela: (i, c) => { const s = (c.planos ?? []).find((p) => String(p.id) === i.id)?.status; return s ? s === 'rascunho' : !i.detalhe || i.detalhe.startsWith('rascunho'); } },
+  'meta.editar': { slot: 'p_id', tela: 'meta', cand: (c) => (c.metas ?? []).map((i) => i.id) },
+  'meta.adicionar': { slot: 'p_plano', tela: 'plano', cand: (c) => (c.planos ?? []).map((i) => i.id) },
+  'decisao.decidir': { slot: 'p_id', tela: 'decisao', semCand: 'Abra Planos e me diga de novo: assim eu vejo de qual decisão você fala.', cand: (c) => (c.decisoes ?? []).map((i) => i.id) },
+  'decisao.painel': { slot: 'decisao_id', tela: 'decisao', semCand: 'Não há decisão aberta agora.', cand: (c) => (c.decisoes ?? []).map((i) => i.id) },
+  'proposta.decidir': { slot: 'p_id', tela: 'proposta', semCand: 'Abra Planos e me diga de novo: assim eu vejo de qual proposta você fala.', cand: (c) => (c.propostas ?? []).map((i) => i.id) },
   'lancamento.categorizar': { slot: 'p_ids', lista: true, cand: (c) => (c.lancamentos ?? []).map((i) => i.id) },
   'lancamento.confirmar': { slot: 'p_ids', lista: true, cand: (c) => (c.lancamentos ?? []).map((i) => i.id) },
 };
@@ -258,7 +271,8 @@ const IDS_P: Record<string, { tela: string; cand: (c: Contexto) => (string | num
   'meta.salvar': { tela: 'meta_financeira', cand: () => [] },
   'agenda.compromisso_salvar': { tela: 'compromisso', cand: (c) => (c.compromissos ?? []).map((i) => i.id) },
 };
-const idsTela = (tela: Tela | null | undefined, tipo: string | undefined) => (tipo && tela ? tela.itens.filter((i) => i.tipo === tipo).map((i) => i.id) : []);
+const idsTela = (tela: Tela | null | undefined, tipo: string | undefined, ctx?: Contexto, filtro?: (i: ItemTela, c: Contexto) => boolean) =>
+  (tipo && tela ? tela.itens.filter((i) => i.tipo === tipo && (!filtro || !ctx || filtro(i, ctx))).map((i) => i.id) : []);
 
 /** Completa o id quando só há um candidato; descarta id que o modelo inventou (vira slot faltando -> pergunta).
  *  UX-23: os ids da tela entram como candidatos (de contexto do servidor + tela). */
@@ -273,7 +287,7 @@ export function conferirIds(slug: string, slots: Record<string, unknown>, ctx: C
   }
   const r = IDS[slug];
   if (!r) return slots;
-  const daTela = idsTela(tela, r.tela);
+  const daTela = idsTela(tela, r.tela, ctx, r.daTela);
   const cand = [...new Set([...r.cand(ctx).map(String), ...daTela])];
   const out = { ...slots };
   const dado = out[r.slot];
@@ -286,7 +300,7 @@ export function conferirIds(slug: string, slots: Record<string, unknown>, ctx: C
   return out;
 }
 export function idCandidatos(slug: string, ctx: Contexto, tela: Tela | null = null): number {
-  return IDS[slug] ? new Set([...IDS[slug].cand(ctx).map(String), ...idsTela(tela, IDS[slug].tela)]).size : 1;
+  return IDS[slug] ? new Set([...IDS[slug].cand(ctx).map(String), ...idsTela(tela, IDS[slug].tela, ctx, IDS[slug].daTela)]).size : 1;
 }
 
 // ---------- destino, plano de ação e risco ----------
@@ -300,6 +314,7 @@ export function resolverDestino(rpc: string): Destino {
 export function corpoFn(destino: { funcao: string; acao: string }, args: Record<string, unknown>, textoLeo: string, canal = 'hub'): Record<string, unknown> {
   // UX-18: no canal que fala, o airton-ai usa o system de voz (contrato §3.6, cacheado); no hub segue o chat em texto.
   if (destino.funcao === 'airton-ai') return { action: destino.acao, message: String(args.pergunta ?? textoLeo), channel: canalFala(canal) ? 'voice' : 'chat' };
+  if (destino.funcao === 'iara-agenda') return { action: destino.acao, ...args }; // UX-24: a agenda usa `action`
   return { acao: destino.acao, ...args };
 }
 
@@ -315,7 +330,8 @@ export type Plano =
 
 const ROTULO: Record<string, string> = {
   p_pagina: 'a página', p_kg: 'o peso', p_id: 'qual item', p_ids: 'quais lançamentos', p_category: 'a categoria', p_plano: 'qual plano',
-  p_status: 'o status', p_data: 'a data', p_hora: 'a hora', p: 'os detalhes', titulo: 'o título', data: 'a data', 'p.titulo': 'o título', 'p.data': 'a data',
+  p_status: 'o status', p_data: 'a data', p_titulo: 'o nome', p_horizonte: 'o horizonte (curto, médio ou longo prazo)', p_nome: 'o nome do lugar',
+  decisao_id: 'qual decisão', p_hora: 'a hora', p: 'os detalhes', titulo: 'o título', data: 'a data', 'p.titulo': 'o título', 'p.data': 'a data',
   pergunta: 'a pergunta', frase: 'a frase',
 };
 const rotulo = (s: string) => ROTULO[s] ?? 'um dado que faltou';
@@ -353,7 +369,7 @@ export function planejar(rota: Rota, catalogo: Intencao[], ctx: Contexto, textoL
     return pergunta(q, rota.opcoes);
   }
   if (exigeSim(intencao)) {
-    const q = `Vou ${descreverAcao(intencao.slug, v.args, tela)}. Confirma?`;
+    const q = `Vou ${descreverAcao(intencao.slug, v.args, tela, ctx)}. Confirma?`;
     return { tipo: 'confirmar', resposta: { fala: q, tela: { intencao: intencao.slug, risco: intencao.risco, executou: false }, pendente: { tipo: 'confirmacao', intencao: intencao.slug, slots: v.args, pergunta: q } } };
   }
   return { tipo: 'executar', intencao, args: v.args, destino: resolverDestino(intencao.rpc) };
@@ -384,8 +400,49 @@ function mudancas(p: Record<string, any>): string {
   return m.length ? `mudar ${m.join(' e ')}` : '';
 }
 
-export function descreverAcao(slug: string, a: Record<string, unknown>, tela: Tela | null = null): string {
+const STATUS_PLANO: Record<string, string> = { pausado: 'pausar', ativo: 'retomar', concluido: 'concluir', abandonado: 'arquivar' };
+const DONO_NOME: Record<string, string> = { iara: 'IARA', claudia: 'ClaudIA', airton: 'AIrton', sabia: 'SabIA' };
+const reais = (n: unknown) => `R$ ${Number(n).toLocaleString('pt-BR')}`;
+const dataLonga = (d: unknown) => `${dataBR(String(d))}/${String(d).slice(0, 4)}`;
+const nomePlano = (a: Record<string, unknown>, ctx: Contexto, tela: Tela | null, slot = 'p_id') =>
+  tituloTela(tela, 'plano', a[slot]) ?? ctx.planos?.find((x) => String(x.id) === String(a[slot]))?.titulo ?? 'esse plano';
+const nomeMeta = (a: Record<string, unknown>, ctx: Contexto, tela: Tela | null) =>
+  tituloTela(tela, 'meta', a.p_id) ?? ctx.metas?.find((x) => String(x.id) === String(a.p_id))?.titulo ?? 'essa meta';
+/** UX-24: "pausar o plano "Violão" e mudar o nome para …" com os campos que vieram. `alvo` = 'o plano "X"' ou 'a meta "X"'. */
+function descreverEdicao(alvo: string, st: string | null, m: string[]): string {
+  const mud = m.length ? `mudar ${m.join(' e ')}` : '';
+  if (st && mud) return `${st} ${alvo} e ${mud}`;
+  if (st) return `${st} ${alvo}`;
+  return mud ? `${mud} ${alvo.startsWith('a ') ? 'da' : 'do'} ${alvo.slice(2)}` : `salvar ${alvo}`;
+}
+
+export function descreverAcao(slug: string, a: Record<string, unknown>, tela: Tela | null = null, ctx: Contexto = {}): string {
   const p = (a.p ?? {}) as Record<string, any>;
+  if (slug === 'plano.editar') {
+    const m: string[] = [];
+    if (a.p_titulo) m.push(`o nome para "${a.p_titulo}"`);
+    if (a.p_alvo_valor) m.push(`o alvo para ${reais(a.p_alvo_valor)}`);
+    if (a.p_alvo_data) m.push(`a data para ${dataLonga(a.p_alvo_data)}`);
+    if (a.p_porque) m.push('o porquê');
+    if (a.p_tipo) m.push(`o tipo para ${a.p_tipo}`);
+    return descreverEdicao(`o plano "${nomePlano(a, ctx, tela)}"`, a.p_status ? STATUS_PLANO[String(a.p_status)] ?? null : null, m);
+  }
+  if (slug === 'meta.editar') {
+    const m: string[] = [];
+    if (a.p_titulo) m.push(`o nome para "${a.p_titulo}"`);
+    if (a.p_prazo) m.push(`o prazo para ${dataLonga(a.p_prazo)}`);
+    if (a.p_horizonte) m.push(`o horizonte para ${HORIZONTE[String(a.p_horizonte)] ?? a.p_horizonte}`);
+    if (a.p_dono) m.push(`o dono para ${DONO_NOME[String(a.p_dono)] ?? a.p_dono}`);
+    if (a.p_alvo) m.push(`o valor para ${reais(a.p_alvo)}`);
+    if (a.p_cadencia) m.push(`a cadência para ${a.p_cadencia}`);
+    const st = a.p_status ? ({ ...STATUS_META, cancelada: 'arquivar' } as Record<string, string>)[String(a.p_status)] ?? null : null;
+    return descreverEdicao(`a meta "${nomeMeta(a, ctx, tela)}"`, st, m);
+  }
+  if (slug === 'meta.adicionar') {
+    const extra = [a.p_alvo ? `de ${reais(a.p_alvo)}` : null, a.p_prazo ? `até ${dataLonga(a.p_prazo)}` : null, a.p_horizonte ? `no ${HORIZONTE[String(a.p_horizonte)] ?? a.p_horizonte}` : null].filter(Boolean).join(' ');
+    return `adicionar a meta "${a.p_titulo}"${extra ? ` ${extra}` : ''} ao plano "${nomePlano(a, ctx, tela, 'p_plano')}"`;
+  }
+  if (slug === 'plano.descartar') return `descartar o rascunho "${nomePlano(a, ctx, tela)}"`;
   if (slug === 'meta.salvar_plano' && p.id != null) {
     const nome = tituloTela(tela, 'meta', p.id) ?? p.titulo ?? 'essa meta';
     const st = p.status ? STATUS_META[p.status] : null;
@@ -442,6 +499,18 @@ export function falaExecucao(intencao: Intencao, args: Record<string, unknown>, 
     case 'semana.item_editar': return `Passei o item para ${dataBR(String(args.p_data))} às ${horaBR(String(args.p_hora))}.`;
     case 'lancamento.categorizar': return `Categorizei ${(args.p_ids as unknown[]).length} lançamento(s) como ${ctx.categorias?.find((c) => c.id === args.p_category)?.nome ?? args.p_category}.`;
     case 'lancamento.confirmar': return `Confirmei ${(args.p_ids as unknown[]).length} lançamento(s).`;
+    case 'plano.editar': return r.mudou === false ? 'Nada mudou no plano.' : `Pronto, atualizei o plano${r.titulo ? ` "${r.titulo}"` : ''}.`;
+    case 'plano.descartar': return `Descartei o rascunho "${r.titulo ?? ''}".`;
+    case 'meta.editar': return r.mudou === false ? 'Nada mudou na meta.'
+      : `Pronto, atualizei a meta${r.titulo ? ` "${r.titulo}"` : ''}.${Array.isArray(r.goals_criadas) && r.goals_criadas.length ? ' Criei também a meta em Finanças.' : ''}`;
+    case 'meta.adicionar': return r.ja_existia ? `A meta "${r.titulo ?? ''}" já estava no plano.`
+      : `Adicionei a meta "${r.titulo ?? ''}".${Array.isArray(r.goals_criadas) && r.goals_criadas.length ? ' Criei também a meta em Finanças.' : ''}`;
+    case 'expediente.definir': return `Expediente salvo: ${r.inicio ?? ''} às ${r.fim ?? ''}.`;
+    case 'lugar.salvar': return `Salvei o lugar "${args.p_nome}".`;
+    case 'lugar.remover': return resultado === false ? `Não achei o lugar "${args.p_nome}".` : `Tirei "${args.p_nome}" dos seus lugares.`;
+    case 'semana.gerar': return 'Pedi o plano da semana. Se ela ainda não foi confirmada, fica pronto em cerca de 1 minuto em Semana.';
+    case 'agenda.sincronizar': return r.ok !== false ? 'Agenda sincronizada.'
+      : /secret|não conectada/i.test(String(r.motivo ?? '')) ? 'Sua agenda ainda não está conectada ao app.' : 'Não consegui sincronizar a agenda agora.';
     case 'meta.salvar_plano': return p.id != null ? 'Pronto, atualizei a meta.' : `Criei a meta "${p.titulo ?? ''}".`;
     case 'livro.salvar': return `Salvei o livro "${p.titulo ?? ''}".`;
     case 'financas.quanto_posso_gastar': return limparFala(String(r.reply ?? 'Não consegui calcular agora.'));
@@ -567,7 +636,7 @@ export async function processar(texto: string, d: Deps, opts: { dryRun?: boolean
     const bruto = await d.chamar(plano.destino, plano.args, texto, plano.intencao.slug);
     const { resultado, desfazer, acao } = desempacotar(bruto);
     if (acao?.status === 'pendente') { // o banco exigiu "sim" (política única): vira confirmação, não execução
-      const q = acao.pergunta ?? `Vou ${descreverAcao(plano.intencao.slug, plano.args, d.tela ?? null)}. Confirma?`;
+      const q = acao.pergunta ?? `Vou ${descreverAcao(plano.intencao.slug, plano.args, d.tela ?? null, d.contexto)}. Confirma?`;
       return { fala: limparFala(q), tela: { intencao: plano.intencao.slug, risco: plano.intencao.risco, executou: false }, pendente: pendenteConfirmacao(plano.intencao.slug, plano.args, q, acao), ...base, slots: plano.args, rota };
     }
     const fala = falaExecucao(plano.intencao, plano.args, resultado, d.contexto);

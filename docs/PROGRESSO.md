@@ -3,8 +3,9 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (23/11, noite):** UX-23 (microfone e contexto da tela) no PR #61; seguem UX-24 (edição de planos por voz) e
-UX-25 (Atalho "IARA" + push), um PR cada. Teste do Leo para UX-23: guia, seção UX-23.
+**Próximo passo (23/11, noite):** UX-23 no ar (#61). UX-24 (edição 100% por voz) no PR #62: depois do merge, conferir a
+migration (7 RPCs, 10 intenções ativas, `meta.salvar_plano` e `plano.salvar` inativas). Segue UX-25 (Atalho "IARA" + push).
+Teste do Leo: guia, seções UX-23 e UX-24.
 
 **Antes (23/11):** onda 4 do plano de UX registrada (voz em todo lugar: UX-23 microfone no hub, UX-24 edição
 100% por voz, UX-25 Atalho "IARA" + push, UX-26 iPad com "Ei IARA" via Picovoice, UX-21 protótipo Gemini Live × OpenAI
@@ -47,7 +48,7 @@ Lista única do que está parado. Ao resolver um item, risque aqui e registre no
 - [ ] UX-26: conta no Picovoice, treinar "Ei IARA" (Portuguese, Web/WASM), enviar o `.ppn` e cadastrar `PICOVOICE_ACCESS_KEY` no Supabase. Conferir limites do plano Free e suporte a português/Safari.
 - [ ] UX-21: chave comum do Gemini `IARA_GEMINI_KEY_VOZ` (resolve também o 403 das buscas Gemini) e chave da OpenAI `IARA_OPENAI_KEY_VOZ` com limite de gasto.
 - [ ] UX-21: confirmar o teto de voz de US$ 15/mês (D4 revista; antes US$ 5).
-- [x] Dar o sinal para UX-23, UX-24 e UX-25 (23/11). UX-23 no ar pelo #61.
+- [x] Dar o sinal para UX-23, UX-24 e UX-25 (23/11). UX-23 no ar pelo #61; UX-24 no #62.
 
 **Do Leo — fora do plano de UX**
 - [ ] Autorizar apagar o bucket público `airton-deploy` (8 arquivos antigos de 02–03/11).
@@ -57,7 +58,7 @@ Lista única do que está parado. Ao resolver um item, risque aqui e registre no
 - [ ] Painel de decisão: decidir algo já decidido mostra só "Erro 409"; trocar por mensagem clara.
 - [ ] `core.comando_contexto` oferece itens da trilha `hobby` como candidatos de `sabia.item`.
 - [ ] Peso sem Desfazer (falta coluna de anulação segura).
-- [ ] Bateria de 20 frases do `iara-comando` em produção (precisa do JWT do Leo; ~US$ 0,25).
+- [ ] Bateria de 20 frases do `iara-comando` em produção (precisa do JWT do Leo; ~US$ 0,25). Mais 20 de edição (UX-24): `BATERIA_ARQUIVO=bateria-edicao.json`, meta ≥ 90%.
 - [ ] Plano da semana de 22/11 saiu com fala e 0 decisões: conferir no domingo 29/11 se o `iara-semana` está gerando decisões quando há o que decidir.
 - [ ] Atualizar `docs/ux-audit/guia-testes.md` quando o Claude Doc do guia mudar (o arquivo é uma cópia de 23/11).
 

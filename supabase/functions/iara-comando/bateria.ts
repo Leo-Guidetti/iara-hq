@@ -12,7 +12,8 @@
 //   export SUPABASE_ANON_KEY=<publishable key>
 //   export IARA_JWT=<access_token da sessão do Leo>      # ex.: supabase.auth.getSession() no navegador logado
 //   deno run --allow-net --allow-env --allow-read supabase/functions/iara-comando/bateria.ts
-// Variável opcional BATERIA_CANAL=voz|atalho|hub (padrão voz). Saída: uma linha por frase, placar de roteamento, de fala e medianas.
+// Variável opcional BATERIA_CANAL=voz|atalho|hub (padrão voz). UX-24: BATERIA_ARQUIVO=bateria-edicao.json roda as frases de edição
+// de planos (todas em dry_run; meta >= 90% roteadas certo, como as 18/20 daqui). Saída: uma linha por frase, placar de roteamento, de fala e medianas.
 // Código de saída 1 se roteamento < 18/20, qualquer fala fora do contrato, número fora de 5% ou mediana acima da meta.
 import { MAX_PALAVRAS_COMANDO } from './_shared/fala.ts';
 import { avaliarFala, mediana, numerosDaFala, valorDoCampo, type Fonte } from './bateria-lib.ts';
@@ -25,7 +26,10 @@ type Caso = {
 const url = Deno.env.get('SUPABASE_URL'), jwt = Deno.env.get('IARA_JWT'), anon = Deno.env.get('SUPABASE_ANON_KEY');
 if (!url || !jwt || !anon) { console.error('Defina SUPABASE_URL, SUPABASE_ANON_KEY e IARA_JWT (ver o cabeçalho deste arquivo).'); Deno.exit(2); }
 const canal = Deno.env.get('BATERIA_CANAL') ?? 'voz';
-const casos: Caso[] = JSON.parse(await Deno.readTextFile(new URL('./bateria.json', import.meta.url)));
+const arquivo = Deno.env.get('BATERIA_ARQUIVO') ?? 'bateria.json';
+if (!/^[a-z-]+\.json$/.test(arquivo)) { console.error('BATERIA_ARQUIVO inválido.'); Deno.exit(2); }
+const casos: Caso[] = JSON.parse(await Deno.readTextFile(new URL(`./${arquivo}`, import.meta.url)));
+const metaRota = Math.ceil(casos.length * 0.9); // 18 de 20
 
 const confere = (esperado: unknown, obtido: unknown): boolean => {
   if (esperado && typeof esperado === 'object') return !!obtido && typeof obtido === 'object' && Object.entries(esperado).every(([k, v]) => confere(v, (obtido as any)[k]));
@@ -76,9 +80,9 @@ for (const c of casos) {
   console.log(`${certo ? 'ok  ' : 'ERRO'} [${c.tipo}] ${ms} ms ${c.frase} -> ${j.intencao} (esperado ${c.intencao_esperada})${nota}`);
 }
 const medE = mediana(tempos.escrita), medP = mediana([...tempos.pergunta, ...tempos.leitura]);
-console.log(`\nRoteamento: ${certas}/${casos.length} (meta >= 18/20)`);
+console.log(`\nRoteamento: ${certas}/${casos.length} (meta >= ${metaRota}/${casos.length})`);
 console.log(`Fala (${canal}, ${falasTotal} respostas reais): ${falasOk}/${falasTotal} sem *, # nem lista e <= ${MAX_PALAVRAS_COMANDO} palavras`);
 console.log(`Números: ${numerosOk}/${numerosTotal} a <= 5% do dado`);
 console.log(`Tempo mediano: escrita ${medE} ms (meta <= 4000, dry_run = só roteamento); pergunta/leitura ${medP} ms (meta <= 8000)`);
-const falhou = certas < 18 || falasOk < falasTotal || numerosOk < numerosTotal || medE > 4000 || medP > 8000;
+const falhou = certas < metaRota || falasOk < falasTotal || numerosOk < numerosTotal || medE > 4000 || medP > 8000;
 Deno.exit(falhou ? 1 : 0);

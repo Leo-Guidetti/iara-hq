@@ -192,22 +192,6 @@
         "desfazer_rpc": null
     },
     {
-        "rpc": "public.hub_meta_salvar",
-        "slug": "meta.salvar_plano",
-        "agent": "iara",
-        "risco": "alto",
-        "slots": {
-            "p": "jsonb{id?:bigint,plano_id:bigint,horizonte:text(curto|medio|longo),dono:text,titulo:text,parent_id?:bigint,medida?:jsonb,prazo?:date,cadencia?:text,demanda?:jsonb,ref?:text,status?:text(ativa|pausada|concluida|cancelada)}"
-        },
-        "exemplos": [
-            "adiciona a meta de juntar a entrada do apartamento",
-            "muda o prazo dessa meta",
-            "cancela essa meta"
-        ],
-        "confirmacao": "sim",
-        "desfazer_rpc": null
-    },
-    {
         "rpc": "airton.goals_status",
         "slug": "metas.status",
         "agent": "airton",
@@ -269,22 +253,6 @@
             "quero aprender violão este ano"
         ],
         "confirmacao": "nenhuma",
-        "desfazer_rpc": null
-    },
-    {
-        "rpc": "public.hub_plano_salvar",
-        "slug": "plano.salvar",
-        "agent": "iara",
-        "risco": "alto",
-        "slots": {
-            "p": "jsonb{titulo:text,tipo?:text(imovel|carro|carreira|habilidade|habito|outro),status?:text(rascunho|ativo|pausado|concluido|abandonado),prioridade?:int,alvo?:jsonb{valor?:number,data?:date},porque?:text,proxima_revisao?:date}"
-        },
-        "exemplos": [
-            "quero comprar um apartamento até 2031",
-            "cria um plano para trocar de carro",
-            "pausa o plano do carro"
-        ],
-        "confirmacao": "sim",
         "desfazer_rpc": null
     },
     {
@@ -428,6 +396,255 @@
             "quero praticar violão 60 minutos por semana",
             "cria a habilidade inglês, meta de 90 minutos por semana",
             "arquiva a habilidade violão"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_plano_editar",
+        "slug": "plano.editar",
+        "agent": "iara",
+        "risco": "alto",
+        "slots": {
+            "p_id": "bigint",
+            "p_titulo": "text?",
+            "p_status": "text(ativo|pausado|concluido|abandonado)?",
+            "p_alvo_valor": "numeric?",
+            "p_alvo_data": "date?",
+            "p_porque": "text?",
+            "p_tipo": "text(imovel|carro|carreira|habilidade|habito|outro)?"
+        },
+        "exemplos": [
+            "renomeia o plano do carro para Troca do carro 2027",
+            "pausa o plano do violão",
+            "retoma o plano do violão",
+            "arquiva esse plano",
+            "muda o alvo do plano do apartamento para 900 mil"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_plano_descartar",
+        "slug": "plano.descartar",
+        "agent": "iara",
+        "risco": "alto",
+        "slots": {
+            "p_id": "bigint"
+        },
+        "exemplos": [
+            "descarta esse rascunho",
+            "joga fora o rascunho do plano"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_meta_editar",
+        "slug": "meta.editar",
+        "agent": "iara",
+        "risco": "alto",
+        "slots": {
+            "p_id": "bigint",
+            "p_titulo": "text?",
+            "p_prazo": "date?",
+            "p_horizonte": "text(curto|medio|longo)?",
+            "p_dono": "text(iara|claudia|airton|sabia)?",
+            "p_status": "text(ativa|pausada|concluida|cancelada)?",
+            "p_alvo": "numeric?",
+            "p_cadencia": "text?"
+        },
+        "exemplos": [
+            "muda o prazo dessa meta para 2028",
+            "arquiva essa meta",
+            "passa essa meta para médio prazo",
+            "essa meta é da SabIA",
+            "muda o valor da entrada para 180 mil",
+            "pausa essa meta",
+            "no rascunho, tira a meta de curto prazo"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_meta_adicionar",
+        "slug": "meta.adicionar",
+        "agent": "iara",
+        "risco": "alto",
+        "slots": {
+            "p_plano": "bigint",
+            "p_titulo": "text",
+            "p_horizonte": "text(curto|medio|longo)",
+            "p_dono": "text(iara|claudia|airton|sabia)?",
+            "p_prazo": "date?",
+            "p_alvo": "numeric?",
+            "p_cadencia": "text?"
+        },
+        "exemplos": [
+            "adiciona uma meta de juntar 10 mil até março",
+            "põe no plano do carro uma meta de vender o carro antigo",
+            "adiciona a meta de juntar a entrada do apartamento"
+        ],
+        "confirmacao": "sim",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "fn:iara-plano/painel",
+        "slug": "decisao.painel",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {
+            "decisao_id": "bigint"
+        },
+        "exemplos": [
+            "pede a opinião dos agentes sobre essa decisão",
+            "abre o painel dessa decisão"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "fn:iara-semana/gerar",
+        "slug": "semana.gerar",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {
+            "semana": "text(atual|proxima)?"
+        },
+        "exemplos": [
+            "refaz o plano da semana",
+            "monta o plano da próxima semana",
+            "gera de novo a semana"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "fn:iara-agenda/sync",
+        "slug": "agenda.sincronizar",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {},
+        "exemplos": [
+            "sincroniza minha agenda",
+            "puxa os eventos do calendário"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_expediente_definir",
+        "slug": "expediente.definir",
+        "agent": "iara",
+        "risco": "medio",
+        "slots": {
+            "p_inicio": "text(HH:MM)?",
+            "p_fim": "text(HH:MM)?",
+            "p_dias": "int[]?",
+            "p_local": "text?"
+        },
+        "exemplos": [
+            "meu expediente é das 9 às 18",
+            "trabalho de segunda a quinta",
+            "meu trabalho agora é no escritório da Paulista"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_lugar_salvar",
+        "slug": "lugar.salvar",
+        "agent": "iara",
+        "risco": "medio",
+        "slots": {
+            "p_nome": "text",
+            "p_endereco": "text?",
+            "p_min_casa": "int?"
+        },
+        "exemplos": [
+            "a academia fica a 15 minutos de casa",
+            "salva o escritório na Avenida Paulista, 1000"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_lugar_remover",
+        "slug": "lugar.remover",
+        "agent": "iara",
+        "risco": "medio",
+        "slots": {
+            "p_nome": "text"
+        },
+        "exemplos": [
+            "tira a academia dos meus lugares",
+            "apaga o lugar escritório antigo"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_aviso_responder",
+        "slug": "aviso.responder",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {
+            "p_id": "bigint",
+            "p_resposta": "text"
+        },
+        "exemplos": [
+            "sim, pode rever a meta",
+            "depois, agora não",
+            "feito"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_interrupcoes_salvar",
+        "slug": "interrupcoes.salvar",
+        "agent": "iara",
+        "risco": "medio",
+        "slots": {
+            "p": "jsonb{max_dia?:int(0-10),silencio_inicio?:text(HH:MM),silencio_fim?:text(HH:MM)}"
+        },
+        "exemplos": [
+            "no máximo 2 avisos por dia",
+            "silêncio das 22h às 8h",
+            "não me avise mais"
+        ],
+        "confirmacao": "repetir",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_semana_ouvir",
+        "slug": "semana.ouvir",
+        "agent": "iara",
+        "risco": "baixo",
+        "slots": {},
+        "exemplos": [
+            "revisa a semana comigo",
+            "o que tem para decidir na semana",
+            "me fala o plano da semana"
+        ],
+        "confirmacao": "nenhuma",
+        "desfazer_rpc": null
+    },
+    {
+        "rpc": "public.hub_semana_responder",
+        "slug": "semana.responder",
+        "agent": "iara",
+        "risco": "medio",
+        "slots": {
+            "p_plano": "bigint",
+            "p_decisao": "text?",
+            "p_escolha": "text"
+        },
+        "exemplos": [
+            "mantém na quarta",
+            "a primeira opção",
+            "pode ser o padrão",
+            "tira esse item da semana"
         ],
         "confirmacao": "repetir",
         "desfazer_rpc": null
