@@ -60,12 +60,16 @@ export default async function TreinoPage({ searchParams }: { searchParams: Promi
         </div>
       </section>
 
-      <Mais rotulo="Plano do coach, revisão e check-in">
+      <Mais rotulo="Plano do coach">
       <CoachPanel plan={plan ? { name: p?.name ?? 'Plano', rationale: plan.rationale, materialized_through: plan.materialized_through, progression_rule: p?.progression_rule, flags: p?.flags, refs: p?.refs, created_at: plan.created_at } : null} />
-      <ReviewPanel review={review as ReviewRow | null} />
-      <CheckinPanel checkin={checkin as CheckinRow | null} />
       <StravaPanel status={strava as { connected: boolean; athlete_name?: string; last_sync_at?: string | null } | null} />
       <Link href="/saude/treino/perfil" className="btn ghost" style={{ textAlign: 'center' }}>Perfil de treino</Link>
+      </Mais>
+      <Mais rotulo="Revisão da última semana">
+      <ReviewPanel review={review as ReviewRow | null} />
+      </Mais>
+      <Mais rotulo="Check-in">
+      <CheckinPanel checkin={checkin as CheckinRow | null} />
       </Mais>
     </>
   )
