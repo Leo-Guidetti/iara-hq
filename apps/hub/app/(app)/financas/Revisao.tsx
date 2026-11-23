@@ -71,11 +71,8 @@ export function Revisao({ dados, erro, appAntigo }: { dados: RevisaoDados | null
                   <strong className="num">{it.valor < 0 ? '−' : ''}{brl(it.valor)}</strong>
                 </div>
                 {trocando === it.id ? (
-                  <div className="row" style={{ gap: 8 }}>
-                    <select defaultValue="" disabled={busy === it.id} aria-label="Categoria" onChange={(e) => e.target.value && agir(it, e.target.value)}>
-                      <option value="" disabled>Escolha a categoria</option>
-                      {cats.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                    </select>
+                  <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    <Categoria cats={cats} disabled={busy === it.id} escolher={(id) => agir(it, id)} />
                     <button className="chip" onClick={() => setTrocando(null)}>Cancelar</button>
                   </div>
                 ) : (
@@ -92,5 +89,34 @@ export function Revisao({ dados, erro, appAntigo }: { dados: RevisaoDados | null
       {n > lista.length && lista.length > 0 && <p className="small muted" style={{ margin: 0 }}>Mostrando {lista.length} de {n}.</p>}
       <a className="small" href={appAntigo} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>Detalhes e outros ajustes no AIrton completo ↗</a>
     </section>
+  )
+}
+
+type Cat = RevisaoDados['categorias'][number]
+
+/** Dois menus: a macro primeiro; a sub só abre depois dela. Escolher a sub salva. Macro sem sub salva direto. */
+function Categoria({ cats, disabled, escolher }: { cats: Cat[]; disabled: boolean; escolher: (id: string) => void }) {
+  const [macro, setMacro] = useState('')
+  const macros = cats.filter((c) => !c.pai_id)
+  const subs = macro ? cats.filter((c) => c.pai_id === macro) : []
+  const campo = { flex: '1 1 140px', minWidth: 0 }
+  return (
+    <>
+      <select value={macro} disabled={disabled} aria-label="Categoria" style={campo}
+        onChange={(e) => {
+          const id = e.target.value
+          setMacro(id)
+          if (id && !cats.some((c) => c.pai_id === id)) escolher(id)
+        }}>
+        <option value="" disabled>Categoria</option>
+        {macros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+      </select>
+      <select key={macro} defaultValue="" disabled={disabled || !subs.length} aria-label="Subcategoria" style={campo}
+        onChange={(e) => e.target.value && escolher(e.target.value)}>
+        <option value="" disabled>Subcategoria</option>
+        {subs.length > 0 && <option value={macro}>Só {cats.find((c) => c.id === macro)?.nome}</option>}
+        {subs.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+      </select>
+    </>
   )
 }
