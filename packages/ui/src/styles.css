@@ -155,8 +155,9 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--progress); 
 /* Sub-abas: controle segmentado. */
 .tabs { display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; padding: 3px; margin: 0 0 6px; background: var(--surface-2); border-radius: 12px; }
 .tabs::-webkit-scrollbar { display: none; }
-.tabs a { flex: 1 0 auto; text-align: center; padding: 8px 12px; border-radius: 9px; font-size: .85rem; color: var(--muted); white-space: nowrap; }
-.tabs a[aria-current="page"] { color: var(--text); background: var(--surface-3); font-weight: 500; }
+.tabs button { border: 0; background: none; font: inherit; cursor: pointer; }
+.tabs a, .tabs button { flex: 1 0 auto; text-align: center; padding: 8px 12px; border-radius: 9px; font-size: .85rem; color: var(--muted); white-space: nowrap; }
+.tabs a[aria-current="page"], .tabs button[aria-current="page"] { color: var(--text); background: var(--surface-3); font-weight: 500; }
 /* Barra de baixo: flutuante, só ícones; o ativo ganha a cor do app. */
 .nav { position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 10; max-width: 616px; margin: 0 auto;
   background: color-mix(in srgb, var(--surface-2) 94%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-radius: 24px; }
