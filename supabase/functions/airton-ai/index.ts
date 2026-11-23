@@ -1,6 +1,6 @@
 // @ts-nocheck -- fonte baixado da produção (o Supabase guarda sem tipos). Tirar ao tipar (PROGRESSO 0.2).
 // AIrton — IA no servidor (chaves ficam no Supabase, não no aparelho).
-// Ações: chat {message} | categorize (classifica pendentes) | reset_chat.
+// Ações: chat {message} | categorize (classifica pendentes) | reset_chat. UX-25: chat_push {user_id, message} só pelo cron (Siri -> push).
 import { addDays, admin, authenticate, CORS, json, spDate } from './_shared/common.ts';
 import { anthropic, MODELS, textOf } from './_shared/ai.ts';
 import { categorize } from './_shared/categorize.ts';
@@ -201,6 +201,8 @@ SEMPRE use as ferramentas para buscar números — nunca invente. O "disponível
 Quando der conselho, seja concreto (quanto, onde, até quando). Respostas curtas; use listas quando ajudar.`;
 // UX-18: no canal voz o system é outro texto FIXO (cache próprio): sem listas, persona IARA, contrato de fala. O chat em texto não muda.
 const SYSTEM_VOZ = SYSTEM.replace('Você é o AIrton, assistente financeiro', 'Você é a IARA, falando com os dados financeiros').replace('Respostas curtas; use listas quando ajudar.', 'Respostas curtas.') + '\n' + SUFIXO_FALA;
+// UX-25: resposta pela Siri entregue por push: texto corrido (a notificação não mostra listas), um pouco mais que a fala.
+const SYSTEM_PUSH = SYSTEM.replace('Você é o AIrton, assistente financeiro', 'Você é a IARA, falando com os dados financeiros').replace('Respostas curtas; use listas quando ajudar.', 'A resposta vira uma notificação no celular: texto corrido, sem markdown, listas nem tabelas, em até 4 frases curtas, conclusão primeiro; valores arredondados em reais; cite o AIrton como origem do dado ("pelo AIrton, ...").');
 /** Coloca o marcador de cache no último bloco da última mensagem: cada passo do loop reaproveita o anterior. */ function withCacheTail(messages) {
   const out = messages.map((m)=>({
       ...m,
@@ -230,7 +232,7 @@ const SYSTEM_VOZ = SYSTEM.replace('Você é o AIrton, assistente financeiro', 'V
   };
   return out;
 }
-/** feature: 'chat' (app) ou 'voice' (quando o agente de voz chamar o AIrton) — cada uma com sua chave. */ async function chat(userId, message, feature = 'chat') {
+/** feature: 'chat' (app), 'voice' (agente de voz) ou 'push' (Siri, resposta por push; UX-25) — cada uma com sua chave. */ async function chat(userId, message, feature = 'chat') {
   const db = admin();
   await db.from('chat_messages').insert({
     user_id: userId,
@@ -249,7 +251,7 @@ const SYSTEM_VOZ = SYSTEM.replace('Você é o AIrton, assistente financeiro', 'V
   const system = [
     {
       type: 'text',
-      text: feature === 'voice' ? SYSTEM_VOZ : SYSTEM,
+      text: feature === 'voice' ? SYSTEM_VOZ : feature === 'push' ? SYSTEM_PUSH : SYSTEM,
       cache_control: {
         type: 'ephemeral'
       }
@@ -303,16 +305,52 @@ const SYSTEM_VOZ = SYSTEM.replace('Você é o AIrton, assistente financeiro', 'V
   }
   return 'Não consegui concluir a análise agora — tente reformular a pergunta.';
 }
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** UX-25: responde a pergunta do Atalho e entrega por push. Nunca lança: erro vira push curto. */ async function chatPush(body) {
+  const userId = typeof body.user_id === 'string' && UUID.test(body.user_id) ? body.user_id : null;
+  const msg = typeof body.message === 'string' ? body.message.trim().slice(0, 600) : '';
+  if (!userId || !msg) return json(400, {
+    error: 'user_id e message obrigatórios'
+  });
+  const { data: m } = await admin().from('members').select('user_id').eq('user_id', userId).maybeSingle();
+  if (!m) return json(403, {
+    error: 'não é membro do AIrton'
+  });
+  let texto;
+  try {
+    // push comporta mais que a fala: system próprio (texto corrido, até 4 frases) e corte de defesa em 4 frases / 90 palavras.
+    // feature 'push' (chave AIRTON_ANTHROPIC_KEY_PUSH, reserva na geral) separa o custo da Siri no ai_usage.
+    texto = limparFala(await chat(userId, msg, 'push'), 4, 90).replace(/\s*Quer o resto\?$/, '');
+  } catch (err) {
+    console.error('airton-ai chat_push', err instanceof Error ? err.message : err);
+    texto = 'Não consegui responder agora. Pergunte de novo pelo app.';
+  }
+  const { data, error } = await admin().schema('public').rpc('iara_resposta_push', {
+    p_user: userId,
+    p_texto: texto || 'Não consegui responder agora.',
+    p_titulo: 'IARA · pelo AIrton'
+  });
+  if (error) return json(500, {
+    error: error.message
+  });
+  return json(200, {
+    ok: true,
+    ...data
+  });
+}
 Deno.serve(async (req)=>{
   if (req.method === 'OPTIONS') return new Response(null, {
     headers: CORS
   });
   const caller = await authenticate(req);
   if (caller instanceof Response) return caller;
+  const body = await req.json().catch(()=>({}));
+  // UX-25: pergunta pela Siri (sem JWT). Só chega com o segredo do cron (core.pergunta_airton_por_push via pg_net);
+  // a resposta vai por push (core.avisos, origem 'resposta'), respeitando o teto diário e o silêncio do UX-20.
+  if (caller.kind === 'cron' && body.action === 'chat_push') return await chatPush(body);
   if (caller.kind !== 'user') return json(400, {
     error: 'só para o app'
   });
-  const body = await req.json().catch(()=>({}));
   try {
     if (body.action === 'chat') {
       if (!body.message?.trim()) return json(400, {

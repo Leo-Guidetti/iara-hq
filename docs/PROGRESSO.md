@@ -3,9 +3,10 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (23/11, noite):** UX-23 no ar (#61). UX-24 (edição 100% por voz) no PR #62: depois do merge, conferir a
-migration (7 RPCs, 10 intenções ativas, `meta.salvar_plano` e `plano.salvar` inativas). Segue UX-25 (Atalho "IARA" + push).
-Teste do Leo: guia, seções UX-23 e UX-24.
+**Próximo passo (23/11, noite):** UX-23 (#61) e UX-24 (#62) no ar; conferido em produção: 7 RPCs, 10 intenções ativas,
+`meta.salvar_plano` e `plano.salvar` inativas, `iara-comando` v9. UX-25 (Atalho "IARA" + push) no PR #63: depois do merge,
+conferir a origem `resposta` em `core.avisos` e o `airton-ai` publicado. Onda 4 segue com UX-26 e UX-21, que esperam as chaves do Leo.
+Teste do Leo: guia, seções UX-23, UX-24 e UX-25.
 
 **Antes (23/11):** onda 4 do plano de UX registrada (voz em todo lugar: UX-23 microfone no hub, UX-24 edição
 100% por voz, UX-25 Atalho "IARA" + push, UX-26 iPad com "Ei IARA" via Picovoice, UX-21 protótipo Gemini Live × OpenAI
@@ -48,7 +49,8 @@ Lista única do que está parado. Ao resolver um item, risque aqui e registre no
 - [ ] UX-26: conta no Picovoice, treinar "Ei IARA" (Portuguese, Web/WASM), enviar o `.ppn` e cadastrar `PICOVOICE_ACCESS_KEY` no Supabase. Conferir limites do plano Free e suporte a português/Safari.
 - [ ] UX-21: chave comum do Gemini `IARA_GEMINI_KEY_VOZ` (resolve também o 403 das buscas Gemini) e chave da OpenAI `IARA_OPENAI_KEY_VOZ` com limite de gasto.
 - [ ] UX-21: confirmar o teto de voz de US$ 15/mês (D4 revista; antes US$ 5).
-- [x] Dar o sinal para UX-23, UX-24 e UX-25 (23/11). UX-23 no ar pelo #61; UX-24 no #62.
+- [x] Dar o sinal para UX-23, UX-24 e UX-25 (23/11). UX-23 no ar pelo #61, UX-24 pelo #62; UX-25 no #63.
+- [ ] UX-25: renomear o Atalho para **IARA**, ligar *Show on Apple Watch* e *Announce Notifications* (passo a passo no Perfil) e testar a pergunta de dinheiro pela Siri (resposta chega por push).
 
 **Do Leo — fora do plano de UX**
 - [ ] Autorizar apagar o bucket público `airton-deploy` (8 arquivos antigos de 02–03/11).

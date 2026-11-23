@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { minutosAte, useAgora } from '@/lib/useAgora'
 
-export type Aviso = { id: number; titulo: string; corpo: string | null; pergunta: string | null; opcoes: string[] | null; link: string | null; status: string }
+export type Aviso = { id: number; origem?: string; titulo: string; corpo: string | null; pergunta: string | null; opcoes: string[] | null; link: string | null; status: string }
 type Acao = { acao_id?: number; requer_sim?: boolean; pergunta?: string; expira_em?: string; desfazer?: { acao_id: number; ate: string } | null } | null
 type Resultado = { fala: string; erro?: boolean; acao?: Acao; link?: string | null; confirmada?: boolean; desfeita?: boolean }
 
@@ -18,7 +18,9 @@ function Cartao({ a, destaque }: { a: Aviso; destaque?: boolean }) {
   const [r, setR] = useState<Resultado | null>(null)
   const desfazerAte = r?.acao?.desfazer?.ate
   const agora = useAgora(!!desfazerAte)
-  const opcoes = a.opcoes?.length ? a.opcoes : ['Sim', 'Depois']
+  // UX-25: resposta da IARA por push (origem 'resposta'): só leitura, com "Entendi" para tirar da lista
+  const resposta = a.origem === 'resposta'
+  const opcoes = resposta ? ['Entendi'] : a.opcoes?.length ? a.opcoes : ['Sim', 'Depois']
 
   async function chamar<T>(fn: string, args: Record<string, unknown>): Promise<T | null> {
     setBusy(true)
@@ -31,6 +33,7 @@ function Cartao({ a, destaque }: { a: Aviso; destaque?: boolean }) {
   async function responder(o: string) {
     const d = await chamar<{ ok?: boolean; fala?: string; acao?: Acao; link?: string | null }>('hub_aviso_responder', { p_id: a.id, p_resposta: o })
     if (!d) return falhou()
+    if (resposta) { setR({ fala: d.ok ? 'Certo.' : 'Esse aviso não vale mais.', erro: d.ok === false }); if (d.ok) router.refresh(); return }
     setR({ fala: d.fala || (d.ok ? 'Pronto.' : 'Esse aviso não vale mais.'), erro: d.ok === false, acao: d.acao ?? null, link: d.link })
     if (d.ok) router.refresh()
   }
@@ -57,8 +60,8 @@ function Cartao({ a, destaque }: { a: Aviso; destaque?: boolean }) {
   const podeDesfazer = !!desfazerAte && Date.parse(desfazerAte) > agora
 
   return (
-    <section className={`card ai stack${destaque ? ' brief-card' : ''}`} style={{ gap: 8 }} aria-label="Pergunta da IARA">
-      <span className="tag ai">Pergunta da IARA</span>
+    <section className={`card ai stack${destaque ? ' brief-card' : ''}`} style={{ gap: 8 }} aria-label={resposta ? 'Resposta da IARA' : 'Pergunta da IARA'}>
+      <span className="tag ai">{resposta ? 'Resposta da IARA' : 'Pergunta da IARA'}</span>
       <h2 style={{ margin: 0, fontSize: '1rem' }}>{a.titulo}</h2>
       {a.corpo && <p className="small" style={{ margin: 0 }}>{a.corpo}</p>}
       {a.pergunta && <p style={{ margin: 0, fontWeight: 600 }}>{a.pergunta}</p>}

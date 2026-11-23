@@ -412,3 +412,17 @@ Deno.test('UX-24: "descarta esse plano" num plano ativo da tela não vira descar
   eq(d2.acoes.criadas[0]?.args, { p_id: 8 }, 'rascunho da tela');
   ok(montarSystem(CATALOGO).includes('1 = segunda'), 'dias isodow no system');
 });
+
+// ---------- UX-25 ----------
+import { FALA_AIRTON_PUSH } from './comando-lib.ts';
+import { limparFala as limparVoz } from './_shared/fala.ts';
+
+Deno.test('UX-25: falas do AIrton por push cabem no contrato de voz e dizem quando a resposta chega', async () => {
+  for (const f of Object.values(FALA_AIRTON_PUSH)) eq(limparVoz(f), f, 'cabe em 2 frases e 40 palavras');
+  ok(FALA_AIRTON_PUSH.silencio.includes('silêncio') && FALA_AIRTON_PUSH.sem_vaga.includes('app'), 'honesta');
+  // o index devolve { reply } com a fala; falaExecucao usa o reply como fala
+  const d = deps({ intencao: 'financas.quanto_posso_gastar', slots: {}, confianca: 0.95 });
+  d.chamar = async () => ({ reply: FALA_AIRTON_PUSH.agora });
+  const r = await processar('quanto posso gastar hoje?', d);
+  eq(r.fala, FALA_AIRTON_PUSH.agora, 'fala do push');
+});

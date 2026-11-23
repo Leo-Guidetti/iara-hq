@@ -646,3 +646,13 @@ export async function processar(texto: string, d: Deps, opts: { dryRun?: boolean
     return { fala: MSG_ERRO, tela: { intencao: plano.intencao.slug, executou: false, erro: String((e as Error).message ?? e).slice(0, 200) }, pendente: null, ...base, rota };
   }
 }
+
+// ---------- UX-25: pelo Atalho "IARA", a pergunta ao AIrton é respondida por push ----------
+// (só ela: as outras falas já cabem no contrato de voz; o corte do hub e o da voz dão ~40 palavras, então não há "resto" a mandar.)
+
+export type EstadoPush = 'agora' | 'silencio' | 'sem_vaga' | 'nao_membro';
+export const FALA_AIRTON_PUSH: Record<Exclude<EstadoPush, 'nao_membro'>, string> = {
+  agora: 'Vou ver com o AIrton e te mando a resposta no push.',
+  silencio: 'Vou ver com o AIrton. A resposta chega por push quando acabar o seu horário de silêncio.',
+  sem_vaga: 'Hoje já usei todos os seus avisos, então não consigo mandar por push. Pergunte pelo app.',
+};
