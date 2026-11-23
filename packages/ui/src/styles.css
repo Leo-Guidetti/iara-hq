@@ -214,9 +214,9 @@ details.brief[open] summary { display: none; }
 .checklist { display: grid; }
 .checklist label { display: flex; gap: 12px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); cursor: pointer; font-size: .95rem; }
 .checklist label:first-child { border-top: 0; }
-.checklist input { appearance: none; flex: none; width: 20px; height: 20px; margin: 0; border-radius: 6px; border: 1.5px solid var(--dim); display: grid; place-items: center; }
-.checklist input:checked { background: var(--accent); border-color: var(--accent); }
-.checklist input:checked::after { content: ""; width: 9px; height: 5px; border: 2px solid var(--on-accent); border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg); }
+.checklist input[type="checkbox"] { appearance: none; flex: none; width: 20px; height: 20px; margin: 0; border-radius: 6px; border: 1.5px solid var(--dim); display: grid; place-items: center; }
+.checklist input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+.checklist input[type="checkbox"]:checked::after { content: ""; width: 9px; height: 5px; border: 2px solid var(--on-accent); border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg); }
 .checklist label.feito span { color: var(--muted); text-decoration: line-through; }
 .checklist .logo { margin-left: auto; }
 
