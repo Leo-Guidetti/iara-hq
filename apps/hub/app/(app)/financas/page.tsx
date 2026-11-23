@@ -1,99 +1,86 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { currentUser } from '@/lib/supabase/server'
-import { Revisao, type RevisaoDados } from './Revisao'
-import { MetasBloco, type MetasStatus } from './Metas'
+import { airton, airtonLink, brl, nomeMes, type Plano } from '@/lib/airton'
 
 export const dynamic = 'force-dynamic'
 
-// AIrton dentro do site único: leitura pelas funções do schema airton com o login do Leo (RLS).
-// O app antigo segue no ar para o que ainda não veio para cá (Open Finance, chat, investimentos).
-const AIRTON_COMPLETO = 'https://airton-gray.vercel.app'
+type Inv = { mes: string; patrimonio: number | null }
 
-type Plano = {
-  available?: number; perDay?: number | null; daysLeft?: number
-  income?: { expected?: number; received?: number }
-  committed?: { total?: number }
-  savings?: { pct?: number; goal?: number }
-  upcoming?: { date: string; label: string; amount: number; kind: string }[]
-}
-type Semana = { spent?: number; typical?: number; byCategory?: { name: string; spent: number; typical: number }[] }
-type Pend = { pending?: number; unconfirmed?: number; uncategorized?: number }
-type Tx = { id: string; date: string; description: string | null; merchant: string | null; spend: number | null; category_name: string | null; nature: string | null }
-
-const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: Math.abs(v) >= 1000 ? 0 : 2 })
-const dm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
-
+/** Resumo: só o gasto do mês (com o saldo projetado), o patrimônio resumido e os próximos lançamentos. */
 export default async function Financas() {
-  const me = (await currentUser())!
-  const air = (me.sb as unknown as SupabaseClient).schema('airton')
-  const [mp, wk, rc, tx, gl, rv] = await Promise.all([
-    air.rpc('month_plan', { p_user: me.user.id }),
-    air.rpc('week_summary', { p_user: me.user.id }),
-    air.rpc('review_counts', { p_user: me.user.id }),
-    air.from('v_tx').select('id, date, description, merchant, spend, category_name, nature').order('date', { ascending: false }).limit(8),
-    air.rpc('goals_status', { p_user: me.user.id }),
-    air.rpc('review_list', { p_limit: 30, p_user: me.user.id }),
+  const { air, uid } = await airton()
+  const [mp, inv] = await Promise.all([
+    air.rpc('month_plan', { p_user: uid }),
+    air.from('v_inv_month').select('mes, patrimonio').order('mes', { ascending: false }).limit(13),
   ])
   const p = (mp.data ?? {}) as Plano
-  const w = (wk.data ?? {}) as Semana
-  const r = (rc.data ?? {}) as Pend
-  const gastos = ((tx.data ?? []) as Tx[]).filter((t) => Number(t.spend) > 0)
-  const livre = Number(p.available ?? 0)
-  const semana = Number(w.spent ?? 0), normal = Number(w.typical ?? 0) * 7
-  const revisar = rv.error ? Number(r.pending ?? 0) + Number(r.unconfirmed ?? 0) : Number((rv.data as RevisaoDados | null)?.total ?? 0)
+  const gasto = Number(p.spentTotal ?? 0)
+  const entradas = Number(p.income?.expected ?? 0)
+  const pct = entradas > 0 ? Math.round((gasto / entradas) * 100) : null
+  const saldo = Number(p.available ?? 0)
+  const fim = p.month && p.daysInMonth ? `${String(p.daysInMonth).padStart(2, '0')}/${p.month.slice(5, 7)}` : 'fim do mês'
+
+  const serie = ((inv.data ?? []) as Inv[]).filter((r) => r.patrimonio != null).reverse()
+  const atual = serie.at(-1)?.patrimonio ?? null
+  const base = serie.length > 1 ? serie[0].patrimonio : null
+  const var12 = atual != null && base ? ((Number(atual) - Number(base)) / Number(base)) * 100 : null
 
   return (
-    <div className="stack">
-      <div>
-        <span className="tag progress">AIrton · Finanças</span>
-        <h1>{livre >= 0 ? `${brl(livre)} livres` : `Passou ${brl(-livre)}`}</h1>
-        <p className="muted small" style={{ margin: 0 }}>
-          {p.perDay != null ? `${brl(Number(p.perDay))} por dia` : ''}{p.daysLeft != null ? ` · ${p.daysLeft} dias até o fim do mês` : ''}
-        </p>
-      </div>
+    <>
+      {mp.error ? (
+        <div className="card alert"><p className="small" style={{ margin: 0 }}>Não consegui ler o plano do mês agora.</p></div>
+      ) : (
+        <section aria-label="Mês" className="card">
+          <p className="small muted" style={{ margin: 0 }}>Gasto em {p.month ? nomeMes(p.month, true) : 'este mês'}</p>
+          <div className="kpi num" style={{ margin: '4px 0 12px' }}>{brl(gasto)}</div>
+          {pct != null && <div className="barra" aria-hidden="true"><i style={{ width: `${Math.min(100, pct)}%`, background: pct > 100 ? 'var(--alert)' : undefined }} /></div>}
+          <div className="row between small muted" style={{ marginTop: 8 }}>
+            <span>{pct != null ? `${pct}% das entradas previstas` : ''}</span>
+            <span>{p.daysLeft != null ? `${p.daysLeft} ${p.daysLeft === 1 ? 'dia restante' : 'dias restantes'}` : ''}</span>
+          </div>
+          <div className="row between" style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+            <span className="small muted">Saldo projetado em {fim}</span>
+            <strong className="num" style={{ color: saldo < 0 ? 'var(--alert)' : undefined }}>{brl(saldo)}</strong>
+          </div>
+        </section>
+      )}
 
-      {mp.error && <div className="card alert"><p className="small">Não consegui ler o plano do mês agora.</p></div>}
-
-      <div className="kpis">
-        <div className="card"><div className="small muted">Entradas previstas</div><div className="kpi num" style={{ fontSize: '1.4rem' }}>{brl(Number(p.income?.expected ?? 0))}</div></div>
-        <div className="card"><div className="small muted">Comprometido</div><div className="kpi num" style={{ fontSize: '1.4rem' }}>{brl(Number(p.committed?.total ?? 0))}</div></div>
-        <div className="card"><div className="small muted">Semana</div><div className="kpi num" style={{ fontSize: '1.4rem' }}>{brl(semana)}</div><div className="small muted">normal ~{brl(normal)}</div></div>
-        <div className="card"><div className="small muted">Para revisar</div><div className="kpi num" style={{ fontSize: '1.4rem', color: revisar ? 'var(--alert)' : undefined }}>{revisar}</div><div className="small muted">lançamentos</div></div>
-      </div>
+      {atual != null && (
+        <a className="card row between" href={airtonLink('/patrimonio')} target="_blank" rel="noreferrer" aria-label="Patrimônio, abrir o detalhe no AIrton completo" style={{ color: 'inherit' }}>
+          <div>
+            <div className="small muted">Patrimônio</div>
+            <div className="num" style={{ fontSize: '1.5rem', fontWeight: 300, letterSpacing: '-.02em' }}>{brl(Number(atual))}</div>
+            {var12 != null && <div className="small" style={{ color: var12 >= 0 ? 'var(--progress)' : 'var(--alert)' }}>{var12 >= 0 ? '+' : ''}{var12.toFixed(1).replace('.', ',')}% em 12 meses</div>}
+          </div>
+          <Linha valores={serie.map((r) => Number(r.patrimonio))} />
+        </a>
+      )}
 
       {!!p.upcoming?.length && (
-        <section className="card">
-          <h2>Próximos no mês</h2>
-          <div className="list small">
-            {p.upcoming.slice(0, 6).map((u, i) => (
+        <section aria-label="Próximos" className="card">
+          <div className="small muted">Próximos</div>
+          <div className="list small" style={{ marginTop: 4 }}>
+            {p.upcoming.slice(0, 5).map((u, i) => (
               <div key={i} className="row between">
-                <span><span className="muted num">{dm(u.date)}</span> · {u.label}</span>
-                <strong className="num" style={{ color: u.amount > 0 ? 'var(--progress)' : undefined }}>{brl(Number(u.amount))}</strong>
+                <span>{u.label} <span className="muted">· {Number(u.date.slice(8, 10))} {nomeMes(u.date)}</span></span>
+                <span className="num" style={{ color: u.amount > 0 ? 'var(--progress)' : undefined }}>{u.amount > 0 ? '+' : '−'}{brl(Math.abs(Number(u.amount)))}</span>
               </div>
             ))}
           </div>
         </section>
       )}
+    </>
+  )
+}
 
-      <Revisao dados={rv.error ? null : ((rv.data ?? null) as RevisaoDados | null)} erro={!!rv.error} appAntigo={AIRTON_COMPLETO} />
-
-      <MetasBloco dados={gl.error ? null : ((gl.data ?? null) as MetasStatus | null)} erro={!!gl.error} />
-
-      <section className="card">
-        <h2>Últimos gastos</h2>
-        {gastos.length ? (
-          <div className="list small">
-            {gastos.map((t) => (
-              <div key={t.id} className="row between">
-                <span><span className="muted num">{dm(t.date)}</span> · {t.merchant || t.description}<br /><span className="muted">{t.category_name ?? 'sem categoria'}</span></span>
-                <strong className="num">{brl(Number(t.spend))}</strong>
-              </div>
-            ))}
-          </div>
-        ) : <p className="small muted" style={{ margin: 0 }}>Sem gastos recentes.</p>}
-      </section>
-
-      <a className="btn ghost" href={AIRTON_COMPLETO} target="_blank" rel="noreferrer" style={{ textAlign: 'center' }}>Open Finance, chat e investimentos no AIrton completo ↗</a>
-    </div>
+/** Mini linha do patrimônio (sem eixo: o detalhe mora no AIrton completo). */
+function Linha({ valores }: { valores: number[] }) {
+  if (valores.length < 2) return null
+  const w = 110, h = 44, min = Math.min(...valores), max = Math.max(...valores), amp = max - min || 1
+  const pts = valores.map((v, i) => [(i / (valores.length - 1)) * w, h - 4 - ((v - min) / amp) * (h - 8)] as const)
+  const [ux, uy] = pts[pts.length - 1]
+  return (
+    <svg width={w} height={h} viewBox={`-4 0 ${w + 8} ${h}`} aria-hidden="true">
+      <polyline points={pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')} fill="none" stroke="var(--progress)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={ux} cy={uy} r="3" fill="var(--progress)" />
+    </svg>
   )
 }

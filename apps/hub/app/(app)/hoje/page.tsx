@@ -80,8 +80,8 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
   const airton: Linha[] = []
   if (pend && pend !== 'erro') {
     const p = pend as { pending?: number; unconfirmed?: number }
-    if (Number(p.pending) > 0) airton.push({ texto: `${plural(Number(p.pending), 'lançamento precisa', 'lançamentos precisam')} de você`, destaque: true, href: '/financas#revisao' })
-    else if (Number(p.unconfirmed) > 0) airton.push({ texto: `${plural(Number(p.unconfirmed), 'lançamento novo', 'lançamentos novos')} para conferir`, href: '/financas#revisao' })
+    if (Number(p.pending) > 0) airton.push({ texto: `${plural(Number(p.pending), 'lançamento precisa', 'lançamentos precisam')} de você`, destaque: true, href: '/financas/revisar' })
+    else if (Number(p.unconfirmed) > 0) airton.push({ texto: `${plural(Number(p.unconfirmed), 'lançamento novo', 'lançamentos novos')} para conferir`, href: '/financas/revisar' })
   }
   if (mes && mes !== 'erro') {
     const m = mes as { available?: number; perDay?: number | null }
