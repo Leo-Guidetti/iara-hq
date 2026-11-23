@@ -6,31 +6,47 @@ import { FUNCTIONS_URL } from '@/lib/env'
 import { Limites, type AvisosCfg } from '@/components/Limites'
 import { ProfileForm, Tokens, SiriToken } from './client'
 import { Mais } from '@/components/Mais'
+import { Logo } from '@/components/Logo'
+import Link from 'next/link'
+import { airtonLink } from '@/lib/airton'
 
 export const dynamic = 'force-dynamic'
 const FEATURE: Record<string, string> = { 'food-parse': 'Registro de comida', diet: 'Dieta', 'photo-review': 'Análise de fotos', coach: 'Plano de treino', 'coach-session': 'Conversa da sessão', 'coach-review': 'Revisão semanal', checkin: 'Check-in' }
 
 export default async function PerfilPage() {
   const me = (await currentUser())!
-  const [{ data: p }, { data: tokens }, { data: cost }, { data: avisos }] = await Promise.all([
+  const [{ data: p }, { data: tokens }, { data: cost }, { data: avisos }, { data: strava }] = await Promise.all([
     me.sb.from('profiles').select('display_name, sex, birth_date, height_cm, goal').eq('id', me.user.id).single(),
     me.sb.from('ingest_tokens').select('id, label, created_at, last_used_at, revoked_at, escopos').order('created_at', { ascending: false }),
     me.sb.rpc('claudia_ai_cost', { p_months: 3 }),
     me.sb.rpc('hub_avisos'),
+    me.sb.rpc('strava_status'),
   ])
+  const st = strava as { connected?: boolean } | null
+  const nome = (p?.display_name as string | null) ?? (me.user.user_metadata?.name as string | undefined) ?? 'Leo'
   const months = [...new Set((cost ?? []).map((c) => c.mes))]
   return (
     <div className="stack">
+      <section className="row" style={{ gap: 14 }}>
+        <span className="avatar-grande" aria-hidden="true"><span>{nome.slice(0, 1).toUpperCase()}</span></span>
+        <span><span style={{ display: 'block', fontSize: '1.2rem', fontWeight: 500 }}>{nome}</span><span className="small" style={{ color: 'var(--dim)' }}>{me.user.email}</span></span>
+      </section>
       <section className="card row between">
         <span className="small">Aparência</span>
         <ThemeToggle />
       </section>
       <Notificacoes />
+      <section className="card" aria-label="Conexões">
+        <div className="list small">
+          <Link href="/saude/treino" className="row between" style={{ color: 'inherit' }}><span className="row" style={{ gap: 10 }}><Logo app="claudia" tamanho={20} />Strava</span><span style={{ color: st?.connected ? 'var(--claudia)' : 'var(--dim)' }}>{st?.connected ? 'Conectado' : 'Conectar'}</span></Link>
+          <a href={airtonLink('/ajustes#open-finance')} target="_blank" rel="noreferrer" className="row between" style={{ color: 'inherit' }}><span className="row" style={{ gap: 10 }}><Logo app="airton" tamanho={20} />Banco (Open Finance)</span><span style={{ color: 'var(--dim)' }}>no AIrton</span></a>
+          <Link href="/planos/semana" className="row between" style={{ color: 'inherit' }}><span className="row" style={{ gap: 10 }}><Logo app="planos" tamanho={20} />Agenda Google</span><span style={{ color: 'var(--dim)' }}>em Planos</span></Link>
+        </div>
+      </section>
       <Mais rotulo="Avisos e limites">
       <Limites cfg={avisos as AvisosCfg | null} />
       </Mais>
       <Mais rotulo="Dados pessoais">
-      <p className="small muted" style={{ margin: 0 }}>{me.user.email}</p>
       <ProfileForm p={p!} />
       </Mais>
       <Mais rotulo="Atalhos do iPhone e Siri">
