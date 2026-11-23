@@ -5,7 +5,8 @@ export type Fixo = {
   local?: string | null; ocupado?: boolean
 }
 export type Lugar = { nome: string; endereco: string | null; min_casa: number | null }
-export type Expediente = { dias: number[]; inicio: string; fim: string; titulo?: string; local?: string | null } | null
+/** casa = dias (isodow) em home office; nos outros dias de `dias` o trabalho é presencial em `local`. */
+export type Expediente = { dias: number[]; inicio: string; fim: string; titulo?: string; local?: string | null; casa?: number[] } | null
 export type Painel = {
   semana: string; desde: string; fim: string; expediente: Expediente; lugares: Lugar[]; fixos: Fixo[]
   agenda: { eventos: number; ultima_sync: string | null }; feed_token: string | null

@@ -95,28 +95,51 @@ function NovoCompromisso({ desde, fim, lugares }: { desde: string; fim: string; 
 export function ExpedienteCard({ expediente, lugares, titulo = 'Expediente' }: { expediente: Expediente; lugares: Lugar[]; titulo?: string }) {
   const { busy, erro, salvar } = useSalvar()
   const [aberto, setAberto] = useState(!expediente)
-  const [e, setE] = useState({ dias: expediente?.dias ?? [1, 2, 3, 4, 5], inicio: expediente?.inicio ?? '09:00', fim: expediente?.fim ?? '18:00', local: expediente?.local ?? '' })
-  const dias = (expediente?.dias ?? []).map((d) => DIA_CURTO[d % 7]).join(', ')
+  const [e, setE] = useState({ dias: expediente?.dias ?? [1, 2, 3, 4, 5], inicio: expediente?.inicio ?? '09:00', fim: expediente?.fim ?? '18:00', local: expediente?.local ?? '', casa: expediente?.casa ?? [] })
+  const curto = (ds: number[]) => ds.map((d) => DIA_CURTO[d % 7]).join(', ')
+  const casa = (expediente?.casa ?? []).filter((d) => expediente?.dias.includes(d))
+  const presencial = (expediente?.dias ?? []).filter((d) => !casa.includes(d))
+  const resumo = [
+    presencial.length ? `${curto(presencial)} ${expediente?.local ? `em ${expediente.local}` : 'presencial'}` : null,
+    casa.length ? `${curto(casa)} home office` : null,
+    expediente ? `${expediente.inicio}–${expediente.fim}` : null,
+  ].filter(Boolean).join(' · ')
   return (
     <section className="card stack" style={{ gap: 10 }}>
       <div className="row between">
         <h2 style={{ margin: 0, fontSize: '1rem' }}>{titulo}</h2>
         {expediente && !aberto && <button className="chip" onClick={() => setAberto(true)}>Editar</button>}
       </div>
-      {expediente && !aberto && <p className="small" style={{ margin: 0 }}>{dias} · {expediente.inicio}–{expediente.fim}{expediente.local ? ` · ${expediente.local}` : ''}</p>}
+      {expediente && !aberto && <p className="small" style={{ margin: 0 }}>{resumo}</p>}
       {aberto && (
         <form className="stack" style={{ gap: 8 }} onSubmit={(ev) => { ev.preventDefault(); salvar('e', () => sb().rpc('hub_expediente_salvar', { p: e }), () => setAberto(false)) }}>
           <div className="chips" role="group" aria-label="Dias de trabalho">
             {[1, 2, 3, 4, 5, 6, 7].map((d) => (
               <button type="button" key={d} className={`chip${e.dias.includes(d) ? ' on' : ''}`} aria-pressed={e.dias.includes(d)}
-                onClick={() => setE({ ...e, dias: e.dias.includes(d) ? e.dias.filter((x) => x !== d) : [...e.dias, d].sort() })}>{DIA_CURTO[d % 7]}</button>
+                onClick={() => setE({ ...e, dias: e.dias.includes(d) ? e.dias.filter((x) => x !== d) : [...e.dias, d].sort(), casa: e.casa.filter((x) => x !== d) })}>{DIA_CURTO[d % 7]}</button>
             ))}
           </div>
+          {e.dias.length > 0 && (
+            <div className="stack" style={{ gap: 6 }}>
+              <span className="small muted">Toque nos dias de home office; os outros são presenciais</span>
+              <div className="chips" role="group" aria-label="Dias de home office">
+                {e.dias.map((d) => {
+                  const ho = e.casa.includes(d)
+                  return (
+                    <button type="button" key={d} className={`chip${ho ? ' on' : ''}`} aria-pressed={ho}
+                      onClick={() => setE({ ...e, casa: ho ? e.casa.filter((x) => x !== d) : [...e.casa, d].sort() })}>
+                      {DIA_CURTO[d % 7]} · {ho ? 'casa' : 'presencial'}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           <div className="grid2">
             <input type="time" required value={e.inicio} onChange={(ev) => setE({ ...e, inicio: ev.target.value })} aria-label="Entrada" />
             <input type="time" required value={e.fim} onChange={(ev) => setE({ ...e, fim: ev.target.value })} aria-label="Saída" />
           </div>
-          <input placeholder="Onde (ex.: Escritório, Casa)" list="lugares-exp" value={e.local} onChange={(ev) => setE({ ...e, local: ev.target.value })} />
+          <input placeholder="Onde fica o presencial (ex.: Escritório)" aria-label="Local do presencial" list="lugares-exp" value={e.local} onChange={(ev) => setE({ ...e, local: ev.target.value })} />
           <datalist id="lugares-exp">{lugares.map((l) => <option key={l.nome} value={l.nome} />)}</datalist>
           <div className="grid2">
             <button className="btn" disabled={!!busy}>{busy ? 'Salvando…' : 'Salvar expediente'}</button>
