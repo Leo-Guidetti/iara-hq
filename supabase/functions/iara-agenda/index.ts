@@ -4,12 +4,18 @@
 //     link da agenda pública; vários separados por espaço) e grava os próximos 21 dias em core.agenda_eventos.
 //   GET ?t=<core.perfil.config.agenda_token>: feed iCal que o Leo assina no iPhone/Google, com os compromissos
 //     que ele marca no hub e os itens com horário do plano da semana confirmado.
+//   Agendas públicas fixas (FEEDS_PUBLICOS, sem segredo): todos os jogos do Corinthians (pedido do Leo, 23/11),
+//     lidos mesmo sem o secret e repassados no feed do hub para aparecerem também no iPhone.
 // Sem IA, sem custo.
 import { authenticate, CORS, json, perfis, sql } from './_shared/common.ts';
 import { lerIcs, SP } from './ics.ts';
 
 type Perfil = { user_id: string };
 const JANELA_DIAS = 21;
+/** Agendas públicas que valem sempre. A fonte vira core.agenda_eventos.fonte e entra no feed iCal do hub. */
+const FEEDS_PUBLICOS = [
+  { fonte: 'corinthians', url: 'https://pub.fotmob.com/prod/pub/api/v2/calendar/team/9808.ics', prefixo: '⚽ ' },
+];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
@@ -19,11 +25,12 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   if (body.action !== 'sync') return json(400, { error: 'ação desconhecida' });
   const urls = (Deno.env.get('IARA_AGENDA_ICS_URLS') ?? '').split(/\s+/).filter(Boolean);
-  if (!urls.length) return json(200, { ok: false, motivo: 'Agenda não conectada (secret IARA_AGENDA_ICS_URLS vazio).' });
+  const vistas = new Map<string, number>();
+  const feeds: Feed[] = [...urls.map((url, i) => ({ fonte: fonteDe(url, i, vistas), url })), ...FEEDS_PUBLICOS];
   const lista = (await perfis(caller)) as unknown as Perfil[];
   const res = [];
-  for (const p of lista) res.push(await sincronizar(p.user_id, urls));
-  return json(200, { ok: true, resultado: res });
+  for (const p of lista) res.push(await sincronizar(p.user_id, feeds));
+  return json(200, { ok: true, resultado: res, ...(urls.length ? {} : { aviso: 'Agenda pessoal não conectada (secret IARA_AGENDA_ICS_URLS vazio).' }) });
 });
 
 // ── Leitura da agenda ────────────────────────────────────────────────────────────────────────────
@@ -35,16 +42,16 @@ function fonteDe(url: string, i: number, vistas: Map<string, number>): string {
   return n === 1 ? base : `${base}${n}`;
 }
 
-async function sincronizar(userId: string, urls: string[]) {
+type Feed = { fonte: string; url: string; prefixo?: string };
+
+async function sincronizar(userId: string, feeds: Feed[]) {
   const de = new Date(Date.now() - 864e5), ate = new Date(Date.now() + JANELA_DIAS * 864e5);
-  const vistas = new Map<string, number>();
   const resumo: Record<string, number | string> = {};
-  for (const [i, url] of urls.entries()) {
-    const fonte = fonteDe(url, i, vistas);
+  for (const { fonte, url, prefixo } of feeds) {
     try {
       const r = await fetch(url.replace(/^webcal:/i, 'https:'), { headers: { accept: 'text/calendar' } });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const evs = lerIcs(await r.text(), de, ate);
+      const evs = lerIcs(await r.text(), de, ate).map((e) => (prefixo ? { ...e, titulo: `${prefixo}${e.titulo}`.slice(0, 200) } : e));
       await sql.begin(async (tx) => {
         // A janela é regravada inteira: evento apagado ou movido na agenda some daqui também.
         await tx`delete from core.agenda_eventos where user_id = ${userId} and fonte = ${fonte}`;
@@ -94,6 +101,8 @@ async function feed(token: string): Promise<Response> {
   const itens = await sql`select i.id, i.data::text, to_char(i.hora, 'HH24:MI') hora, i.minutos, i.area, i.titulo, i.detalhe
     from core.planos_semana_itens i join core.planos_semana s on s.id = i.plano_id and s.status = 'confirmado'
     where i.user_id = ${p.user_id} and i.incluido and i.hora is not null and i.data >= ${desde}`;
+  const publicos = await sql`select fonte, uid, inicio, fim, dia_todo, titulo, local from core.agenda_eventos
+    where user_id = ${p.user_id} and fonte = any(${FEEDS_PUBLICOS.map((f) => f.fonte)}) and inicio >= ${desde}::date`;
   const agora = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
   const AREA: Record<string, string> = { saude: 'ClaudIA', financas: 'AIrton', aprender: 'SabIA', casa: 'Casa' };
   const linhas = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IARA HQ//Semana//PT-BR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
@@ -115,6 +124,14 @@ async function feed(token: string): Promise<Response> {
       `SUMMARY:${esc(`${i.titulo} · ${AREA[i.area] ?? i.area}`)}`,
       `DTSTART:${utc(i.data, i.hora)}`, `DTEND:${utc(i.data, i.hora, Number(i.minutos) || 30)}`,
       ...(i.detalhe ? [`DESCRIPTION:${esc(i.detalhe)}`] : []), 'END:VEVENT');
+  }
+  const ical = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  for (const a of publicos) {
+    const ini = new Date(a.inicio), fim = a.fim ? new Date(a.fim) : new Date(ini.getTime() + 2 * 3600e3);
+    const dia = (d: Date) => d.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).replace(/-/g, '');
+    linhas.push('BEGIN:VEVENT', `UID:${a.fonte}-${esc(String(a.uid))}@iara-hq`, `DTSTAMP:${agora}`, `SUMMARY:${esc(a.titulo)}`,
+      ...(a.dia_todo ? [`DTSTART;VALUE=DATE:${dia(ini)}`] : [`DTSTART:${ical(ini)}`, `DTEND:${ical(fim)}`]),
+      ...(a.local ? [`LOCATION:${esc(a.local)}`] : []), 'END:VEVENT');
   }
   linhas.push('END:VCALENDAR');
   return new Response(linhas.map(dobrar).join('\r\n') + '\r\n', {
