@@ -5,6 +5,7 @@ import { Tabs } from '@/components/Tabs'
 import { Logo } from '@/components/Logo'
 import { ABAS_HOJE } from '@/lib/apps'
 import { brl } from '@/lib/airton'
+import { adesaoParcial } from '@/lib/adesao'
 import { Plano, Gerar } from './Plano'
 import { Entrada } from './Entrada'
 import { ddmm, diasEntre, type Painel, type PlanoSemana } from './tipos'
@@ -16,8 +17,9 @@ export const dynamic = 'force-dynamic'
 export default async function SemanaPage() {
   const me = (await currentUser())!
   const raw = me.sb as unknown as SupabaseClient
-  const [{ data: pd, error: pe }, { data: sd, error: se }, { data: wk }] = await Promise.all([
+  const [{ data: pd, error: pe }, { data: sd, error: se }, { data: wk }, adesao] = await Promise.all([
     raw.rpc('hub_semana_painel'), raw.rpc('hub_semana'), raw.schema('airton').rpc('week_summary', { p_user: me.user.id }),
+    adesaoParcial().catch(() => null),
   ])
   const w = (wk ?? null) as { spent?: number; typical?: number } | null
   const painel = (pd ?? null) as Painel | null
@@ -35,6 +37,23 @@ export default async function SemanaPage() {
         <span className="small muted">{painel ? `${ddmm(painel.desde)} a ${ddmm(painel.fim)}` : 'Esta semana'}</span>
         <h1>Sua semana</h1>
       </div>
+
+      {adesao && (
+        <section className="card" aria-label="Adesão da semana" data-app="claudia">
+          <div className="row between">
+            <span className="row small muted" style={{ gap: 8 }}><Logo app="claudia" tamanho={18} />Adesão{adesao.dias < 7 ? ' · parcial' : ''}</span>
+            <span className="num" style={{ fontSize: '1.5rem', fontWeight: 300 }}>{adesao.nota}<span className="small muted">/100</span></span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '10px 14px', alignItems: 'center', marginTop: 12 }}>
+            {([['Pesagens', adesao.pesagens], ['Treinos', adesao.treinos], ['Alimentação', adesao.alimentacao]] as const).map(([nome, v]) => (
+              <div key={nome} style={{ display: 'contents' }}>
+                <span className="small muted">{nome}</span>
+                <div className="barra" aria-label={`${nome} ${v.feitos} de ${v.de}`}><i style={{ width: `${v.de ? Math.min(100, (v.feitos / v.de) * 100) : 0}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid2">
         <section className="card" aria-label="Gasto da semana">
