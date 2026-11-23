@@ -47,7 +47,7 @@ Execução autônoma de 17/11: 21 de 22 itens em produção, 1 pulado, nenhum pa
 | 3 | UX-21 Voz em tempo real | pulado: exige chave de provedor de voz novo e, pela D4, o protótipo vem depois de a UX-19 estar em uso | — |
 | 3 | UX-22 Revisar a semana falando | feito | #57 |
 | 4 | UX-23 Microfone dentro do hub | feito (23/11) | #61 |
-| 4 | UX-24 Editar 100% dos planos por voz | planejado (23/11) | — |
+| 4 | UX-24 Editar 100% dos planos por voz | feito (23/11) | #62 |
 | 4 | UX-25 Atalho "IARA" no iPhone/Watch + resposta por push | planejado (23/11) | — |
 | 4 | UX-26 iPad central com "Ei IARA" (Picovoice) | planejado; espera `.ppn` e `PICOVOICE_ACCESS_KEY` | — |
 | 4 | UX-21 Voz natural em tempo real (protótipo Gemini Live × OpenAI Realtime) | planejado; espera chaves de voz e teto | — |

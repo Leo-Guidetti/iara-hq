@@ -844,7 +844,7 @@ A onda 4 leva a IARA para três canais de voz: o microfone dentro do hub, o iPho
 | Item | Teste principal | Depende de | Status | Observação |
 | --- | --- | --- | --- | --- |
 | UX-23 | Microfone executa e atualiza a tela | Implementação | Não testado |  |
-| UX-24 | As 10 frases de edição | UX-23 | Não testado |  |
+| UX-24 | As 10 frases de edição (no ar pelo #62) | UX-23 | Não testado |  |
 | UX-25 | Watch, AirPods e push da resposta longa | Renomear o Atalho | Não testado |  |
 | UX-26 | "Ei IARA" a 3 m e TV sem falso disparo | Picovoice: `.ppn` e AccessKey | Não testado |  |
 | UX-21 | Protótipo com os dois provedores | Chaves de voz e teto | Não testado |  |

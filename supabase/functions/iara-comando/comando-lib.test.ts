@@ -265,24 +265,24 @@ Deno.test('UX-23 montarUsuario: bloco "Na tela" numerado na ordem, fora da vista
 });
 
 Deno.test('UX-23 critério 1: "Muda o prazo dessa meta para 2028" em /planos age na meta visível e pede "sim"', async () => {
-  const d = comTela(deps({ intencao: 'meta.salvar_plano', slots: { p: { id: '12', prazo: '2028-12-31' } }, confianca: 0.9 }));
+  const d = comTela(deps({ intencao: 'meta.editar', slots: { p_id: '12', p_prazo: '2028-12-31' } , confianca: 0.9 }));
   const r = await processar('Muda o prazo dessa meta para 2028', d);
   ok(d.chamadas.length === 0, 'não executa sem sim');
   eq(r.pendente?.tipo, 'confirmacao', 'confirmação');
   eq(r.fala, 'Vou mudar o prazo para 31/12/2028 da meta "Juntar a entrada". Confirma?', 'fala');
-  eq(d.acoes.criadas[0], { intencao: 'meta.salvar_plano', args: { p: { id: 12, prazo: '2028-12-31' } }, pergunta: r.fala }, 'ação gravada com o id da tela');
+  eq(d.acoes.criadas[0], { intencao: 'meta.editar', args: { p_id: 12, p_prazo: '2028-12-31' }, pergunta: r.fala }, 'ação gravada com o id da tela');
   const s = await processar('sim', Object.assign(d, { turnos: [{ papel: 'iara', texto: r.fala, pendente: r.pendente, at: new Date().toISOString() }] as Turno[] }));
   eq(d.acoes.executadas, [71], 'sim executa a ação gravada'); eq(s.fala, 'Pronto, atualizei a meta.', 'fala depois');
 });
 
 Deno.test('UX-23: id de meta que não está na tela não edita (vira meta nova e pergunta o que falta)', async () => {
-  const d = comTela(deps({ intencao: 'meta.salvar_plano', slots: { p: { id: 999, prazo: '2028-12-31' } }, confianca: 0.9 }));
+  const d = comTela(deps({ intencao: 'meta.editar', slots: { p_id: 999, p_prazo: '2028-12-31' }, confianca: 0.9 }));
   const r = await processar('muda o prazo dessa meta para 2028', d);
   ok(d.acoes.criadas.length === 0 && r.pendente?.tipo === 'pergunta', 'pergunta');
 });
 
 Deno.test('UX-23: pausar meta da tela descreve a ação; plano da tela vale como candidato', async () => {
-  const d = comTela(deps({ intencao: 'meta.salvar_plano', slots: { p: { id: 13, status: 'pausada' } }, confianca: 0.9 }));
+  const d = comTela(deps({ intencao: 'meta.editar', slots: { p_id: 13, p_status: 'pausada' }, confianca: 0.9 }));
   const r = await processar('pausa a segunda meta', d);
   eq(r.fala, 'Vou pausar a meta "Quitar o carro". Confirma?', 'pausar');
   const d2 = comTela(deps({ intencao: 'plano.confirmar', slots: { p_id: '5' }, confianca: 0.9 }));
@@ -302,7 +302,7 @@ Deno.test('UX-23: compromisso continua pedindo título e data (RPC sem coalesce)
 });
 
 Deno.test('UX-23: sem tela (Atalho), id de meta inventado não edita', async () => {
-  const d = comTela(deps({ intencao: 'meta.salvar_plano', slots: { p: { id: 7, status: 'cancelada' } }, confianca: 0.9 }), null);
+  const d = comTela(deps({ intencao: 'meta.editar', slots: { p_id: 7, p_status: 'cancelada' }, confianca: 0.9 }), null);
   const r = await processar('cancela essa meta', d);
   ok(d.acoes.criadas.length === 0 && r.pendente?.tipo === 'pergunta', 'pergunta');
 });
@@ -311,4 +311,104 @@ Deno.test('UX-23: decisão sem tela orienta abrir Planos', async () => {
   const d = comTela(deps({ intencao: 'decisao.decidir', slots: { p_id: 4, p_escolha: 'a' }, confianca: 0.9 }), null);
   const r = await processar('decide pela primeira opção', d);
   eq(r.fala, 'Abra Planos e me diga de novo: assim eu vejo de qual decisão você fala.', 'fala');
+});
+
+// ---------- UX-24: editar 100% dos planos por voz ----------
+import { corpoFn } from './comando-lib.ts';
+const CTX24: Contexto = {
+  ...CTX,
+  planos: [{ id: 3, titulo: 'Apartamento', status: 'ativo' }, { id: 4, titulo: 'Carro', status: 'ativo' }, { id: 5, titulo: 'Violão', status: 'pausado' }, { id: 6, titulo: 'Viagem', status: 'rascunho' }],
+  metas: [{ id: 12, titulo: 'Juntar a entrada', plano: 'Apartamento', horizonte: 'medio', status: 'ativa' }, { id: 20, titulo: 'Aula semanal', plano: 'Viagem', horizonte: 'curto', status: 'ativa' }],
+};
+const TELA24: Tela = { rota: '/semana', itens: [
+  { tipo: 'semana_item', id: '101', titulo: 'Treino', visivel: true }, { tipo: 'semana_item', id: '102', titulo: 'Ler', visivel: true }, { tipo: 'semana_item', id: '103', titulo: 'Revisar gastos', visivel: true },
+] };
+const TELA_P: Tela = { rota: '/planos', itens: [{ tipo: 'plano', id: '3', titulo: 'Apartamento', visivel: true }, ...TELA.itens.filter((i) => i.tipo === 'meta')] };
+const d24 = (rota: Record<string, unknown>, resultado: unknown = {}, tela: Tela | null = TELA_P) => Object.assign(deps(rota, resultado), { contexto: CTX24, tela });
+
+/** As 10 frases do guia de testes (UX-24), com a rota que o roteador deveria devolver -> fala de confirmação esperada. */
+const FRASES24: [string, Record<string, unknown>, string][] = [
+  ['Renomeia o plano do carro para Troca do carro 2027', { intencao: 'plano.editar', slots: { p_id: 4, p_titulo: 'Troca do carro 2027' } }, 'Vou mudar o nome para "Troca do carro 2027" do plano "Carro". Confirma?'],
+  ['Pausa o plano do violão', { intencao: 'plano.editar', slots: { p_id: 5, p_status: 'pausado' } }, 'Vou pausar o plano "Violão". Confirma?'],
+  ['Retoma o plano do violão', { intencao: 'plano.editar', slots: { p_id: 5, p_status: 'ativo' } }, 'Vou retomar o plano "Violão". Confirma?'],
+  ['Arquiva essa meta', { intencao: 'meta.editar', slots: { p_id: 12, p_status: 'cancelada' } }, 'Vou arquivar a meta "Juntar a entrada". Confirma?'],
+  ['Passa essa meta para médio prazo', { intencao: 'meta.editar', slots: { p_id: 13, p_horizonte: 'medio' } }, 'Vou mudar o horizonte para médio prazo da meta "Quitar o carro". Confirma?'],
+  ['Essa meta é da SabIA', { intencao: 'meta.editar', slots: { p_id: 12, p_dono: 'sabia' } }, 'Vou mudar o dono para SabIA da meta "Juntar a entrada". Confirma?'],
+  ['Muda o valor da entrada para 180 mil', { intencao: 'meta.editar', slots: { p_id: 12, p_alvo: 180000 } }, 'Vou mudar o valor para R$ 180.000 da meta "Juntar a entrada". Confirma?'],
+  ['Adiciona uma meta de juntar 10 mil até março', { intencao: 'meta.adicionar', slots: { p_plano: 3, p_titulo: 'Juntar 10 mil', p_horizonte: 'curto', p_prazo: '2027-03-31', p_alvo: 10000 } }, 'Vou adicionar a meta "Juntar 10 mil" de R$ 10.000 até 31/03/2027 no curto prazo ao plano "Apartamento". Confirma?'],
+  ['No rascunho, tira a meta de curto prazo', { intencao: 'meta.editar', slots: { p_id: 20, p_status: 'cancelada' } }, 'Vou arquivar a meta "Aula semanal". Confirma?'],
+];
+
+Deno.test('UX-24: as frases de edição do guia pedem "sim" com a ação certa e nunca executam antes', async () => {
+  for (const [frase, rota, fala] of FRASES24) {
+    const d = d24({ confianca: 0.9, ...rota });
+    const r = await processar(frase, d);
+    eq(r.fala, fala, frase);
+    ok(d.chamadas.length === 0 && r.pendente?.tipo === 'confirmacao' && d.acoes.criadas.length === 1, `${frase}: só grava a pendente`);
+    eq(d.acoes.criadas[0].args, rota.slots, `${frase}: args gravados`);
+  }
+});
+
+Deno.test('UX-24: "tira o terceiro item da semana" usa o id da tela e executa (risco baixo, com Desfazer pelo despachante)', async () => {
+  const d = d24({ intencao: 'semana.item', slots: { p_id: 103, p_incluido: false }, confianca: 0.9 }, true, TELA24);
+  const r = await processar('Tira o terceiro item da semana', d);
+  eq(d.chamadas[0]?.args, { p_id: 103, p_incluido: false }, 'args'); eq(r.fala, 'Tirei o item do plano da semana.', 'fala');
+});
+
+Deno.test('UX-24: valor inventado, meta fora dos candidatos e horizonte faltando viram pergunta', async () => {
+  const a = d24({ intencao: 'meta.editar', slots: { p_id: 12, p_alvo: 200000 }, confianca: 0.9 });
+  ok((await processar('muda o valor da entrada para 180 mil', a)).pendente?.tipo === 'pergunta' && !a.acoes.criadas.length, 'valor');
+  const b = d24({ intencao: 'meta.editar', slots: { p_id: 999, p_status: 'pausada' } , confianca: 0.9 });
+  ok((await processar('pausa essa meta', b)).pendente?.tipo === 'pergunta' && !b.acoes.criadas.length, 'id');
+  const c = d24({ intencao: 'meta.adicionar', slots: { p_plano: 3, p_titulo: 'Vender o carro antigo' }, confianca: 0.9 });
+  const rc = await processar('põe no plano do apartamento a meta de vender o carro antigo', c);
+  ok(rc.pendente?.tipo === 'pergunta' && /horizonte/.test(rc.fala), `horizonte: ${rc.fala}`);
+});
+
+Deno.test('UX-24: sem tela (Atalho), meta e plano saem do contexto do servidor', async () => {
+  const d = d24({ intencao: 'meta.editar', slots: { p_id: 12, p_prazo: '2028-12-31' }, confianca: 0.9 }, {}, null);
+  const r = await processar('muda o prazo da meta da entrada para 2028', d);
+  eq(r.fala, 'Vou mudar o prazo para 31/12/2028 da meta "Juntar a entrada". Confirma?', 'fala');
+  const f = d24({ intencao: 'plano.descartar', slots: {}, confianca: 0.9 }, {}, null);
+  eq((await processar('descarta o rascunho', f)).fala, 'Vou descartar o rascunho "Viagem". Confirma?', 'único rascunho vira o candidato');
+});
+
+Deno.test('UX-24: toda intenção nova de plano/meta é risco alto com "sim"; fn: e médios executam e falam', async () => {
+  for (const s of ['plano.editar', 'plano.descartar', 'meta.editar', 'meta.adicionar']) {
+    const i = CATALOGO.find((c) => c.slug === s)!;
+    ok(i && i.risco === 'alto' && i.confirmacao === 'sim', s);
+  }
+  eq(corpoFn({ funcao: 'iara-agenda', acao: 'sync' }, {}, 'sincroniza'), { action: 'sync' }, 'agenda usa action');
+  eq(corpoFn({ funcao: 'iara-plano', acao: 'painel' }, { decisao_id: 4 }, 'opina'), { acao: 'painel', decisao_id: 4 }, 'painel');
+  const g = d24({ intencao: 'semana.gerar', slots: { semana: 'proxima' }, confianca: 0.9 }, { ok: true });
+  eq((await processar('monta o plano da próxima semana', g)).fala, 'Pedi o plano da semana. Se ela ainda não foi confirmada, fica pronto em cerca de 1 minuto em Semana.', 'gerar');
+  eq(g.chamadas[0].destino, { via: 'fn', funcao: 'iara-semana', acao: 'gerar' }, 'destino fn');
+  const x = d24({ intencao: 'expediente.definir', slots: { p_inicio: '09:00', p_fim: '18:00' }, confianca: 0.9 }, { inicio: '09:00', fim: '18:00' });
+  eq((await processar('meu expediente é das 9 às 18', x)).fala, 'Expediente salvo: 09:00 às 18:00.', 'expediente');
+  const l = d24({ intencao: 'lugar.remover', slots: { p_nome: 'Academia' }, confianca: 0.9 }, false);
+  eq((await processar('tira a academia dos meus lugares', l)).fala, 'Não achei o lugar "Academia".', 'lugar inexistente');
+});
+
+Deno.test('UX-24 levantamento: toda intenção de docs/ux-audit/acoes-por-voz.md existe no catálogo', async () => {
+  const doc = await Deno.readTextFile(new URL('../../../docs/ux-audit/acoes-por-voz.md', import.meta.url));
+  const linhas = doc.split('\n').filter((l) => /^\| \/(planos|semana|financas) \|/.test(l));
+  ok(linhas.length >= 30, `linhas: ${linhas.length}`);
+  const slugs = CATALOGO.map((c) => c.slug);
+  for (const l of linhas) {
+    const col = l.split('|')[4];
+    for (const m of col.matchAll(/`([a-z_]+\.[a-z_]+)`/g)) ok(slugs.includes(m[1]), `falta no catálogo: ${m[1]} (${l.slice(0, 60)})`);
+    ok(/`[a-z_]+\.[a-z_]+`|"não"/.test(col), `ação sem intenção: ${l.slice(0, 80)}`);
+  }
+});
+
+Deno.test('UX-24: "descarta esse plano" num plano ativo da tela não vira descarte; rascunho da tela vale', async () => {
+  const d = comTela(Object.assign(deps({ intencao: 'plano.descartar', slots: { p_id: 5 }, confianca: 0.9 }), { contexto: { ...CTX, planos: [] } }));
+  const r = await processar('descarta esse plano', d);
+  ok(d.acoes.criadas.length === 0, 'não grava descarte de plano ativo');
+  eq(r.fala, 'Não há rascunho de plano agora. Para tirar um plano ativo, diga "arquiva o plano".', 'orienta arquivar');
+  const tela = { rota: '/planos', itens: [{ tipo: 'plano', id: '8', titulo: 'Violão', detalhe: 'rascunho', visivel: true }] };
+  const d2 = comTela(Object.assign(deps({ intencao: 'plano.descartar', slots: { p_id: 8 }, confianca: 0.9 }), { contexto: { ...CTX, planos: [] } }), tela);
+  await processar('descarta esse rascunho', d2);
+  eq(d2.acoes.criadas[0]?.args, { p_id: 8 }, 'rascunho da tela');
+  ok(montarSystem(CATALOGO).includes('1 = segunda'), 'dias isodow no system');
 });
