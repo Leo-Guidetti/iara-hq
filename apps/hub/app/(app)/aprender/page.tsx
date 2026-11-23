@@ -13,11 +13,10 @@ const TIPO: Record<string, string> = { diaria: 'Trilha do dia', deep_dive: 'Imer
 
 export default async function Aprender() {
   const me = (await currentUser())!
-  const { data, error } = await (me.sb as unknown as SupabaseClient).rpc('hub_sabia')
+  const raw = me.sb as unknown as SupabaseClient
+  const [{ data, error }, { data: ld, error: lerr }, { data: pd, error: perr }] = await Promise.all([raw.rpc('hub_sabia'), raw.rpc('hub_livros'), raw.rpc('hub_praticas')])
   const s = (data ?? null) as Sabia
-  const { data: ld, error: lerr } = await (me.sb as unknown as SupabaseClient).rpc('hub_livros')
   const livros = (ld ?? null) as Livros | null
-  const { data: pd, error: perr } = await (me.sb as unknown as SupabaseClient).rpc('hub_praticas')
   const praticas = (pd ?? null) as Praticas | null
   const t = s?.trilha
   const feitos = (s?.itens ?? []).filter((i) => i.status !== 'pendente').length

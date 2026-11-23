@@ -20,9 +20,11 @@ export async function supabaseServer() {
   })
 }
 
-/** Usuário logado e membro da ClaudIA; senão null. */
+/** Usuário logado; senão null. getClaims confere a assinatura do JWT sem ir ao servidor de login
+ *  quando o projeto usa chaves assimétricas (o middleware já validou a sessão); senão cai no getUser. */
 export async function currentUser() {
   const sb = await supabaseServer()
-  const { data } = await sb.auth.getUser()
-  return data.user ? { sb, user: data.user } : null
+  const { data } = await sb.auth.getClaims()
+  const c = data?.claims
+  return c ? { sb, user: { id: c.sub, email: c.email, user_metadata: c.user_metadata ?? {} } } : null
 }
