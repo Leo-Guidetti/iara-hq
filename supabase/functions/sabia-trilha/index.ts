@@ -170,7 +170,7 @@ async function gerarTrilha(userId, config, force) {
 async function contexto(userId) {
   const [temas, fontes, recentes, semana, livros] = await Promise.all([
     sql`select slug, nome, prioridade, peso::float, descricao from sabia.temas where ativo order by prioridade`,
-    sql`select dominio, nome, tema, paywall, idioma, rss_url from sabia.fontes`,
+    sql`select dominio, nome, tema, paywall, idioma, rss_url, coalesce(secundaria, false) as secundaria from sabia.fontes`,
     sql`select url, titulo, tema, fonte, reacao from sabia.itens where user_id = ${userId} and created_at > now() - interval '30 days'`,
     sql`select titulo, tema, status, reacao, takeaway from sabia.itens where user_id = ${userId} and created_at > now() - interval '7 days'`,
     sql`select titulo, autor, status, pagina_atual, paginas from sabia.livros where user_id = ${userId}`
@@ -292,9 +292,16 @@ function lerCandidatos(texto) {
   // 1) Feeds
   const feeds = ctx.fontes.filter((f)=>f.tema === tema.slug && f.rss_url);
   const desde = Date.now() - horas * 3_600_000;
-  const itens = (await Promise.all(feeds.map((f)=>lerFeed(f)))).flat().filter((i)=>i.quando >= desde && !ctx.urlsRecentes.has(normalizar(i.url))).sort((a, b)=>b.quando - a.quando).slice(0, 30);
+  // Equilíbrio entre veículos (pedido do Leo, 23/11): no máximo POR_FONTE itens de cada feed, para um veículo que
+  // publica muito não tomar a lista; fontes marcadas como secundárias entram com menos itens e por último.
+  const POR_FONTE = 5, POR_SECUNDARIA = 2;
+  const porFeed = await Promise.all(feeds.map(async (f)=>(await lerFeed(f)).filter((i)=>i.quando >= desde && !ctx.urlsRecentes.has(normalizar(i.url))).sort((a, b)=>b.quando - a.quando).slice(0, f.secundaria ? POR_SECUNDARIA : POR_FONTE).map((i)=>({
+        ...i,
+        secundaria: !!f.secundaria
+      }))));
+  const itens = porFeed.flat().sort((a, b)=>Number(a.secundaria) - Number(b.secundaria) || b.quando - a.quando).slice(0, 30);
   if (itens.length >= 3) {
-    const lista = itens.map((i, n)=>`[${n}] ${i.titulo} — ${i.fonte}${i.paywall ? ' [paywall]' : ''} (${new Date(i.quando).toISOString().slice(0, 10)})${i.resumo ? `\n    ${i.resumo}` : ''}`).join('\n');
+    const lista = itens.map((i, n)=>`[${n}] ${i.titulo} — ${i.fonte}${i.paywall ? ' [paywall]' : ''}${i.secundaria ? ' [secundária]' : ''} (${new Date(i.quando).toISOString().slice(0, 10)})${i.resumo ? `\n    ${i.resumo}` : ''}`).join('\n');
     const prompt = `Hoje é ${data}. Tema: ${tema.nome}.
 Escopo: ${tema.descricao}
 A trilha terá ~${minutosTema} min deste tema.
@@ -302,7 +309,7 @@ A trilha terá ~${minutosTema} min deste tema.
 Itens recentes dos feeds das fontes preferidas:
 ${lista}
 
-Escolha de 3 a 5 itens, do mais relevante ao menos, que valem a leitura dentro do escopo. Se nenhum servir, devolva [].
+Escolha de 3 a 5 itens, do mais relevante ao menos, que valem a leitura dentro do escopo. Varie os veículos (no máximo 2 do mesmo). Prefira itens sem [secundária]; use um [secundária] só se for claramente o melhor sobre o assunto. Se nenhum servir, devolva [].
 Responda só dentro de <candidatos></candidatos>:
 [{"i":0,"formato":"artigo|newsletter|podcast|video|paper","minutos":5,"resumo":"o que diz, em 1-2 frases factuais"}]`;
     try {
@@ -346,7 +353,7 @@ Responda só dentro de <candidatos></candidatos>:
     }
   }
   // 2) Busca na web (reserva)
-  const fontesPref = ctx.fontes.filter((f)=>f.tema === tema.slug).map((f)=>`${f.nome} (${f.dominio})${f.paywall ? ' [paywall]' : ''}`).join('; ');
+  const fontesPref = ctx.fontes.filter((f)=>f.tema === tema.slug && !f.secundaria).map((f)=>`${f.nome} (${f.dominio})${f.paywall ? ' [paywall]' : ''}`).join('; ');
   const prompt = `Hoje é ${data}. Tema: ${tema.nome}.
 Escopo: ${tema.descricao}
 Recência: ${recencia}. A trilha terá ~${minutosTema} min deste tema.
