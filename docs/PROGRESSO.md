@@ -29,6 +29,40 @@ obrigatórios já estão configurados (o PR fica `blocked` até o CI ficar verde
 **CLI do Supabase:** fixo na 3.0.0 nos workflows (PR #4). Na v3 todo comando de banco precisa de
 `--remote` (sem ele, mira o banco local) e mudança em projeto hospedado exige `--yes`.
 
+## Pendências abertas (23/11/2026)
+
+Lista única do que está parado. Ao resolver um item, risque aqui e registre no diário.
+
+**Do Leo — configuração e uso (guia: `docs/ux-audit/guia-testes.md`, seção 2)**
+- [ ] Usar a IARA pela barra "Peça à IARA" ou pela Siri (0 comandos registrados até 22/11). Na ação Dictate Text do Atalho, Language = Portuguese (Brazil).
+- [ ] Criar o primeiro plano em `/planos` → "Novo plano" (0 planos: progresso, conflitos, decisões, propostas e avisos de plano dependem disso).
+- [ ] Cadastrar uma habilidade em `/aprender` → Prática (trilha hobby de domingo).
+- [ ] Preencher expediente, lugares e compromissos fixos em `/semana`; link iCal no secret `IARA_AGENDA_ICS_URLS` (opcional).
+- [ ] Rodar os testes do guia e marcar o status na tabela de acompanhamento (seções 8 e 10).
+
+**Do Leo — onda 4 de voz (`docs/ux-audit/plano.md`, onda 4)**
+- [ ] UX-26: conta no Picovoice, treinar "Ei IARA" (Portuguese, Web/WASM), enviar o `.ppn` e cadastrar `PICOVOICE_ACCESS_KEY` no Supabase. Conferir limites do plano Free e suporte a português/Safari.
+- [ ] UX-21: chave comum do Gemini `IARA_GEMINI_KEY_VOZ` (resolve também o 403 das buscas Gemini) e chave da OpenAI `IARA_OPENAI_KEY_VOZ` com limite de gasto.
+- [ ] UX-21: confirmar o teto de voz de US$ 15/mês (D4 revista; antes US$ 5).
+- [ ] Dar o sinal para UX-23, UX-24 e UX-25 (não dependem de chave).
+
+**Do Leo — fora do plano de UX**
+- [ ] Autorizar apagar o bucket público `airton-deploy` (8 arquivos antigos de 02–03/11).
+- [ ] ClaudIA v2: secrets da Strava, merge do PR #2, virada de domínio e limpeza uma semana depois (ver "Pendências conhecidas" no CLAUDE.md).
+
+**Técnicas (agente, pequenas, sem bloqueio)**
+- [ ] Painel de decisão: decidir algo já decidido mostra só "Erro 409"; trocar por mensagem clara.
+- [ ] `core.comando_contexto` oferece itens da trilha `hobby` como candidatos de `sabia.item`.
+- [ ] Peso sem Desfazer (falta coluna de anulação segura).
+- [ ] Bateria de 20 frases do `iara-comando` em produção (precisa do JWT do Leo; ~US$ 0,25).
+- [ ] Plano da semana de 22/11 saiu com fala e 0 decisões: conferir no domingo 29/11 se o `iara-semana` está gerando decisões quando há o que decidir.
+- [ ] Atualizar `docs/ux-audit/guia-testes.md` quando o Claude Doc do guia mudar (o arquivo é uma cópia de 23/11).
+
+**Conferências com data**
+- [ ] 01/12: limite da `ANTHROPIC_API_KEY` zera; refazer os testes marcados "Pendente: chave".
+- [ ] Dom 29/11 18:00 SP: `iara-semana` (fala e decisões) e trilha hobby, se houver habilidade.
+- [ ] Dom 06/12 10:00 SP: primeira `iara-planos-revisao` (até 5 propostas, ≤ US$ 0,08), se houver plano ativo.
+
 ## Como trabalhar cada entrega
 1. Branch `<tipo>/<tema>` → commits pequenos.
 2. PR com descrição curta → `gh pr merge --auto --squash` (ou o equivalente no conector do GitHub).
