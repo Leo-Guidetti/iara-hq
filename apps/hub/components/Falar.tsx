@@ -6,7 +6,7 @@ import { Logo } from './Logo'
 
 // Botão "Falar com a IARA" no topo (protótipo aprovado, 23/11): substitui o card "Peça à IARA" no alto das telas.
 // Abre uma folha com o orbe de voz (toque e fale) e, se preferir, o campo de texto.
-export function Falar() {
+export function Falar({ variante = 'botao' }: { variante?: 'botao' | 'orbe' }) {
   const [aberto, setAberto] = useState(false)
   const ref = useRef<HTMLDialogElement>(null)
   const path = usePathname()
@@ -19,11 +19,18 @@ export function Falar() {
   }, [aberto])
   return (
     <>
-      <button type="button" className="falar-btn" aria-label="Falar com a IARA" title="Falar com a IARA" onClick={() => setAberto(true)}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-          <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />
-        </svg>
-      </button>
+      {variante === 'orbe' ? (
+        // Hub da casa: o orbe em espera no centro da tela; um toque abre a conversa.
+        <button type="button" className="orbe parado orbe-espera" aria-label="Falar com a IARA" onClick={() => setAberto(true)}>
+          <span className="onda" /><span className="onda o2" /><span className="onda o3" /><span className="anel-giro" /><span className="nucleo" />
+        </button>
+      ) : (
+        <button type="button" className="falar-btn" aria-label="Falar com a IARA" title="Falar com a IARA" onClick={() => setAberto(true)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />
+          </svg>
+        </button>
+      )}
       <dialog ref={ref} className="folha" aria-label="Falar com a IARA" onClose={() => setAberto(false)}
         onClick={(e) => { if (e.target === e.currentTarget) setAberto(false) }}>
         <div className="folha-corpo">

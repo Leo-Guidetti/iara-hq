@@ -321,3 +321,51 @@ details.mais[open] > summary::after { transform: rotate(-135deg) translateY(-1px
 
 .avatar-grande { width: 56px; height: 56px; border-radius: 28px; padding: 2px; display: grid; place-items: center; background: linear-gradient(135deg, var(--hq), var(--airton)); flex: none; }
 .avatar-grande span { width: 52px; height: 52px; border-radius: 26px; display: grid; place-items: center; font-size: 1.3rem; font-weight: 500; background: radial-gradient(circle at 30% 25%, var(--surface-3), var(--surface)); color: var(--text); }
+
+/* Hub da casa (iPad na parede, /central): uma tela sem rolar em paisagem; no iPhone empilha. */
+.central { min-height: 100dvh; padding: max(20px, env(safe-area-inset-top)) clamp(16px, 4vw, 56px) calc(24px + env(safe-area-inset-bottom)); display: grid; gap: clamp(16px, 2.5vh, 28px); align-content: start; position: relative; overflow-x: hidden; }
+.central-topo { position: absolute; top: max(16px, env(safe-area-inset-top)); right: clamp(16px, 4vw, 56px); z-index: 2; }
+.sol-ceu { position: relative; text-align: center; padding-top: 8px; }
+.sol-ceu::before { content: ''; position: absolute; inset: -40px -200px -20px; z-index: -1; opacity: .7; transition: background 2s;
+  background: radial-gradient(60% 80% at 50% 0%, var(--ceu, transparent), transparent 75%); }
+.fase-dia { --ceu: rgb(90 140 200 / 16%); }
+.fase-crepusculo { --ceu: rgb(232 118 61 / 18%); }
+.fase-noite { --ceu: rgb(60 70 130 / 14%); }
+.sol-arco { position: relative; height: clamp(120px, 26vh, 220px); }
+.sol-arco svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.sol-horizonte { stroke: var(--line); stroke-width: 1; }
+.sol-noite { stroke: var(--dim); stroke-width: 1.5; stroke-dasharray: 3 5; opacity: .6; }
+.sol-disco { position: absolute; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #FFF6DA, #FFD27A 55%, #F0A040); box-shadow: 0 0 18px rgb(255 200 110 / 80%), 0 0 60px rgb(255 214 140 / 35%); transition: left 1s, top 1s; }
+.sol-disco.abaixo { opacity: .35; box-shadow: none; }
+.sol-marca { position: absolute; transform: translate(-50%, 10px); font-size: .72rem; white-space: nowrap; }
+.sol-fase { position: absolute; left: 0; top: 0; font-size: .8rem; color: var(--muted); }
+.sol-luz { position: absolute; right: 0; top: 44px; font-size: .8rem; color: var(--text-2); }
+.sol-relogio { position: absolute; left: 0; right: 0; top: 24%; font-size: clamp(48px, 9vh, 84px); font-weight: 200; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.sol-data { margin-top: 4px; color: var(--muted); font-size: .95rem; }
+.central-meio { display: grid; gap: 16px; }
+.central-bloco { background: var(--surface); border-radius: var(--radius); padding: 16px 18px; }
+.central-agenda { list-style: none; margin: 8px 0 0; padding: 0; display: grid; }
+.central-agenda li { display: flex; gap: 14px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.central-agenda li:first-child { border-top: 0; }
+.central-agenda li > span:nth-child(2) { flex: 1; }
+.central-agenda .num { color: var(--muted); min-width: 3.2em; }
+.central-orbe { display: grid; justify-items: center; gap: 4px; align-content: center; }
+.orbe-espera .nucleo { animation-duration: 4.5s; }
+.central-apps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.central-apps a { display: grid; gap: 6px; align-content: start; padding: 16px; border-radius: var(--radius); background: var(--surface); transition: transform .25s cubic-bezier(.2,.8,.2,1), background .25s; }
+.central-apps a:hover { background: var(--surface-2); transform: translateY(-2px); }
+.central-apps strong { font-size: 1.35rem; font-weight: 300; }
+@media (min-width: 900px) {
+  .central { height: 100dvh; grid-template-rows: auto 1fr auto; }
+  .central-meio { grid-template-columns: 1fr minmax(220px, 300px) 1fr; align-items: stretch; min-height: 0; }
+  .central-bloco { overflow: auto; }
+  .central-apps { grid-template-columns: repeat(5, 1fr); }
+}
+@media (max-width: 899px) { .central-orbe { order: -1; } .central-apps a:last-child { grid-column: 1 / -1; } .sol-luz { top: 0; } .sol-fase { display: none; } }
+@media (prefers-reduced-motion: reduce) { .sol-disco { transition: none; } }
+/* Alternância Hub da casa / Gestão: iPad e desktop. */
+.modo-tela { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface-2); }
+.modo-tela a { width: 34px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--muted); }
+.modo-tela a[aria-checked="true"] { background: var(--surface-3); color: var(--text); }
+@media (max-width: 767px) { .modo-tela { display: none; } }
