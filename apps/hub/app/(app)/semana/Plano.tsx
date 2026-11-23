@@ -7,6 +7,7 @@ import { callFunction } from '@/lib/functions'
 import { minutosAte, useAgora } from '@/lib/useAgora'
 import { Revisar } from './Revisar'
 import { DIA_CURTO, ddmm, diaSemana, nomeDia, type Fixo, type ItemSemana, type PlanoSemana } from './tipos'
+import { marcaIara } from '@/lib/tela'
 
 export type { PlanoSemana } from './tipos'
 
@@ -133,7 +134,7 @@ export function Plano({ plano, fixos, dias }: { plano: PlanoSemana; fixos: Fixo[
                     <span />
                   </li>
                 ) : (
-                  <li key={l.i.id} data-app={AREA[l.i.area].app} className={l.i.incluido ? '' : 'fora'}>
+                  <li key={l.i.id} data-app={AREA[l.i.area].app} className={l.i.incluido ? '' : 'fora'} {...marcaIara('semana_item', l.i.id, l.i.titulo, [l.i.data, l.i.hora, l.i.incluido ? 'no plano' : 'fora do plano'].filter(Boolean).join(' '))}>
                     <span className="h">{l.i.hora ?? '—'}</span>
                     <span className="t">
                       <strong>{l.i.titulo}</strong>

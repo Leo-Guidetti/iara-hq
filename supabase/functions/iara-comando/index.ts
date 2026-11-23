@@ -1,5 +1,6 @@
 // IARA · porta única "Peça à IARA" (UX-15). POST /functions/v1/iara-comando, só usuário logado (JWT de core.members).
-// Body: { texto, canal: 'hub'|'atalho'|'voz', conversa?, dry_run? }. Resposta SEMPRE { fala, tela, pendente } (+ intencao, slots, desfazer).
+// Body: { texto, canal: 'hub'|'atalho'|'voz', conversa?, dry_run?, contexto_tela? }. UX-23: contexto_tela = { rota, itens[{tipo,id,titulo,detalhe?,visivel}] }
+//       vindo do hub; os ids viram candidatos ("essa meta", "o segundo") e a escrita continua rodando como o usuário (RLS). Resposta SEMPRE { fala, tela, pendente } (+ intencao, slots, desfazer).
 // UX-16: pendente de confirmação traz acao_id/expira_em (core.acoes_pendentes, 10 min); "sim"/"não"/"desfaz" são frases reconhecidas em código
 //        antes do roteador; escrita executada por RPC devolve desfazer {acao_id, ate} (10 min) quando a intenção tem desfazer.
 // Fluxo: catálogo ativo + turnos de 30 min + candidatos -> 1 `fast` (Haiku, effort low, structured outputs, system cacheado) roteia ->
@@ -18,7 +19,7 @@ import { agoraSP, authenticate, CORS, fecharRun, iniciarRun, json, sql } from '.
 import { canalFala, limparFala, limparFalaHub } from './_shared/fala.ts';
 import { anthropicJson, MODELS } from './_shared/ai.ts';
 import { autenticarToken, chamadaRpc, extrairToken, querTexto } from './acesso-lib.ts';
-import { corpoFn, processar, ROTA_SCHEMA, SO_LEITURA, type Acoes, type AcaoInfo, type Contexto, type Destino, type Intencao, type Turno } from './comando-lib.ts';
+import { corpoFn, lerTela, processar, ROTA_SCHEMA, SO_LEITURA, type Acoes, type AcaoInfo, type Contexto, type Destino, type Intencao, type Turno } from './comando-lib.ts';
 
 const CANAIS = ['hub', 'atalho', 'voz'];
 const MSG_FN_TOKEN = 'Isso eu respondo pelo app por enquanto.';
@@ -52,13 +53,15 @@ Deno.serve(async (req) => {
   const txt = querTexto(req.url, canal);
   if (!texto) return erro(400, 'Diga o que você quer fazer.', txt);
   const dryRun = !viaToken && body.dry_run === true;
+  // UX-23: o que está na tela do hub ("essa meta", "o segundo"); só no canal do app (o Atalho não tem tela).
+  const tela = viaToken ? null : lerTela(body.contexto_tela);
   const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
   const url = Deno.env.get('SUPABASE_URL')!;
   const anon = Deno.env.get('SUPABASE_ANON_KEY')!;
   const inicio = new Date().toISOString();
   const t0 = Date.now();
   const { data: hoje } = agoraSP();
-  const run = await iniciarRun('iara', userId, 'comando', { canal, texto: texto.slice(0, 200), dry_run: dryRun, via: viaToken ? 'token' : 'jwt' });
+  const run = await iniciarRun('iara', userId, 'comando', { canal, texto: texto.slice(0, 200), dry_run: dryRun, via: viaToken ? 'token' : 'jwt', tela: tela ? { rota: tela.rota, itens: tela.itens.length } : null });
   try {
     const catalogo = (await sql`select slug, agent, exemplos, rpc, slots, risco, confirmacao, desfazer_rpc
       from core.intencoes where ativo order by slug`) as unknown as Intencao[];
@@ -120,7 +123,7 @@ Deno.serve(async (req) => {
       messages: [{ role: 'user', content: usuario }],
     }, { run, feature: 'comando-rota', papel: 'worker', chave: 'comando' });
 
-    const saida = await processar(texto, { catalogo, turnos, contexto: (c ?? {}) as Contexto, hoje, rotear, chamar, acoes }, { dryRun });
+    const saida = await processar(texto, { catalogo, turnos, contexto: (c ?? {}) as Contexto, hoje, tela, rotear, chamar, acoes }, { dryRun });
     const { rota, ...resposta } = saida;
     resposta.fala = canalFala(canal) ? limparFala(resposta.fala) : limparFalaHub(resposta.fala); // defesa final: voz/atalho <= 2 frases e 40 palavras; hub = UX-15/16 (240 caracteres)
     if (fnNegada) { resposta.fala = MSG_FN_TOKEN; resposta.tela = { ...(resposta.tela ?? {}), executou: false }; }

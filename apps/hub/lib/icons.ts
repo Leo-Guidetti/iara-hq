@@ -11,5 +11,7 @@ export const ICON = {
   corpo: 'M12 4a2 2 0 110 4 2 2 0 010-4zM8 10h8l-1 5h-2l-1 5-1-5H9z',
   treino: 'M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12',
   dieta: 'M7 3v8a3 3 0 006 0V3M10 3v18M17 3c-2 2-2 6 0 8v10',
+  // microfone (UX-23, barra Peça à IARA)
+  mic: 'M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zM5 11a7 7 0 0014 0M12 18v3M9 21h6',
   perfil: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0',
 } as const

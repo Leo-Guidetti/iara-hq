@@ -5,6 +5,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { callFunction } from '@/lib/functions'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { minutosAte, useAgora } from '@/lib/useAgora'
+import { useDitado } from '@/lib/useDitado'
+import { ICON } from '@/lib/icons'
+import { lerTela } from '@/lib/tela'
+import { destravarVoz, falar, pararVoz, temVoz } from './Ouvir'
 
 type Pendente = { tipo: 'pergunta' | 'confirmacao'; pergunta?: string; opcoes?: string[]; acao_id?: number; expira_em?: string } | null
 type Desfazer = { acao_id: number; ate: string } | null
@@ -25,9 +29,10 @@ const MSG: Record<number, string> = {
   405: 'Pedido não aceito.',
 }
 
-/** Barra "Peça à IARA": canal único de comando em linguagem natural. */
+/** Barra "Peça à IARA": canal único de comando em linguagem natural, por texto ou voz (UX-23). */
 export function PecaIara() {
   const router = useRouter()
+  const ditado = useDitado()
   const [texto, setTexto] = useState('')
   const [busy, setBusy] = useState(false)
   const [historico, setHistorico] = useState<Turno[]>([])
@@ -45,23 +50,29 @@ export function PecaIara() {
     setBusy(false)
     if (error) { setRetorno({ fala: 'Não consegui desfazer agora. Tente de novo.', erro: true }); return }
     setRetorno({ fala: r.fala || (r.ok ? 'Desfeito.' : 'Não deu para desfazer.'), erro: r.ok === false })
-    if (r.ok) { setDesfazer(null); router.refresh() }
+    if (r.ok) { setDesfazer(null); atualizar() }
   }
 
-  async function enviar(t: string) {
+  /** Atualiza a tela depois de uma ação: as telas leem os dados no servidor, então o refresh basta (sem recarregar). */
+  const atualizar = () => router.refresh()
+
+  async function enviar(t: string, porVoz = false) {
     const msg = t.trim()
     if (!msg || busy) return
+    pararVoz()
     setBusy(true)
     setPendente(null)
     setRetorno(null)
     let turno: Turno
     try {
-      const r = await callFunction<Resp>('iara-comando', { texto: msg, canal: 'hub' })
+      // UX-23: a rota e os itens marcados na tela vão junto, para "essa meta" / "o segundo" acharem o id certo.
+      const r = await callFunction<Resp>('iara-comando', { texto: msg, canal: 'hub', contexto_tela: lerTela() })
       turno = { texto: msg, fala: r.fala || 'Pronto.', erro: r.tela?.executou === false }
       setPendente(r.pendente ?? null)
       setDesfazer(r.desfazer ?? null)
       setTexto('')
-      if (r.tela?.executou === true) router.refresh()
+      if (r.tela?.executou === true) atualizar()
+      if (porVoz && temVoz()) falar(turno.fala)
     } catch (e) {
       const m = (e as Error).message || ''
       const cod = Number(/^Erro (\d{3})$/.exec(m)?.[1])
@@ -78,9 +89,17 @@ export function PecaIara() {
   return (
     <section className="card ai stack" style={{ gap: 10 }} aria-label="Peça à IARA">
       <form className="row" onSubmit={(e) => { e.preventDefault(); enviar(texto) }}>
-        <input aria-label="Peça à IARA" placeholder="Peça à IARA…" value={texto} disabled={busy} onChange={(e) => setTexto(e.target.value)} />
-        <button className="btn ai" disabled={busy || !texto.trim()}>{busy ? '…' : 'Enviar'}</button>
+        <input aria-label="Peça à IARA" placeholder={ditado.ouvindo ? 'Ouvindo…' : 'Peça à IARA…'} value={ditado.ouvindo ? ditado.parcial : texto} disabled={busy || ditado.ouvindo} onChange={(e) => setTexto(e.target.value)} />
+        {ditado.suportado && (
+          <button type="button" className={`btn ${ditado.ouvindo ? 'ai' : 'ghost'}`} disabled={busy} aria-pressed={ditado.ouvindo}
+            aria-label={ditado.ouvindo ? 'Parar de ouvir' : 'Falar com a IARA'}
+            onClick={() => { if (ditado.ouvindo) ditado.parar(); else { pararVoz(); destravarVoz(); ditado.iniciar((t) => enviar(t, true)) } }}>
+            {ditado.ouvindo ? 'Parar' : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ICON.mic} /></svg>}
+          </button>
+        )}
+        <button className="btn ai" disabled={busy || ditado.ouvindo || !texto.trim()}>{busy ? '…' : 'Enviar'}</button>
       </form>
+      {ditado.erro && <p className="error small" style={{ margin: 0 }} aria-live="polite">{ditado.erro}</p>}
       {busy && <p className="small muted" style={{ margin: 0 }}>…</p>}
       {!busy && atual && (
         <div className="stack" style={{ gap: 8 }} aria-live="polite">

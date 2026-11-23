@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabaseBrowser } from '@/lib/supabase/client'
+import { marcaIara } from '@/lib/tela'
 
 export type Meta = {
   id: string; name: string; kind: string | null; priority: number | null; target_amount: number; current_amount: number
@@ -76,7 +77,7 @@ export function MetasBloco({ dados, erro }: { dados: MetasStatus | null; erro: b
       )}
 
       {metas.map((m) => (
-        <div key={m.id} className="stack" style={{ gap: 4 }}>
+        <div key={m.id} className="stack" style={{ gap: 4 }} {...marcaIara('meta_financeira', m.id, m.name, [m.target_date ? `até ${m.target_date}` : null, `alvo ${m.target_amount}`].filter(Boolean).join(', '))}>
           <div className="row between" style={{ gap: 8 }}>
             <strong>{m.name}</strong>
             <span className="row" style={{ gap: 6, flexShrink: 0 }}>

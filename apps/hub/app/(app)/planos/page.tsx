@@ -6,6 +6,7 @@ import { ddmm } from '../semana/tipos'
 import { NovoPlano, AcoesRascunho } from './Novo'
 import { Decisoes, type Decisao } from './Decisoes'
 import { Propostas, type Proposta } from './Propostas'
+import { marcaIara } from '@/lib/tela'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,7 +56,7 @@ export default async function PlanosPage() {
         const ids = new Set(HORIZONTES.flatMap(([h]) => (p.metas?.[h] ?? []).map((m) => m.id)))
         const prox = itens.find((i) => ids.has(Number(i.meta_id)))
         return (
-          <section key={p.id} className="card stack" style={{ gap: 10 }}>
+          <section key={p.id} className="card stack" style={{ gap: 10 }} {...marcaIara('plano', p.id, p.titulo, [p.status, p.alvo?.data ? `até ${p.alvo.data}` : null].filter(Boolean).join(', '))}>
             <div className="row between">
               <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{p.titulo}</h2>
               <span className={`tag ${p.status === 'rascunho' ? 'ai' : 'progress'}`}>{p.status === 'rascunho' ? 'Rascunho' : p.status}</span>
@@ -88,7 +89,7 @@ function MetaLinha({ m }: { m: Meta }) {
   const pct = m.progresso == null ? null : Math.round(Math.min(1, Math.max(0, Number(m.progresso))) * 100)
   const atrasada = m.ritmo === 'atrasada'
   return (
-    <div data-app={appDoAgent(m.dono)} className="stack" style={{ gap: 4, borderLeft: '3px solid var(--accent)', paddingLeft: 10 }}>
+    <div data-app={appDoAgent(m.dono)} {...marcaIara('meta', m.id, m.titulo, [`horizonte ${m.horizonte}`, `dono ${m.dono}`, m.prazo ? `prazo ${m.prazo}` : null, m.status].filter(Boolean).join(', '))} className="stack" style={{ gap: 4, borderLeft: '3px solid var(--accent)', paddingLeft: 10 }}>
       <div className="row between">
         <strong className="small">{m.titulo}</strong>
         <span className="small" style={{ color: atrasada ? 'var(--alert)' : 'var(--accent)' }}>{DONO[m.dono] ?? m.dono}</span>

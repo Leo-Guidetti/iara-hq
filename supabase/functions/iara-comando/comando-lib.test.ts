@@ -237,3 +237,78 @@ Deno.test('UX-17: "pratiquei violão 20 minutos" chama hub_pratica_registrar e d
   const c = CATALOGO.find((x) => x.slug === 'pratica.registrar')!;
   ok(c.risco === 'baixo' && c.confirmacao === 'nenhuma' && c.desfazer_rpc === 'public.hub_pratica_desfazer', 'política da intenção');
 });
+
+// ---------- UX-23: contexto da tela ----------
+import { descreverTela, lerTela, type Tela } from './comando-lib.ts';
+const TELA: Tela = { rota: '/planos', itens: [
+  { tipo: 'plano', id: '5', titulo: 'Apartamento', detalhe: 'ativo', visivel: true },
+  { tipo: 'meta', id: '12', titulo: 'Juntar a entrada', detalhe: 'horizonte medio, dono airton, prazo 2027-12-31, ativa', visivel: true },
+  { tipo: 'meta', id: '13', titulo: 'Quitar o carro', visivel: false },
+] };
+const comTela = (d: ReturnType<typeof deps>, tela: Tela | null = TELA) => Object.assign(d, { tela });
+
+Deno.test('UX-23 lerTela: só tipos conhecidos, id curto, no máximo 25, lixo vira null', () => {
+  eq(lerTela(null), null, 'null'); eq(lerTela([1]), null, 'array');
+  const t = lerTela({ rota: '/planos', itens: [{ tipo: 'meta', id: 12, titulo: 'X', visivel: true }, { tipo: 'hack', id: '1', titulo: 'Y' }, { tipo: 'meta', id: '1; drop', titulo: 'Z' }, { tipo: 'plano', id: '3', titulo: '' }] });
+  eq(t, { rota: '/planos', itens: [{ tipo: 'meta', id: '12', titulo: 'X', visivel: true }] }, 'filtrado');
+  const muitos = lerTela({ rota: '/semana', itens: Array.from({ length: 40 }, (_, i) => ({ tipo: 'semana_item', id: String(i + 1), titulo: `item ${i}` })) });
+  eq(muitos?.itens.length, 25, 'teto 25');
+});
+
+Deno.test('UX-23 montarUsuario: bloco "Na tela" numerado na ordem, fora da vista marcado', () => {
+  const u = montarUsuario('muda o prazo dessa meta', '2026-11-23', 'segunda', [], {}, TELA);
+  ok(u.includes('Na tela (/planos):\n1. plano id=5 "Apartamento" ("ativo")\n2. meta id=12 "Juntar a entrada"'), u);
+  ok(u.includes('3. meta id=13 "Quitar o carro" [fora da vista]'), 'fora da vista');
+  ok(!montarUsuario('oi', '2026-11-23', 'segunda', [], {}).includes('Na tela'), 'sem tela, sem bloco');
+  eq(descreverTela({ rota: '/hoje', itens: [] }), 'Na tela (/hoje): nada marcado.\n', 'vazia');
+  ok(montarSystem(CATALOGO).includes('"Na tela" lista o que o Leo está vendo'), 'regra no system');
+});
+
+Deno.test('UX-23 critério 1: "Muda o prazo dessa meta para 2028" em /planos age na meta visível e pede "sim"', async () => {
+  const d = comTela(deps({ intencao: 'meta.salvar_plano', slots: { p: { id: '12', prazo: '2028-12-31' } }, confianca: 0.9 }));
+  const r = await processar('Muda o prazo dessa meta para 2028', d);
+  ok(d.chamadas.length === 0, 'não executa sem sim');
+  eq(r.pendente?.tipo, 'confirmacao', 'confirmação');
+  eq(r.fala, 'Vou mudar o prazo para 31/12/2028 da meta "Juntar a entrada". Confirma?', 'fala');
+  eq(d.acoes.criadas[0], { intencao: 'meta.salvar_plano', args: { p: { id: 12, prazo: '2028-12-31' } }, pergunta: r.fala }, 'ação gravada com o id da tela');
+  const s = await processar('sim', Object.assign(d, { turnos: [{ papel: 'iara', texto: r.fala, pendente: r.pendente, at: new Date().toISOString() }] as Turno[] }));
+  eq(d.acoes.executadas, [71], 'sim executa a ação gravada'); eq(s.fala, 'Pronto, atualizei a meta.', 'fala depois');
+});
+
+Deno.test('UX-23: id de meta que não está na tela não edita (vira meta nova e pergunta o que falta)', async () => {
+  const d = comTela(deps({ intencao: 'meta.salvar_plano', slots: { p: { id: 999, prazo: '2028-12-31' } }, confianca: 0.9 }));
+  const r = await processar('muda o prazo dessa meta para 2028', d);
+  ok(d.acoes.criadas.length === 0 && r.pendente?.tipo === 'pergunta', 'pergunta');
+});
+
+Deno.test('UX-23: pausar meta da tela descreve a ação; plano da tela vale como candidato', async () => {
+  const d = comTela(deps({ intencao: 'meta.salvar_plano', slots: { p: { id: 13, status: 'pausada' } }, confianca: 0.9 }));
+  const r = await processar('pausa a segunda meta', d);
+  eq(r.fala, 'Vou pausar a meta "Quitar o carro". Confirma?', 'pausar');
+  const d2 = comTela(deps({ intencao: 'plano.confirmar', slots: { p_id: '5' }, confianca: 0.9 }));
+  const r2 = await processar('ativa esse plano', d2);
+  eq(d2.acoes.criadas[0]?.args, { p_id: 5 }, 'id do plano da tela (não estava no contexto do servidor)'); eq(r2.pendente?.tipo, 'confirmacao', 'pede sim');
+});
+
+Deno.test('UX-23: compromisso continua pedindo título e data (RPC sem coalesce); id do contexto do servidor vale com tela', async () => {
+  const ctx = { ...CTX, compromissos: [{ id: 30, titulo: 'Dentista', data: '2026-11-26' }] };
+  const d = comTela(Object.assign(deps({ intencao: 'agenda.compromisso_salvar', slots: { p: { id: 30, inicio: '16:00' } }, confianca: 0.9 }, 30), { contexto: ctx }));
+  const r = await processar('muda o dentista para as 16h', d);
+  ok(d.chamadas.length === 0 && r.pendente?.tipo === 'pergunta', 'parcial não passa');
+  const d2 = comTela(Object.assign(deps({ intencao: 'agenda.compromisso_salvar', slots: { p: { id: 30, titulo: 'Dentista', data: '2026-11-26', inicio: '16:00' } }, confianca: 0.9 }, 30), { contexto: ctx }));
+  const r2 = await processar('muda o dentista para as 16h', d2);
+  eq(d2.chamadas[0]?.args, { p: { id: 30, titulo: 'Dentista', data: '2026-11-26', inicio: '16:00' } }, 'edição completa');
+  eq(r2.fala, 'Marquei "Dentista" quinta, 26/11 às 16h.', 'fala'); ok((r2.tela as any)?.executou === true, 'executou');
+});
+
+Deno.test('UX-23: sem tela (Atalho), id de meta inventado não edita', async () => {
+  const d = comTela(deps({ intencao: 'meta.salvar_plano', slots: { p: { id: 7, status: 'cancelada' } }, confianca: 0.9 }), null);
+  const r = await processar('cancela essa meta', d);
+  ok(d.acoes.criadas.length === 0 && r.pendente?.tipo === 'pergunta', 'pergunta');
+});
+
+Deno.test('UX-23: decisão sem tela orienta abrir Planos', async () => {
+  const d = comTela(deps({ intencao: 'decisao.decidir', slots: { p_id: 4, p_escolha: 'a' }, confianca: 0.9 }), null);
+  const r = await processar('decide pela primeira opção', d);
+  eq(r.fala, 'Abra Planos e me diga de novo: assim eu vejo de qual decisão você fala.', 'fala');
+});
