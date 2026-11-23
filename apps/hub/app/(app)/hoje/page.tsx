@@ -69,7 +69,7 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
   if (Array.isArray(planosRaw)) {
     for (const p of planosRaw as { titulo: string; metas?: Record<string, { titulo: string; ritmo: string; status: string }[]> }[])
       for (const h of ['curto', 'medio', 'longo']) for (const m of p.metas?.[h] ?? [])
-        if (m.ritmo === 'atrasada' && m.status === 'ativa') atrasadas.push({ texto: `${m.titulo} · ${p.titulo}`, destaque: true, href: '/planos' })
+        if (m.ritmo === 'atrasada' && m.status === 'ativa') atrasadas.push({ texto: `${m.titulo} · ${p.titulo}`, destaque: true, href: '/planos/metas' })
   }
 
   // ClaudIA: treino do dia e alertas determinísticos (sem IA).
@@ -170,7 +170,7 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
       {foco == null && <Perguntas avisos={avisos} foco={null} falhou={false} />}
       <Notificacoes compacto />
       {decAbertas > 0 && (
-        <Link href="/planos#decisoes" className="card row between" style={{ color: 'inherit' }}>
+        <Link href="/planos/metas#decisoes" className="card row between" style={{ color: 'inherit' }}>
           <span className="small">{plural(decAbertas, 'decisão espera', 'decisões esperam')} você</span>
           <span className="small" style={{ color: 'var(--accent)' }}>Ver</span>
         </Link>
