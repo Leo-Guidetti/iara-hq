@@ -3,10 +3,10 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (23/11, noite):** UX-23 (#61) e UX-24 (#62) no ar; conferido em produção: 7 RPCs, 10 intenções ativas,
-`meta.salvar_plano` e `plano.salvar` inativas, `iara-comando` v9. UX-25 (Atalho "IARA" + push) no PR #63: depois do merge,
-conferir a origem `resposta` em `core.avisos` e o `airton-ai` publicado. Onda 4 segue com UX-26 e UX-21, que esperam as chaves do Leo.
-Teste do Leo: guia, seções UX-23, UX-24 e UX-25.
+**Próximo passo (23/11, noite):** UX-23 (#61), UX-24 (#62) e UX-25 (#63) no ar. Conferido em produção: 7 RPCs e 10 intenções
+da UX-24 ativas (`meta.salvar_plano` e `plano.salvar` inativas); origem `resposta` em `core.avisos` e as 4 funções da UX-25;
+`iara-comando` v10 e `airton-ai` v16 publicados pelo CI. Onda 4 segue com UX-26 e UX-21, que esperam as chaves do Leo.
+Teste do Leo: guia, seções UX-23, UX-24 e UX-25 (o Atalho "IARA" tem o passo a passo no Perfil).
 
 **Antes (23/11):** onda 4 do plano de UX registrada (voz em todo lugar: UX-23 microfone no hub, UX-24 edição
 100% por voz, UX-25 Atalho "IARA" + push, UX-26 iPad com "Ei IARA" via Picovoice, UX-21 protótipo Gemini Live × OpenAI
