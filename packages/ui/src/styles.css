@@ -196,6 +196,11 @@ dialog.folha[open] { animation: surgir .35s cubic-bezier(.2,.8,.2,1) both; }
 .nav a[aria-current="page"] { color: var(--accent); }
 .nav a .rotulo { display: none; }
 .nav svg { width: 22px; height: 22px; }
+.nav-ic { display: grid; place-items: center; }
+.nav-topo, .nav-rodape, .comando { display: none; }
+.hoje-cols, .hoje-col { display: contents; }
+.nav-marca { display: inline-block; flex: none; width: 22px; height: 22px; border-radius: 7px; background: radial-gradient(circle at 35% 30%, #F2EEFF, #C9B8FF 45%, #8B7FF0); }
+.so-desktop { display: none; }
 .md p { margin: 0 0 6px; } .md ul { margin: 0 0 6px; padding-left: 18px; }
 details.brief summary { cursor: pointer; color: var(--accent); font-size: .85rem; font-weight: 600; list-style: none; margin-top: 6px; }
 details.brief summary::-webkit-details-marker { display: none; }
@@ -290,9 +295,27 @@ details.card > summary::-webkit-details-marker { display: none; }
   :root { --rail: 216px; }
   .nav a { grid-auto-flow: column; justify-content: start; align-items: center; gap: 12px; padding: 10px 14px; font-size: .92rem; }
   .nav a .rotulo { display: inline; }
-  .hoje > .module { grid-column: auto; }
-  .hoje { grid-template-columns: minmax(0, 1.4fr) minmax(0, .8fr) minmax(0, .8fr); }
-  .hoje > .brief-card { grid-row: 2 / span 3; }
+  /* Barra lateral do desktop (protótipo de 23/11): marca no alto, logo de cada app na cor dele, página e agente, ajustes no pé. */
+  :root { --rail: 232px; }
+  .nav { display: flex; flex-direction: column; padding: calc(18px + env(safe-area-inset-top)) 0 16px; }
+  .nav-topo { display: flex; align-items: center; gap: 10px; padding: 4px 24px 22px; font-weight: 600; font-size: .95rem; }
+  .nav a { padding: 8px 12px; gap: 12px; }
+  .nav a .nav-ic { width: 30px; height: 30px; border-radius: 30%; color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+  .nav a .nav-ic svg { width: 17px; height: 17px; }
+  .nav a .rotulo { display: flex; flex-direction: column; line-height: 1.15; color: var(--text-2); }
+  .nav a .rotulo small { font-size: .72rem; color: var(--dim); }
+  .nav a[aria-current="page"] .rotulo { color: var(--accent); font-weight: 500; }
+  .nav-rodape { display: block; margin-top: auto; padding: 0 10px; }
+  .so-desktop { display: block; }
+  .hoje:has(.hoje-cols) { max-width: none; }
+  .hoje-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .hoje-col { display: grid; gap: 16px; }
+  .nav-rodape a { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; color: var(--muted); font-size: .88rem; }
+  .nav-rodape a:hover, .nav-rodape a[aria-current="page"] { background: var(--surface-2); color: var(--text); }
+  .comando { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 300px; height: 44px; padding: 0 8px 0 14px;
+    border: 0; border-radius: 22px; background: var(--surface-2); color: var(--muted); font: inherit; font-size: .9rem; cursor: text; }
+  .comando:hover { background: var(--surface-3); }
+  .comando kbd { font: 500 .72rem var(--font); padding: 3px 7px; border-radius: 7px; background: var(--surface-3); color: var(--muted); }
 }
 
 /* Esqueleto de carregamento (app/(app)/loading.tsx) */
