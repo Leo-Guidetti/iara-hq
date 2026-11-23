@@ -8,12 +8,15 @@ da UX-24 ativas (`meta.salvar_plano` e `plano.salvar` inativas); origem `respost
 `iara-comando` v10 e `airton-ai` v16 publicados pelo CI. Onda 4 segue com UX-26 e UX-21, que esperam as chaves do Leo.
 Teste do Leo: guia, seções UX-23, UX-24 e UX-25 (o Atalho "IARA" tem o passo a passo no Perfil).
 
-**Superapp (23/11, pedido do Leo):** crítica de usabilidade e sitemap decidido no Claude Doc "Crítica de usabilidade do hub"
-(https://claude.ai/artifact/SvApdLXaygv951gBZm5UCm) e protótipo da nova identidade "HUD de bordo"
-(https://claude.ai/artifact/65cYHubNY2f3FM48Fdg1Ww). Fila: (1) `perf/troca-de-aba` — hub em `gru1` (estava em `iad1`, longe do
-Supabase `sa-east-1`), `loading.tsx`, `staleTimes.dynamic` 30 s, `getClaims` no lugar do 2º `getUser`, `Promise.all` na SabIA;
-(2) identidade visual em `packages/ui` + barra com 6 abas (Planos entra, órbita sai); (3) subabas Hoje, Planos, AIrton, SabIA;
-(4) livros com busca no Google Books, capa, formato e %; (5) revisar lançamentos dentro do hub. Itens 2 a 5 esperam o OK do Leo no protótipo.
+**Superapp (23/11, pedido do Leo):** crítica, sitemap e plano hub × AIrton no Claude Doc "Crítica de usabilidade do hub"
+(https://claude.ai/artifact/SvApdLXaygv951gBZm5UCm). Protótipo aprovado pelo Leo ("pode implementar tudo"), identidade
+**minimalista** (a "HUD de bordo" neon foi recusada): https://claude.ai/artifact/65cYHubNY2f3FM48Fdg1Ww — iPhone (todas as
+abas e subabas), iPad (hub da casa com o sol do dia, folhas por cartão, troca Hub/Gestão) e desktop (edição completa).
+Regras do Leo: nome da página na cor do app com o agente embaixo (Hoje, Planos, Saúde, Finanças, Conhecimento, Casa);
+dentro das telas, app = só o logo colorido, agente no tooltip; iPhone/iPad = dia a dia e follow-up, desktop = editar tudo;
+wake word do iPad é só "IARA". Perf (#65) no ar. Fila de PRs: (1) identidade e navegação; (2) Finanças (Resumo com
+patrimônio, Gastos com gasto por mês, Revisar, Metas, atalhos para o AIrton completo); (3) Hoje e Planos; (4) Saúde;
+(5) Conhecimento/livros; (6) Casa e Perfil; (7) orbe de voz; (8) iPad; (9) desktop.
 
 **Antes (23/11):** onda 4 do plano de UX registrada (voz em todo lugar: UX-23 microfone no hub, UX-24 edição
 100% por voz, UX-25 Atalho "IARA" + push, UX-26 iPad com "Ei IARA" via Picovoice, UX-21 protótipo Gemini Live × OpenAI
@@ -244,3 +247,4 @@ não depende disso enquanto espera.
 | 15/11 | 3 (push) | `feat/hub-push` | — (conferir após o merge) | Hub vira PWA (manifest, ícones com o cérebro, `sw.js` só para push) e ganha "Ativar notificações" no Perfil e um cartão na Hoje enquanto não estiver ligado: grava a inscrição em `airton.push_subscriptions` (RLS do dono) com a chave VAPID do `airton-notify`, que já manda daily/weekly/semana/custo. No iPhone exige o app instalado na tela inicial (iOS 16.4+). Botão "Enviar teste" |
 | 16/11 | Conferência | — | trilha ok, briefing às 10:00 UTC | Trilha de 16/11: `falhas_workers` vazio (fix #34 ok), 8 itens, 47 min (um pouco acima de 45), cartão em `core.itens`, US$ 0,063. Vercel sem erros em 24h. Nenhum aparelho inscrito para push; plano de 16/11 em rascunho; agenda, expediente, lugares e compromissos vazios. Mês: US$ 1,13 |
 | 17/11 | UX (plano de UX, ondas 1–3) | #37–#57 | deploy de cada PR ok; briefing de 17/11 com `fala` (62 palavras, US$ 0,0121); crons novos em `cron.job`; tokens de peso antigos com escopo `peso` | Execução autônoma de `docs/ux-audit/plano.md`: 21 itens no ar, UX-21 pulado (chave de provedor de voz, D4). Diário em `docs/ux-audit/execucao.md` |
+| 23/11 | Superapp 1 | `feat/identidade-minimalista` | — (conferir após o merge) | Identidade minimalista em `packages/ui` (grafite #0B0D10, cartões chapados raio 20, Inter, sem vidro/brilho/mono), barra de 6 áreas só com ícones (Planos entra), topo com logo + nome da página na cor do app + agente (tooltip no logo), subabas como controle segmentado, avatar com gradiente, órbita fora da /hoje e blocos com logo no lugar do nome (`lib/apps.ts`, `components/Logo.tsx`) |
