@@ -35,14 +35,17 @@ export function Entrada({ painel }: { painel: Painel }) {
           <h2 style={{ margin: 0, fontSize: '1rem' }}>Seus compromissos</h2>
           <span className="small muted">{ddmm(painel.desde)} a {ddmm(painel.fim)}</span>
         </div>
-        <p className="small muted" style={{ margin: 0 }}>Jantares, bares, dates, médico, reuniões… A IARA não marca nada por cima e conta o deslocamento.</p>
         {compromissos.length ? (
           <ol className="semana">{compromissos.map((f) => <LinhaFixo key={`${f.fonte}-${f.id}-${f.data}-${f.inicio}`} f={f} />)}</ol>
         ) : <p className="small muted" style={{ margin: 0 }}>Nenhum compromisso ainda.</p>}
-        <NovoCompromisso desde={painel.desde} fim={painel.fim} lugares={painel.lugares} />
+        <details className="mais"><summary>Novo compromisso</summary><div style={{ marginTop: 10 }}><NovoCompromisso desde={painel.desde} fim={painel.fim} lugares={painel.lugares} /></div></details>
       </section>
-      <LugaresCard lugares={painel.lugares} />
-      <AgendaCard painel={painel} />
+      <details className="mais"><summary>Lugares e agenda do Google</summary>
+        <div className="stack" style={{ marginTop: 12 }}>
+          <LugaresCard lugares={painel.lugares} />
+          <AgendaCard painel={painel} />
+        </div>
+      </details>
     </div>
   )
 }

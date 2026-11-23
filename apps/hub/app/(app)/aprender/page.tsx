@@ -30,7 +30,7 @@ export default async function Aprender() {
       </section>
       {error && <div className="card alert"><p className="small">Não consegui carregar a trilha agora.</p></div>}
       {!error && !t?.hoje && <GerarTrilha />}
-      {t?.resumo && <section className="card ai"><span className="tag ai">{t.tipo === 'deep_dive' ? 'Síntese do tema' : 'Fio condutor'}</span><div style={{ marginTop: 6 }}><Md texto={t.resumo} /></div></section>}
+      {t?.resumo && <details className="mais"><summary>{t.tipo === 'deep_dive' ? 'Síntese do tema' : 'Fio condutor da trilha'}</summary><div className="small" style={{ marginTop: 6 }}><Md texto={t.resumo} /></div></details>}
       <Trilha itens={s?.itens ?? []} />
     </>
   )

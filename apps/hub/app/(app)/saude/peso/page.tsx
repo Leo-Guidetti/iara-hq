@@ -1,4 +1,5 @@
 import { currentUser } from '@/lib/supabase/server'
+import { Mais } from '@/components/Mais'
 import { addDays, fmtDay, fmtKg, spDate } from '@/lib/dates'
 import { WeightChart, type Point } from './WeightChart'
 import { WeightForm } from './WeightForm'
@@ -23,11 +24,7 @@ export default async function PesoPage() {
   const pct = rate != null && weekAgo?.trend_7d ? (rate / Number(weekAgo.trend_7d)) * 100 : null
 
   return (
-    <div className="stack">
-      <div>
-        <h1>Peso</h1>
-        <p className="muted small">A média de 7 dias filtra água e sal; é ela que mostra a tendência.</p>
-      </div>
+    <>
 
       <section className="grid2">
         <div className="card">
@@ -46,15 +43,14 @@ export default async function PesoPage() {
         </div>
       </section>
 
-      <section className="card">
-        <h2>Últimos 90 dias</h2>
+      <section className="card" aria-label="Últimos 90 dias">
         <WeightChart data={points} />
       </section>
 
       <WeightForm />
 
+      <Mais rotulo="Ver as pesagens">
       <section className="card">
-        <h2>Registros</h2>
         <div className="list">
           {(entries ?? []).map((e) => (
             <div key={e.id} className="row between">
@@ -71,6 +67,8 @@ export default async function PesoPage() {
           {!entries?.length && <p className="muted">Nenhuma pesagem ainda.</p>}
         </div>
       </section>
-    </div>
+      <p className="small muted" style={{ margin: 0 }}>A média de 7 dias filtra água e sal; é ela que mostra a tendência.</p>
+      </Mais>
+    </>
   )
 }

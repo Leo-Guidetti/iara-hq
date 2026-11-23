@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { currentUser } from '@/lib/supabase/server'
+import { Mais } from '@/components/Mais'
 import { addDays, fmtDay, spDate } from '@/lib/dates'
 import { CoachPanel, ReviewPanel, CheckinPanel, StravaPanel, type ReviewRow, type CheckinRow } from './Panels'
 import { SPORT_PT, INTENSITY_PT, StatusChip } from './ui'
@@ -27,11 +28,7 @@ export default async function TreinoPage({ searchParams }: { searchParams: Promi
   const done = (sessions ?? []).filter((s) => s.status === 'done').length
 
   return (
-    <div className="stack">
-      <div className="row between">
-        <h1>Treino</h1>
-        <Link href="/saude/treino/perfil" className="btn ghost">Perfil de treino</Link>
-      </div>
+    <>
       {!tp && <div className="card alert"><span className="tag alert">Falta perfil</span><p>Preencha o <Link href="/saude/treino/perfil" style={{ textDecoration: 'underline' }}>perfil de treino</Link> para o coach montar o plano.</p></div>}
 
       <section className="card">
@@ -63,10 +60,13 @@ export default async function TreinoPage({ searchParams }: { searchParams: Promi
         </div>
       </section>
 
+      <Mais rotulo="Plano do coach, revisão e check-in">
       <CoachPanel plan={plan ? { name: p?.name ?? 'Plano', rationale: plan.rationale, materialized_through: plan.materialized_through, progression_rule: p?.progression_rule, flags: p?.flags, refs: p?.refs, created_at: plan.created_at } : null} />
       <ReviewPanel review={review as ReviewRow | null} />
       <CheckinPanel checkin={checkin as CheckinRow | null} />
       <StravaPanel status={strava as { connected: boolean; athlete_name?: string; last_sync_at?: string | null } | null} />
-    </div>
+      <Link href="/saude/treino/perfil" className="btn ghost" style={{ textAlign: 'center' }}>Perfil de treino</Link>
+      </Mais>
+    </>
   )
 }

@@ -28,21 +28,28 @@ export function Trilha({ itens }: { itens: ItemTrilha[] }) {
     <div className="stack" style={{ gap: 12 }}>
       {erro && <p className="error">{erro}</p>}
       {itens.map((i) => (
-        <section key={i.id} className={`card module${i.status !== 'pendente' ? ' feito' : ''}`} style={i.status !== 'pendente' ? { opacity: 0.6 } : undefined}>
-          <div className="row between">
-            <span className="tag">{i.tema ?? 'SabIA'}</span>
-            <span className="small muted">{FORMATO[i.formato] ?? i.formato} · {i.minutos} min{i.status === 'feito' ? ' · ✓ lido' : i.status === 'pulado' ? ' · pulado' : ''}</span>
+        <section key={i.id} className="card" style={{ display: 'grid', gap: 8, opacity: i.status !== 'pendente' ? 0.55 : undefined }}>
+          <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
+            <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, marginTop: 7, flex: 'none', background: i.status === 'pendente' ? 'var(--accent)' : 'var(--dim)' }} />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              {i.url ? <a href={i.url} target="_blank" rel="noreferrer" style={{ color: 'inherit', fontWeight: 500 }}>{i.titulo}</a> : <span style={{ fontWeight: 500 }}>{i.titulo}</span>}
+              <span className="small" style={{ display: 'block', color: 'var(--dim)' }}>{[FORMATO[i.formato] ?? i.formato, i.fonte, `${i.minutos} min`].filter(Boolean).join(' · ')}{i.status === 'feito' ? ' · lido' : i.status === 'pulado' ? ' · pulado' : ''}</span>
+            </span>
           </div>
-          <strong>{i.titulo}</strong>
-          {i.fonte && <span className="small muted">{i.fonte}</span>}
-          {i.por_que && <p className="small" style={{ margin: 0 }}>{i.por_que}</p>}
-          {i.takeaway && <p className="small muted" style={{ margin: 0 }}>💡 {i.takeaway}</p>}
-          {i.corpo && <div className="small"><Md texto={i.corpo} /></div>}
+          {(i.por_que || i.takeaway || i.corpo) && (
+            <details className="mais">
+              <summary>Por que ler</summary>
+              <div className="small" style={{ display: 'grid', gap: 6, marginTop: 6 }}>
+                {i.por_que && <p style={{ margin: 0 }}>{i.por_que}</p>}
+                {i.takeaway && <p className="muted" style={{ margin: 0 }}>{i.takeaway}</p>}
+                {i.corpo && <Md texto={i.corpo} />}
+              </div>
+            </details>
+          )}
           <div className="chips">
-            {i.url && <a className="chip on" href={i.url} target="_blank" rel="noreferrer">Abrir ↗</a>}
             {i.status === 'pendente' ? (
               <>
-                <button className="chip" disabled={busy === i.id} onClick={() => marcar(i.id, 'feito')}>✓ Lido</button>
+                <button className="chip on" disabled={busy === i.id} onClick={() => marcar(i.id, 'feito')}>Lido</button>
                 <button className="chip" disabled={busy === i.id} onClick={() => marcar(i.id, 'pulado')}>Pular</button>
               </>
             ) : <button className="chip" disabled={busy === i.id} onClick={() => marcar(i.id, 'pendente')}>Desfazer</button>}

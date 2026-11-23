@@ -199,9 +199,9 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
         </div>
         {briefing?.texto ? (
           <>
-            <Md texto={briefing.texto.split('\n').slice(0, 5).join('\n')} />
-            {briefing.texto.split('\n').length > 5 && (
-              <details className="brief"><summary>Ver o briefing inteiro</summary><Md texto={briefing.texto.split('\n').slice(5).join('\n')} /></details>
+            <Md texto={briefing.texto.split('\n').slice(0, 3).join('\n')} />
+            {briefing.texto.split('\n').length > 3 && (
+              <details className="brief"><summary>Ver o briefing inteiro</summary><Md texto={briefing.texto.split('\n').slice(3).join('\n')} /></details>
             )}
           </>
         ) : <p className="small muted" style={{ margin: '6px 0 0' }}>O briefing sai todo dia às 07:00.</p>}
