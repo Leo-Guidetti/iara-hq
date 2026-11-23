@@ -3,8 +3,6 @@ import { currentUser } from '@/lib/supabase/server'
 import { Trilha, type ItemTrilha } from './Trilha'
 import { Md } from '@/lib/md'
 import { GerarTrilha } from './GerarTrilha'
-import { LivrosBloco, type Livros } from './Livros'
-import { PraticaBloco, type Praticas } from './Pratica'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,27 +12,26 @@ const TIPO: Record<string, string> = { diaria: 'Trilha do dia', deep_dive: 'Imer
 export default async function Aprender() {
   const me = (await currentUser())!
   const raw = me.sb as unknown as SupabaseClient
-  const [{ data, error }, { data: ld, error: lerr }, { data: pd, error: perr }] = await Promise.all([raw.rpc('hub_sabia'), raw.rpc('hub_livros'), raw.rpc('hub_praticas')])
+  const { data, error } = await raw.rpc('hub_sabia')
   const s = (data ?? null) as Sabia
-  const livros = (ld ?? null) as Livros | null
-  const praticas = (pd ?? null) as Praticas | null
   const t = s?.trilha
   const feitos = (s?.itens ?? []).filter((i) => i.status !== 'pendente').length
 
   return (
-    <div className="stack">
-      <div>
-        <h1>{t ? TIPO[t.tipo] ?? 'Trilha' : 'Sem trilha ainda'}</h1>
-        <p className="muted small" style={{ margin: 0 }}>
-          {t ? `${t.minutos} min · ${feitos}/${s?.itens.length ?? 0} vistos${t.hoje ? '' : ` · de ${t.data.slice(8, 10)}/${t.data.slice(5, 7)}`}` : 'A SabIA monta a trilha todo dia às 06:30.'}
-        </p>
-      </div>
+    <>
+      <section className="card" aria-label="Trilha atual">
+        <span className="small" style={{ color: 'var(--accent)' }}>{t ? TIPO[t.tipo] ?? 'Trilha' : 'Sem trilha ainda'}{t && !t.hoje ? ` · de ${t.data.slice(8, 10)}/${t.data.slice(5, 7)}` : ''}</span>
+        {t ? (
+          <>
+            <div className="barra" style={{ margin: '12px 0 8px' }} aria-hidden="true"><i style={{ width: `${s?.itens.length ? (feitos / s.itens.length) * 100 : 0}%` }} /></div>
+            <div className="row between small muted"><span>{feitos} de {s?.itens.length ?? 0} itens</span><span>{t.minutos} min</span></div>
+          </>
+        ) : <p className="small muted" style={{ margin: '6px 0 0' }}>A SabIA monta a trilha todo dia às 06:30.</p>}
+      </section>
       {error && <div className="card alert"><p className="small">Não consegui carregar a trilha agora.</p></div>}
       {!error && !t?.hoje && <GerarTrilha />}
       {t?.resumo && <section className="card ai"><span className="tag ai">{t.tipo === 'deep_dive' ? 'Síntese do tema' : 'Fio condutor'}</span><div style={{ marginTop: 6 }}><Md texto={t.resumo} /></div></section>}
       <Trilha itens={s?.itens ?? []} />
-      <LivrosBloco dados={livros} erro={!!lerr || !livros} />
-      <PraticaBloco dados={praticas} erro={!!perr || !praticas} />
-    </div>
+    </>
   )
 }
