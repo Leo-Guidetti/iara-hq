@@ -1,4 +1,5 @@
 import { currentUser } from '@/lib/supabase/server'
+import { Mais } from '@/components/Mais'
 import { fmtDay, fmtKg } from '@/lib/dates'
 import { MeasureForm } from './MeasureForm'
 import { CompChart } from './CompChart'
@@ -33,11 +34,7 @@ export default async function CorpoPage() {
   const leanShare = dLean != null && dFat != null && dLean + dFat < 0 ? (dLean / (dLean + dFat)) * 100 : null
 
   return (
-    <div className="stack">
-      <div>
-        <h1>Corpo</h1>
-        <p className="muted small">Fita + peso estimam gordura (RFM e fórmula da Marinha). A pergunta é: o que sai é gordura ou massa magra?</p>
-      </div>
+    <>
 
       {!profile?.height_cm || !profile?.sex ? (
         <div className="card alert"><span className="tag alert">Falta perfil</span><p>Informe altura e sexo no Perfil para calcular as estimativas.</p></div>
@@ -69,11 +66,11 @@ export default async function CorpoPage() {
         </div>
       )}
 
+      <Mais rotulo="Gráfico e histórico de medidas">
+      <p className="muted small" style={{ margin: 0 }}>Fita + peso estimam gordura (RFM e fórmula da Marinha). A pergunta é: o que sai é gordura ou massa magra?</p>
       <section className="card"><h2>Gordura x massa magra</h2>
         <CompChart data={(comp ?? []).map((c) => ({ date: c.local_date!, fat: c.fat_mass_kg, lean: c.lean_mass_kg }))} />
       </section>
-
-      <MeasureForm />
 
       <section className="card">
         <h2>Histórico de medidas</h2>
@@ -88,11 +85,15 @@ export default async function CorpoPage() {
           {!comp?.length && <p className="muted">Sem medidas ainda.</p>}
         </div>
       </section>
+      </Mais>
+
+      <MeasureForm />
 
       <PhotoReview last={review as ReviewRow | null} dates={[...byDate.keys()].sort()} />
       <PhotoUpload userId={me.user.id} />
 
-      {[...byDate.entries()].map(([d, list]) => (
+      {byDate.size > 0 && <Mais rotulo={`Fotos de ${byDate.size} ${byDate.size === 1 ? 'dia' : 'dias'}`}>
+      {[...byDate.entries()].reverse().map(([d, list]) => (
         <section key={d} className="card">
           <h2>{fmtDay(d)}</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -106,6 +107,7 @@ export default async function CorpoPage() {
           </div>
         </section>
       ))}
-    </div>
+      </Mais>}
+    </>
   )
 }

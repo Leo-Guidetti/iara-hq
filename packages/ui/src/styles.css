@@ -276,3 +276,22 @@ details.card > summary::-webkit-details-marker { display: none; }
 .esqueleto { border-radius: var(--radius); background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 50%, var(--surface) 100%) 0 0 / 200% 100%; animation: esqueleto 1.2s ease-in-out infinite; }
 @keyframes esqueleto { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; } }
+
+/* Mais (23/11): o secundário fica recolhido. */
+details.mais { border-radius: var(--radius); }
+details.mais > summary { list-style: none; cursor: pointer; font-size: .85rem; color: var(--muted); padding: 6px 2px; display: flex; align-items: center; gap: 6px; }
+details.mais > summary::-webkit-details-marker { display: none; }
+details.mais > summary::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .2s; }
+details.mais[open] > summary::after { transform: rotate(-135deg) translateY(-1px); }
+
+/* iPhone (23/11, pedido do Leo): fonte menor e menos espaço para caber mais na tela. Campos ficam em 16px
+   para o Safari não dar zoom ao tocar. */
+@media (max-width: 600px) {
+  html, body { font-size: 14.5px; }
+  input, select, textarea { font-size: 16px; padding: 10px 12px; }
+  h1 { font-size: 1.45rem; }
+  .stack { gap: 12px; }
+  .card { padding: 14px; }
+  .kpi { font-size: 1.8rem; }
+  .list > * { padding: 10px 0; }
+}

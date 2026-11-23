@@ -5,6 +5,7 @@ import { Notificacoes } from '@/components/Notificacoes'
 import { FUNCTIONS_URL } from '@/lib/env'
 import { Limites, type AvisosCfg } from '@/components/Limites'
 import { ProfileForm, Tokens, SiriToken } from './client'
+import { Mais } from '@/components/Mais'
 
 export const dynamic = 'force-dynamic'
 const FEATURE: Record<string, string> = { 'food-parse': 'Registro de comida', diet: 'Dieta', 'photo-review': 'Análise de fotos', coach: 'Plano de treino', 'coach-session': 'Conversa da sessão', 'coach-review': 'Revisão semanal', checkin: 'Check-in' }
@@ -20,19 +21,24 @@ export default async function PerfilPage() {
   const months = [...new Set((cost ?? []).map((c) => c.mes))]
   return (
     <div className="stack">
-      <h1>Perfil</h1>
-      <section className="card stack" style={{ gap: 8 }}>
-        <h2 style={{ margin: 0 }}>Aparência</h2>
+      <section className="card row between">
+        <span className="small">Aparência</span>
         <ThemeToggle />
       </section>
       <Notificacoes />
+      <Mais rotulo="Avisos e limites">
       <Limites cfg={avisos as AvisosCfg | null} />
-      <p className="small muted">{me.user.email}</p>
+      </Mais>
+      <Mais rotulo="Dados pessoais">
+      <p className="small muted" style={{ margin: 0 }}>{me.user.email}</p>
       <ProfileForm p={p!} />
+      </Mais>
+      <Mais rotulo="Atalhos do iPhone e Siri">
       <Tokens tokens={(tokens ?? []).filter((t) => !t.escopos.includes('iara'))} endpoint={`${FUNCTIONS_URL}/claudia-ingest`} />
       <SiriToken tokens={(tokens ?? []).filter((t) => t.escopos.includes('iara'))} url={`${FUNCTIONS_URL}/iara-comando?formato=texto`} />
+      </Mais>
+      <Mais rotulo="Custo de IA">
       <section className="card">
-        <h2>Custo de IA</h2>
         {months.map((m) => {
           const rows = (cost ?? []).filter((c) => c.mes === m)
           const total = rows.reduce((a, r) => a + Number(r.custo_usd), 0)
@@ -45,6 +51,7 @@ export default async function PerfilPage() {
         })}
         {!months.length && <p className="muted small">Nenhuma chamada de IA registrada ainda.</p>}
       </section>
+      </Mais>
       <SignOut />
       <p className="disclaimer">A ClaudIA organiza o processo com base em referências acadêmicas. Não é aconselhamento médico.</p>
     </div>

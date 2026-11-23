@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { currentUser } from '@/lib/supabase/server'
+import { Mais } from '@/components/Mais'
 import { addDays, fmtDay, spDate } from '@/lib/dates'
 import { FoodEntry, MEAL_PT } from './FoodEntry'
 import { DietPlan, type DietRow } from './DietPlan'
@@ -36,12 +37,11 @@ export default async function DietaPage({ searchParams }: { searchParams: Promis
   const lastMed = meds?.[0]
 
   return (
-    <div className="stack">
+    <>
       <div className="row between">
-        <h1>Dieta</h1>
+        <span className="small muted">{date === today ? 'Hoje' : fmtDay(date)}</span>
         <div className="row">
           <Link className="btn ghost" href={`/saude/dieta?d=${addDays(date, -1)}`} aria-label="dia anterior">‹</Link>
-          <span className="num">{date === today ? 'Hoje' : fmtDay(date)}</span>
           {date < today && <Link className="btn ghost" href={`/saude/dieta?d=${addDays(date, 1)}`} aria-label="próximo dia">›</Link>}
         </div>
       </div>
@@ -73,6 +73,7 @@ export default async function DietaPage({ searchParams }: { searchParams: Promis
         {!foods?.length && <p className="muted">Nada registrado neste dia.</p>}
       </section>
 
+      <Mais rotulo="Plano alimentar e medicação">
       <DietPlan last={diet as DietRow | null} />
 
       <section className="card">
@@ -82,6 +83,7 @@ export default async function DietaPage({ searchParams }: { searchParams: Promis
           : <p className="small muted">Nenhuma aplicação registrada.</p>}
       </section>
       <MedForm lastDose={lastMed ? Number(lastMed.dose_mg) : undefined} />
-    </div>
+      </Mais>
+    </>
   )
 }
