@@ -11,7 +11,9 @@
 // UX-19: além do JWT, aceita o token do Atalho da Siri (`Authorization: Bearer iar_…` ou `x-iara-token`, escopo `iara` em
 //        public.ingest_tokens, validado por core.iara_token_entrar: hash, revogação, membro, 10 comandos/min). Sem JWT, a escrita
 //        roda por SQL direto numa transação `set local role authenticated` + claims do dono do token (auth.uid() = ele; nunca
-//        service role). Intenções `fn:` (airton-ai exige JWT) respondem "isso eu respondo pelo app". Canal atalho = texto puro.
+//        service role). Intenções `fn:` respondem "isso eu respondo pelo app". Canal atalho = texto puro.
+// UX-25: pelo token, pergunta ao AIrton vira push (core.pergunta_airton_por_push -> airton-ai chat_push como cron -> core.avisos);
+//        a Siri diz na hora se o push sai agora, depois do silêncio ou não sai (teto do dia).
 // Custo: rota <= US$ 0,001 (ai_usage feature `comando-rota`, worker, chave IARA_ANTHROPIC_KEY_COMANDO com reserva em ANTHROPIC_API_KEY).
 // Pergunta ao especialista é registrada pela função dele (airton-ai: feature `chat`). agent_runs tipo `comando`.
 import { createClient } from 'npm:@supabase/supabase-js@2.46.1';
@@ -19,7 +21,7 @@ import { agoraSP, authenticate, CORS, fecharRun, iniciarRun, json, sql } from '.
 import { canalFala, limparFala, limparFalaHub } from './_shared/fala.ts';
 import { anthropicJson, MODELS } from './_shared/ai.ts';
 import { autenticarToken, chamadaRpc, extrairToken, querTexto } from './acesso-lib.ts';
-import { corpoFn, lerTela, processar, ROTA_SCHEMA, SO_LEITURA, type Acoes, type AcaoInfo, type Contexto, type Destino, type Intencao, type Turno } from './comando-lib.ts';
+import { corpoFn, FALA_AIRTON_PUSH, lerTela, processar, ROTA_SCHEMA, SO_LEITURA, type Acoes, type EstadoPush, type AcaoInfo, type Contexto, type Destino, type Intencao, type Turno } from './comando-lib.ts';
 
 const CANAIS = ['hub', 'atalho', 'voz'];
 const MSG_FN_TOKEN = 'Isso eu respondo pelo app por enquanto.';
@@ -98,7 +100,16 @@ Deno.serve(async (req) => {
         }
         return await rpc<AcaoInfo>('hub_acao_pedir', { p_intencao: intencao, p_args: args, p_canal: canal });
       }
-      if (viaToken) { fnNegada = true; throw new Error('função exige JWT'); } // sem JWT não há como chamar o airton-ai como o usuário
+      if (viaToken) {
+        // UX-25: sem JWT, o AIrton responde por push. core.pergunta_airton_por_push dispara o airton-ai como cron (pg_net,
+        // assíncrono); o airton-ai grava a resposta em core.avisos e o tick do airton-notify envia (teto diário e silêncio).
+        if (d.funcao === 'airton-ai') {
+          const [{ e }] = await sql`select core.pergunta_airton_por_push(${userId}::uuid, ${String(args.pergunta ?? textoLeo)}) as e`;
+          const estado = e as EstadoPush;
+          if (estado !== 'nao_membro') return { reply: FALA_AIRTON_PUSH[estado] ?? FALA_AIRTON_PUSH.agora };
+        }
+        fnNegada = true; throw new Error('função exige JWT'); // as outras funções seguem só pelo app
+      }
       const r = await fetch(`${url}/functions/v1/${d.funcao}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${jwt}`, apikey: anon, 'content-type': 'application/json' },

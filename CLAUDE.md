@@ -63,7 +63,7 @@ Como começar: `docs/cowork/GUIA.md`. Estado e próximos passos: `docs/PROGRESSO
 
 | App | Funções |
 | --- | --- |
-| AIrton | `airton-ai` (chat, categorização), `airton-market` (preços, news, plano), `airton-pluggy` (Open Finance), `airton-notify` (push) |
+| AIrton | `airton-ai` (chat, categorização, resposta da Siri por push), `airton-market` (preços, news, plano), `airton-pluggy` (Open Finance), `airton-notify` (push) |
 | SabIA | `sabia-trilha` |
 | IARA | `iara-briefing` |
 | ClaudIA | `claudia-food-parse`, `claudia-diet`, `claudia-coach`, `claudia-coach-session`, `claudia-coach-review`, `claudia-checkin`, `claudia-photo-review`, `claudia-strava`, `claudia-ingest` |

@@ -77,7 +77,7 @@ export function SiriToken({ tokens, url }: { tokens: SiriTok[]; url: string }) {
   return (
     <section className="card stack">
       <h2>Falar com a IARA pela Siri</h2>
-      <p className="small muted">Com um Atalho, você diz &ldquo;E aí Siri, falar com a IARA&rdquo; e a IARA responde em voz alta. O token só vale para a IARA e aparece uma vez.</p>
+      <p className="small muted">Com um Atalho chamado <strong>IARA</strong>, você diz &ldquo;Hey Siri, IARA&rdquo; no iPhone, no Apple Watch ou no AirPods e a IARA responde em voz alta. Resposta longa ou demorada chega por push, dentro do seu limite de avisos do dia. O token só vale para a IARA e aparece uma vez.</p>
       {fresh && (
         <div className="card" style={{ background: 'var(--surface-2)' }}>
           <span className="tag progress">Token novo</span>
@@ -105,24 +105,26 @@ export function SiriToken({ tokens, url }: { tokens: SiriTok[]; url: string }) {
         {!active.length && <p className="muted">Nenhum token da Siri ativo.</p>}
       </div>
       {confirmId != null && <p className="small muted">O Atalho que usa este token para de funcionar.</p>}
-      <h3 style={{ margin: 0 }}>Passo a passo do Atalho</h3>
+      <h3 style={{ margin: 0 }}>Passo a passo do Atalho (iPhone em inglês)</h3>
       <ol className="small" style={{ paddingLeft: 18 }}>
-        <li>No app <em>Atalhos</em>, crie um atalho chamado <strong>Falar com a IARA</strong>.</li>
-        <li>Adicione a ação <em>Ditar texto</em>.</li>
-        <li>Adicione <em>Obter conteúdo de URL</em> e configure:
+        <li>No app <em>Shortcuts</em>, toque em <em>+</em> e dê ao atalho o nome <strong>IARA</strong> (curto e igual ao que você vai falar). Se já tem o &ldquo;Falar com a IARA&rdquo;, só renomeie.</li>
+        <li>Adicione a ação <em>Dictate Text</em> e ajuste <em>Language</em> = <strong>Portuguese (Brazil)</strong> e <em>Stop Listening</em> = <em>After Pause</em>.</li>
+        <li>Adicione <em>Get Contents of URL</em> e toque em <em>Show More</em>:
           <div className="stack" style={{ gap: 6, margin: '6px 0' }}>
             <div>URL <code style={{ wordBreak: 'break-all' }}>{url}</code> <button className="btn ghost" style={{ minHeight: 28 }} onClick={() => copy('url', url)}>{copied === 'url' ? 'Copiado' : 'Copiar'}</button></div>
-            <div>Método <code>POST</code></div>
-            <div>Cabeçalho <code>Authorization</code> = <code style={{ wordBreak: 'break-all' }}>{header}</code> <button className="btn ghost" style={{ minHeight: 28 }} onClick={() => copy('hdr', header)}>{copied === 'hdr' ? 'Copiado' : 'Copiar'}</button>
+            <div><em>Method</em> <code>POST</code></div>
+            <div><em>Headers</em>: <code>Authorization</code> = <code style={{ wordBreak: 'break-all' }}>{header}</code> <button className="btn ghost" style={{ minHeight: 28 }} onClick={() => copy('hdr', header)}>{copied === 'hdr' ? 'Copiado' : 'Copiar'}</button>
               {!fresh && <span className="muted"> (troque pelo seu token iar_; o completo só aparece ao criar)</span>}</div>
-            <div>Cabeçalho <code>Content-Type</code> = <code>application/json</code></div>
-            <div>Corpo JSON: <code>texto</code> = <em>Texto ditado</em> e <code>canal</code> = <code>atalho</code></div>
+            <div><em>Request Body</em> = <em>JSON</em>: <code>texto</code> (Text) = <em>Dictated Text</em> e <code>canal</code> (Text) = <code>atalho</code></div>
           </div>
         </li>
-        <li>Adicione <em>Falar texto</em> com o resultado da ação anterior.</li>
-        <li>Opcional: se a IARA pedir confirmação, rode o atalho de novo e diga &ldquo;sim&rdquo;.</li>
+        <li>Adicione <em>Speak Text</em> com <em>Contents of URL</em>; em <em>Show More</em>, <em>Language</em> = <strong>Portuguese (Brazil)</strong>.</li>
+        <li>Apple Watch: nos detalhes do atalho (ícone <em>i</em>), ligue <em>Show on Apple Watch</em>.</li>
+        <li>Botão de ação (iPhone 15 Pro ou mais novo): <em>Settings → Action Button → Shortcut → IARA</em>.</li>
+        <li>Para ouvir o push no AirPods: <em>Settings → Notifications → Announce Notifications</em>, ligado para o app do hub.</li>
+        <li>Se a IARA pedir confirmação, rode o atalho de novo e diga &ldquo;sim&rdquo;.</li>
       </ol>
-      <p className="small muted">Depois é só dizer &ldquo;E aí Siri, falar com a IARA&rdquo;.</p>
+      <p className="small muted">Depois é só dizer &ldquo;Hey Siri, IARA&rdquo; e falar o pedido quando ela começar a ouvir. Com a Siri em inglês, se &ldquo;IARA&rdquo; não for reconhecido de primeira, fale devagar ou teste outro nome curto para o atalho.</p>
     </section>
   )
 }
