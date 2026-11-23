@@ -62,7 +62,7 @@ h2 { font-size: 1.05rem; font-weight: 500; margin: 0 0 12px; }
 .small { font-size: .85rem; }
 .num { font-variant-numeric: tabular-nums; }
 
-.shell { max-width: 640px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) var(--gutter) calc(96px + env(safe-area-inset-bottom)); }
+.shell { max-width: 640px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) var(--gutter) calc(80px + env(safe-area-inset-bottom)); }
 .stack { display: grid; gap: 16px; }
 .row { display: flex; gap: 12px; align-items: center; }
 .between { justify-content: space-between; }
@@ -188,10 +188,10 @@ dialog.folha[open] { animation: surgir .35s cubic-bezier(.2,.8,.2,1) both; }
 .tabs button { border: 0; background: none; font: inherit; cursor: pointer; }
 .tabs a, .tabs button { flex: 1 0 auto; text-align: center; padding: 8px 12px; border-radius: 9px; font-size: .85rem; color: var(--muted); white-space: nowrap; }
 .tabs a[aria-current="page"], .tabs button[aria-current="page"] { color: var(--text); background: var(--surface-3); font-weight: 500; }
-/* Barra de baixo: flutuante, só ícones; o ativo ganha a cor do app. */
-.nav { position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 10; max-width: 616px; margin: 0 auto;
-  background: color-mix(in srgb, var(--surface-2) 94%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-radius: 24px; }
-.nav ul { list-style: none; margin: 0; padding: 4px; display: grid; }
+/* Barra de baixo: fixa e opaca, colada na borda (pedido do Leo, 23/11: nada de conteúdo aparecendo atrás dela); só ícones, o ativo ganha a cor do app. */
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--bg); border-top: 1px solid var(--surface-2);
+  padding-bottom: env(safe-area-inset-bottom); }
+.nav ul { list-style: none; margin: 0 auto; padding: 4px 8px; display: grid; max-width: 640px; }
 .nav a { display: grid; place-items: center; min-height: 48px; color: var(--dim); border-radius: 18px; }
 .nav a[aria-current="page"] { color: var(--accent); }
 .nav a .rotulo { display: none; }
@@ -274,7 +274,7 @@ details.card > summary::-webkit-details-marker { display: none; }
   :root { --rail: 92px; --gutter: 32px; }
   .app { padding-left: var(--rail); }
   .nav { inset: 0 auto 0 0; left: 0; right: auto; bottom: 0; width: var(--rail); max-width: none; border-radius: 0; background: var(--bg);
-    border-right: 1px solid var(--surface-2); padding: calc(76px + env(safe-area-inset-top)) 0 16px; }
+    border-top: 0; border-right: 1px solid var(--surface-2); padding: calc(76px + env(safe-area-inset-top)) 0 16px; }
   .nav ul { grid-template-columns: none !important; grid-auto-rows: max-content; gap: 6px; max-width: none; }
   .nav a { margin: 0 10px; padding: 10px 4px; border-radius: 14px; font-size: .74rem; }
   .nav a:hover { background: var(--surface); }

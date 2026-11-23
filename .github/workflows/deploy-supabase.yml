@@ -21,6 +21,9 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -37,12 +40,15 @@ jobs:
       - name: Link
         run: supabase link --project-ref "$PROJECT_REF"
 
+      # --include-all (23/11): PRs em paralelo fazem uma migration mais antiga chegar depois de uma mais nova;
+      # sem a flag o push recusa e trava todos os deploys seguintes. Todas são aditivas (o CI garante).
       - name: Migrations (só aditivas, revisadas no PR)
-        run: supabase db push --remote --password "$SUPABASE_DB_PASSWORD" --yes
+        run: supabase db push --remote --password "$SUPABASE_DB_PASSWORD" --include-all --yes
 
       - name: Edge Functions alteradas
         env:
           FUNCOES: ${{ inputs.funcoes }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ -n "$FUNCOES" ]; then
             # disparo manual com lista explícita (ex.: republicar após falha da API do Supabase)
@@ -53,8 +59,11 @@ jobs:
             done
             exit 0
           fi
-          BASE="${{ github.event.before }}"
+          # Base = commit do último deploy que deu certo: se um deploy falhou, as funções dele entram neste.
+          BASE=$(gh run list --repo "${{ github.repository }}" --workflow deploy-supabase.yml --branch main --status success -L 1 --json headSha --jq '.[0].headSha' 2>/dev/null || true)
+          if [ -z "$BASE" ] || ! git merge-base --is-ancestor "$BASE" "${{ github.sha }}" 2>/dev/null; then BASE="${{ github.event.before }}"; fi
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then BASE="HEAD~1"; fi
+          echo "Funções alteradas desde $BASE"
           CHANGED=$(git diff --name-only "$BASE" "${{ github.sha }}" -- supabase/functions)
           FUNCS=$(echo "$CHANGED" | cut -d/ -f3 | grep -v '^_' | sort -u)
           # _shared/<app>/ mudou: publica as funções <app>-*. Arquivo solto em _shared/: publica todas.
