@@ -9,7 +9,6 @@ import { SeuDia, appDoAgent, type Bloco } from '@/components/SeuDia'
 import { Notificacoes } from '@/components/Notificacoes'
 import { Perguntas, type Aviso } from '@/components/Perguntas'
 import { Ouvir } from '@/components/Ouvir'
-import { PecaIara } from '@/components/PecaIara'
 import { Tabs } from '@/components/Tabs'
 import { ABAS_HOJE, type LogoKey } from '@/lib/apps'
 import { ExpedienteCard } from '../semana/Entrada'
@@ -166,7 +165,6 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
       </div>
 
       {foco != null && <Perguntas avisos={avisos} foco={foco} falhou={avisosRaw === 'erro'} />}
-      <PecaIara />
       {foco == null && <Perguntas avisos={avisos} foco={null} falhou={false} />}
       <Notificacoes compacto />
       {decAbertas > 0 && (
