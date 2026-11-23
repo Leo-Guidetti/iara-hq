@@ -1,32 +1,26 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { currentUser } from '@/lib/supabase/server'
-import { Fila, type Item } from './Fila'
+import { spDate } from '@/lib/dates'
+import { Tarefas, type Tarefa } from './Tarefas'
 
 export const dynamic = 'force-dynamic'
 
-// IARA House: só o que é da casa (tarefas, lembretes, compras). O briefing geral do dia fica na Hoje.
-type Casa = { itens: Item[] } | null
-
+// Casa (IARA): só o que é da casa. Tarefas da semana com checklist e "Nova tarefa" (public.hub_casa_tarefas / hub_tarefa_criar).
 export default async function CasaPage() {
   const me = (await currentUser())!
-  const { data, error } = await (me.sb as unknown as SupabaseClient).rpc('hub_casa')
-  const itens = ((data ?? null) as Casa)?.itens.filter((i) => i.origem === 'iara') ?? []
+  const { data, error } = await (me.sb as unknown as SupabaseClient).rpc('hub_casa_tarefas')
+  const itens = (Array.isArray(data) ? data : []) as Tarefa[]
+  const abertas = itens.filter((i) => i.status !== 'feito').length
 
   return (
     <div className="stack">
-      <div>
-        <h1>Sua casa</h1>
-        <p className="muted small" style={{ margin: 0 }}>Tarefas, lembretes e compras da casa.</p>
+      <div className="hello">
+        <span className="small muted">Esta semana</span>
+        <h1>{abertas ? `${abertas} ${abertas === 1 ? 'tarefa aberta' : 'tarefas abertas'}` : 'Tudo em dia'}</h1>
       </div>
-      {error && <div className="card alert"><p className="small">Não consegui carregar agora.</p></div>}
-      <Fila itens={itens} vazio="Nenhuma tarefa da casa para hoje." />
-      <section className="card">
-        <span className="tag">Em migração</span>
-        <p className="small" style={{ margin: '6px 0 0' }}>
-          As listas de compras, tarefas e a rotina da casa ainda estão no Supabase antigo da IARA. Assim que ele for
-          reativado, elas vêm para cá e esta tela passa a mostrar tudo da casa.
-        </p>
-      </section>
+      {error && <div className="card alert"><p className="small" style={{ margin: 0 }}>Não consegui carregar agora.</p></div>}
+      <Tarefas itens={itens} hoje={spDate()} />
+      <p className="small" style={{ color: 'var(--dim)', margin: 0 }}>Rotinas, compras e listas da casa chegam quando o Supabase antigo da IARA for reativado.</p>
     </div>
   )
 }

@@ -295,3 +295,6 @@ details.mais[open] > summary::after { transform: rotate(-135deg) translateY(-1px
   .kpi { font-size: 1.8rem; }
   .list > * { padding: 10px 0; }
 }
+
+.avatar-grande { width: 56px; height: 56px; border-radius: 28px; padding: 2px; display: grid; place-items: center; background: linear-gradient(135deg, var(--hq), var(--airton)); flex: none; }
+.avatar-grande span { width: 52px; height: 52px; border-radius: 26px; display: grid; place-items: center; font-size: 1.3rem; font-weight: 500; background: radial-gradient(circle at 30% 25%, var(--surface-3), var(--surface)); color: var(--text); }
