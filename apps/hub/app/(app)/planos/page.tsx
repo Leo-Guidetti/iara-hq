@@ -55,7 +55,7 @@ export default async function Semanas() {
             const compromissos = fixos.filter((f) => f.data === d && f.fonte !== 'expediente').length
             const ehHoje = d === hoje
             return (
-              <Link key={d} href="/semana" aria-label={`${d}: ${doDia.length} do plano, ${compromissos} compromissos`}
+              <Link key={d} href="/planos/semana" aria-label={`${d}: ${doDia.length} do plano, ${compromissos} compromissos`}
                 style={{ display: 'grid', justifyItems: 'center', gap: 6, padding: '8px 0', borderRadius: 14, color: 'inherit', background: ehHoje ? 'var(--surface-2)' : undefined }}>
                 <span className="small" style={{ color: 'var(--dim)', fontSize: 11 }}>{LETRA[new Date(`${d}T12:00:00Z`).getUTCDay()]}</span>
                 <span style={{ fontWeight: ehHoje ? 600 : 400, color: ehHoje ? 'var(--accent)' : undefined }}>{Number(d.slice(8, 10))}</span>
@@ -67,7 +67,7 @@ export default async function Semanas() {
             )
           })}
         </div>
-        <Link className="small" href="/semana" style={{ display: 'inline-block', marginTop: 10 }}>{doPlano?.status === 'confirmado' ? 'Ajustar a semana' : 'Planejar a semana'}</Link>
+        <Link className="small" href="/planos/semana" style={{ display: 'inline-block', marginTop: 10 }}>{doPlano?.status === 'confirmado' ? 'Ajustar a semana' : 'Planejar a semana'}</Link>
       </section>
 
       <section className="card" aria-label="Próximas semanas">

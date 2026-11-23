@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { Nav, type NavItem } from '@iara/ui'
 import { AREAS, areaDe } from '@/lib/apps'
 import { ICON } from '@/lib/icons'
-import { PecaIara } from './PecaIara'
+import { Falar } from './Falar'
 
 // Superapp: a barra de baixo é a mesma em todo o site (6 áreas, só ícones). O topo mostra o logo, o nome da página
 // na cor do app e o agente responsável (com tooltip no logo). Desktop e iPad em paisagem: a barra vira trilho (styles.css).
@@ -26,11 +26,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span className="titulo"><strong>{pagina}</strong>{agente && <small>{agente}</small>}</span>
         </div>
         <div className="acoes">
+          <Falar />
           <Link href="/perfil" className="avatar" aria-label="Perfil" aria-current={perfil ? 'page' : undefined}><span>L</span></Link>
         </div>
       </header>
-      {/* UX-23: "Peça à IARA" (texto e voz) em todas as telas; na /hoje ela fica no lugar próprio, entre os avisos. */}
-      <main className="shell">{!path.startsWith('/hoje') && <div style={{ marginBottom: 14 }}><PecaIara /></div>}{children}</main>
+      {/* "Peça à IARA" saiu do alto das telas (review do protótipo): agora é o botão de falar no topo. */}
+      <main className="shell">{children}</main>
       <Nav items={NAV} />
     </div>
   )
