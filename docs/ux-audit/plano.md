@@ -46,6 +46,13 @@ Execução autônoma de 17/11: 21 de 22 itens em produção, 1 pulado, nenhum pa
 | 3 | UX-20 Avisos proativos | feito | #56 |
 | 3 | UX-21 Voz em tempo real | pulado: exige chave de provedor de voz novo e, pela D4, o protótipo vem depois de a UX-19 estar em uso | — |
 | 3 | UX-22 Revisar a semana falando | feito | #57 |
+| 4 | UX-23 Microfone dentro do hub | planejado (23/11) | — |
+| 4 | UX-24 Editar 100% dos planos por voz | planejado (23/11) | — |
+| 4 | UX-25 Atalho "IARA" no iPhone/Watch + resposta por push | planejado (23/11) | — |
+| 4 | UX-26 iPad central com "Ei IARA" (Picovoice) | planejado; espera `.ppn` e `PICOVOICE_ACCESS_KEY` | — |
+| 4 | UX-21 Voz natural em tempo real (protótipo Gemini Live × OpenAI Realtime) | planejado; espera chaves de voz e teto | — |
+
+Guia de testes de todos os itens (configuração, casos de uso, passo a passo, pontos de atenção, consultas e prints): `docs/ux-audit/guia-testes.md`.
 
 ---
 
@@ -407,6 +414,26 @@ Antes de editar `airton-ai` (UX-03, UX-18): comparar a versão no ar com o repo 
 | UX-21 | ambos | UX-15, UX-16, UX-18, D4 | (1) Das 20 frases, ≥ 18 concluídas sem tocar na tela. (2) Falar por cima interrompe a resposta em até 500 ms. (3) Minutos e custo do dia em `core.ai_usage` (feature `voz`); acima do teto a sessão é recusada. (4) Nenhuma chave no cliente (check de vazamento do CI verde). | G | Alto | Minutos de voz por dia e % de tarefas concluídas só por voz; alvo ≥ 80% | ~US$ 3,00 **[H]** (5 min por dia a US$ 0,02/min, estimativa do ROADMAP, não medida) |
 | UX-22 | ambos | UX-14, UX-16, UX-18 (UX-19 ou UX-21 para a voz) | (1) Depois do cron de domingo, o plano tem `fala` e até 3 decisões. (2) Responder as decisões e dizer "confirma" deixa o plano `confirmado` sem editar item nenhum. (3) Revisão completa em até 3 min (tempo entre a 1ª pergunta e a confirmação em `core.conversas`). (4) Custo adicional de `plano-semana` ≤ US$ 0,005 por semana. | M | Médio | Semanas confirmadas no domingo; alvo 4 de 4 | ~US$ 0,02 |
 
+### Onda 4 — Voz em todo lugar (planejada em 23/11/2026)
+
+Pedido do Leo em 23/11: falar com a IARA de três jeitos — no iPad da sala como central sempre ligada, pelo iPhone/Apple
+Watch com resposta no fone ou por push, e por microfone dentro do hub editando o que está na tela, incluindo 100% dos
+planos. A persona continua a IARA (sem persona nova). Um cérebro só: todos os canais chamam `iara-comando`, com o catálogo
+e as regras de "sim" e Desfazer (D3). Ordem: UX-23 → UX-24 → UX-25 → UX-26 → UX-21.
+
+| ID | Problema | Mudança | Executor | Deps | Critérios de aceite | IA/mês |
+| --- | --- | --- | --- | --- | --- | --- |
+| UX-23 | Falar com a IARA no hub exige o ditado do teclado e a resposta não é falada. | `hub-ui`: botão de microfone na barra "Peça à IARA" em todas as telas, com reconhecimento de voz do navegador (`lang = pt-BR`) e resposta por `speechSynthesis`; envia a rota e os ids visíveis como contexto da tela; a tela se atualiza depois da ação. `supabase-dev`: `iara-comando` aceita `contexto_tela` e resolve "essa"/"o segundo" pelos ids enviados. | ambos | UX-15, UX-16, UX-18 | (1) "Muda o prazo dessa meta para 2028" em `/planos` age na meta visível e pede "sim". (2) Transcrição em português com o iPhone em inglês. (3) A tela muda sem recarregar. (4) Sem suporte no navegador, o botão some. | US$ 0 |
+| UX-24 | Várias edições de plano, meta, rascunho e semana só existem como botão. | Levantamento de toda ação das telas `/planos`, Novo plano, `/semana` e metas de `/financas`; cada ação sem intenção ganha RPC com parâmetros nomeados + linha em `core.intencoes` (renomear, pausar, retomar, arquivar meta, trocar horizonte, dono, prazo, valor, adicionar meta, editar rascunho, mover/tirar item). | supabase-dev | UX-23 | (1) Levantamento no repo com 100% das ações com intenção. (2) Bateria de frases de edição ≥ 90% roteada certo. (3) Risco alto sempre com "sim". | US$ 0 novo |
+| UX-25 | O Atalho só responde falando e o nome em português falha com a Siri em inglês. | Atalho renomeado para "IARA" (iPhone, Watch, botão de ação, AirPods); `iara-comando` com `canal = atalho` responde curto e, para resposta longa ou demorada, devolve "te mando no push" e envia o detalhe por `airton-notify` respeitando `max_dia`. | ambos | UX-19, UX-20 | (1) Pergunta longa gera push em até 1 min. (2) Push conta no limite diário. (3) Funciona no Watch. | ~US$ 0 |
+| UX-26 | Não há central de voz em casa. | `hub-ui`: rota de modo central (tela cheia, relógio, dia, planos, órbita), palavra de ativação "Ei IARA" com Picovoice Porcupine Web (modelo `.ppn` em português, treinado no Console pelo Leo) rodando no iPad; conversa segue até ~20 s de silêncio; voz do Safari até a UX-21. `supabase-dev`: função que entrega a `PICOVOICE_ACCESS_KEY` só para o usuário logado (a chave nunca vai para o repo nem para o Vercel; exceção autorizada pelo Leo em 23/11). | ambos | UX-23, D6 | (1) Ativa ≥ 9/10 a 3 m. (2) ≤ 1 falso disparo por hora com TV. (3) Chave fora do bundle (CI de vazamento verde). | US$ 0 (plano Free do Picovoice, limites a confirmar) |
+| UX-21 | (revisto) Voz natural e interrompível. | Protótipo de 1 dia: Gemini Live (favorito, mais barato) e OpenAI Realtime (plano B) com uma única ferramenta `iara(texto)` que chama `iara-comando`; token efêmero emitido por função; teto `IARA_AI_BUDGET_USD_VOZ`; sessão fecha após 20 s de silêncio. Escolha do Leo pelos números. | ambos | UX-26, D4 revista | (1) ≥ 18/20 frases concluídas. (2) Interrupção ≤ 0,5 s. (3) Custo por minuto medido em `core.ai_usage`. (4) Nenhuma chave no cliente. | US$ 3–15 conforme provedor e uso **[H]** |
+
+O que depende do Leo: conta no Picovoice, `.ppn` de "Ei IARA" (Portuguese, Web/WASM) e secret `PICOVOICE_ACCESS_KEY`
+(UX-26); chave comum do Gemini `IARA_GEMINI_KEY_VOZ` e chave da OpenAI `IARA_OPENAI_KEY_VOZ` com limite de gasto, e
+confirmar o teto de voz (UX-21). App nativo (escuta com a tela apagada, conta Apple Developer US$ 99/ano) fica fora até o
+Leo pedir.
+
 ### Custo de IA do plano inteiro
 
 | Onda | Itens com IA | US$/mês em regime | Observação |
@@ -432,7 +459,9 @@ As cinco decisões foram tomadas pelo Leo em 17/11/2026. Nenhum item do plano es
 | D2 | O que fazer quando dois planos não cabem juntos no mesmo dinheiro ou no mesmo tempo. | Sem decisão antecipada: a IARA pergunta valor e prazo na criação de cada plano; em conflito, nunca escolhe sozinha, mostra o painel e o Leo escolhe na hora; não há ordem fixa de prioridade, a menos que o Leo dite uma depois. | UX-11, UX-13 |
 | D3 | Quanto a IARA faz sozinha e quantas vezes por dia ela pode chamar. | Sem perguntar: só anotações (peso, páginas lidas, prática, marcar feito, adiar), com aviso do que anotou e "desfaz" por 10 minutos. Só com "sim": tudo que mexe em dinheiro, treino, plano ou meta, e confirmar a semana inteira. Avisos: no máximo 3 por dia, silêncio das 23h às 7h. | UX-16, UX-20 |
 | D4 | Canal e provedor de voz. | Atalho/Siri primeiro; protótipo de 1 dia nos dois provedores de voz em tempo real só depois de a UX-19 estar em uso; teto de US$ 5/mês para voz. A chave do provedor escolhido é pedida ao Leo na hora da UX-21. | UX-19 (UX-21 espera o protótipo) |
+| D4 (revista em 23/11) | Canal e provedor de voz. | Siri continua; voz também no hub (UX-23) e no iPad com palavra de ativação (UX-26). UX-21 pelo protótipo Gemini Live × OpenAI Realtime, favorito Gemini Live. Teto sugerido US$ 15/mês: pendente de confirmação do Leo. | UX-21, UX-23, UX-26 |
 | D5 | Persona única. | A IARA é o canal único de conversa e chama os outros agentes quando precisar de mais refino. As abas por app continuam como telas de consulta. | UX-15 |
+| D6 | Palavra de ativação no iPad. | "Ei IARA" com Picovoice Porcupine (23/11). Sem persona Jarvis: continua a IARA. A AccessKey vai para o navegador só depois do login, entregue por função; nunca no repo nem no Vercel. | UX-26 |
 
 Efeitos no plano:
 

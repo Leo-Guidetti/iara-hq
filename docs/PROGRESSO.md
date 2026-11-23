@@ -3,7 +3,13 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (17/11, 19:20 UTC):** plano de UX (`docs/ux-audit/plano.md`) executado: 21 de 22 itens no ar
+**Próximo passo (23/11):** onda 4 do plano de UX registrada (voz em todo lugar: UX-23 microfone no hub, UX-24 edição
+100% por voz, UX-25 Atalho "IARA" + push, UX-26 iPad com "Ei IARA" via Picovoice, UX-21 protótipo Gemini Live × OpenAI
+Realtime). Guia de testes de todos os itens em `docs/ux-audit/guia-testes.md`. Produção 18–22/11: crons sem falha,
+briefing com fala todo dia, 1 aparelho com push, 1 token da Siri, 0 comandos pela barra/Siri, 0 planos, US$ 1,25 no mês.
+Esperando o Leo: `.ppn` e `PICOVOICE_ACCESS_KEY` (UX-26), chaves `IARA_GEMINI_KEY_VOZ`/`IARA_OPENAI_KEY_VOZ` e teto de voz (UX-21).
+
+**Anterior (17/11, 19:20 UTC):** plano de UX (`docs/ux-audit/plano.md`) executado: 21 de 22 itens no ar
 (PRs #37 a #57), UX-21 pulado. Diário: `docs/ux-audit/execucao.md`.
 1. Esperando o Leo: instalar o hub e **ativar as notificações** (UX-04/UX-20 dependem disso); montar o Atalho
    "Falar com a IARA" (Perfil → Falar com a IARA pela Siri, UX-19); cadastrar o livro atual e a meta do ano (UX-02);
