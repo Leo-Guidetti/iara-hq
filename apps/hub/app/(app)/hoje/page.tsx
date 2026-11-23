@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { currentUser } from '@/lib/supabase/server'
 import { spDate } from '@/lib/dates'
 
-import { ICON } from '@/lib/icons'
+import { Logo } from '@/components/Logo'
 import { Md } from '@/lib/md'
 import { SeuDia, appDoAgent, type Bloco } from '@/components/SeuDia'
 import { Notificacoes } from '@/components/Notificacoes'
@@ -142,20 +142,14 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
   const nome = (me.user.user_metadata?.name as string | undefined)?.split(' ')[0] ?? 'Leo'
 
   const conta = (l: Linha[]) => l.filter((x) => x.destaque).length
-  const planetas = [
-    { app: 'claudia' as const, nome: 'ClaudIA', href: '/saude', icon: ICON.saude, n: conta(claudia) + alertasTotal, x: 50, y: 0 },
-    { app: 'airton' as const, nome: 'AIrton', href: '/financas', icon: ICON.financas, n: conta(airton), x: 100, y: 50 },
-    { app: 'sabia' as const, nome: 'SabIA', href: '/aprender', icon: ICON.aprender, n: conta(sabia), x: 50, y: 100 },
-    { app: 'casa' as const, nome: 'IARA House', href: '/casa', icon: ICON.casa, n: conta(casa), x: 0, y: 50 },
-  ]
-  const total = planetas.reduce((s, p) => s + p.n, 0)
+  const total = conta(claudia) + alertasTotal + conta(airton) + conta(sabia) + conta(casa)
 
   return (
     <div className="stack hoje">
       <div className="hello">
-        <span className="tag progress">IARA HQ · {data}</span>
+        <span className="tag" style={{ textTransform: 'capitalize' }}>{data}</span>
         <h1>{saudacao}, {nome}</h1>
-        <p className="muted small" style={{ margin: 0 }}>{total ? `${plural(total, 'missão pede', 'missões pedem')} você hoje.` : 'Tudo em órbita: nada pendente agora.'}</p>
+        <p className="muted small" style={{ margin: 0 }}>{total ? `${plural(total, 'missão pede', 'missões pedem')} você hoje.` : 'Nada pendente agora.'}</p>
       </div>
 
       {foco != null && <Perguntas avisos={avisos} foco={foco} falhou={avisosRaw === 'erro'} />}
@@ -169,7 +163,7 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
         </Link>
       )}
       <section className="card ai brief-card">
-        <span className="tag ai">Briefing do dia · IARA</span>
+        <span className="tag ai" style={{ color: 'var(--ai)' }}>Briefing do dia</span>
         <div className="row between" style={{ marginTop: 10 }}>
           <h2 style={{ margin: 0, fontSize: '1rem' }}>Seu dia</h2>
           <span className="row" style={{ gap: 12 }}>
@@ -192,34 +186,17 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
         ) : <p className="small muted" style={{ margin: 0 }}>O briefing sai todo dia às 07:00.</p>}
       </section>
 
-      <div className="orbit" aria-label="Seus apps">
-        <div className="ring" />
-        <div className="ring inner" />
-        <div className="core" title="IARA HQ: o centro que junta tudo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={ICON.hq} /></svg></div>
-        <div className="spin">
-          {planetas.map((p) => (
-            <div key={p.app} className="planet" data-app={p.app} style={{ left: `${p.x}%`, top: `${p.y}%` }}>
-              <Link href={p.href} aria-label={`${p.nome}: ${plural(p.n, 'pendência', 'pendências')}`}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={p.icon} /></svg>
-                {p.n > 0 && <span className="badge">{p.n}</span>}
-                <span className="name">{p.nome}</span>
-              </Link>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {atrasadas.length > 0 && <Bloco app="hq" nome="Planos" papel="Fora do ritmo" href="/planos" rotulo="Ver os planos"
         linhas={atrasadas} falhou={false} vazio="" />}
-      <Bloco app="claudia" nome="ClaudIA" papel="Saúde" href="/saude" rotulo="Abrir a ClaudIA"
+      <Bloco app="claudia" nome="ClaudIA" papel="Saúde" href="/saude" rotulo="Abrir Saúde"
         linhas={claudia} falhou={sessoes === 'erro' && alertas === 'erro'} vazio={alertaItens.length ? 'Sem treino hoje.' : 'Sem alertas da ClaudIA.'} />
       {alertas === 'erro' && sessoes !== 'erro' && <p className="small muted">Não consegui carregar os alertas da ClaudIA.</p>}
       {alertaItens.length > 0 && <Fila itens={alertaItens} />}
-      <Bloco app="airton" nome="AIrton" papel="Finanças" href="/financas" rotulo="Abrir o AIrton"
+      <Bloco app="airton" nome="AIrton" papel="Finanças" href="/financas" rotulo="Abrir Finanças"
         linhas={airton} falhou={pend === 'erro' && mes === 'erro'} vazio="Nada pendente nas finanças." />
-      <Bloco app="sabia" nome="SabIA" papel="Aprender" href="/aprender" rotulo="Abrir a SabIA"
+      <Bloco app="sabia" nome="SabIA" papel="Conhecimento" href="/aprender" rotulo="Abrir Conhecimento"
         linhas={sabia} falhou={sab === 'erro'} vazio="A trilha de hoje ainda não saiu." />
-      <Bloco app="casa" nome="IARA House" papel="Casa" href="/casa" rotulo="Abrir a IARA House"
+      <Bloco app="casa" nome="IARA House" papel="Casa" href="/casa" rotulo="Abrir Casa"
         linhas={casa} falhou={iara === 'erro'} vazio="Nenhuma tarefa da casa hoje." />
     </div>
   )
@@ -233,8 +210,8 @@ function Bloco({ app, nome, papel, href, rotulo, linhas, falhou, vazio }: {
   return (
     <section className="card module" data-app={app}>
       <div className="row between">
-        <span className="tag">{nome}</span>
-        <span className="small muted">{papel}{pend ? ` · ${plural(pend, 'pendência', 'pendências')}` : ''}</span>
+        <span className="row" style={{ gap: 10 }}><Logo app={app === 'hq' ? 'planos' : app} tamanho={28} /><span className="small muted">{papel}</span></span>
+        <span className="small muted">{pend ? plural(pend, 'pendência', 'pendências') : ''}</span>
       </div>
       {falhou ? <p className="small muted" style={{ margin: 0 }}>Não consegui carregar agora.</p>
         : linhas.length ? <div className="stack small" style={{ gap: 6 }}>{linhas.map((l, i) => <div key={i} className={`missao${l.texto.startsWith('✓') ? ' feita' : ''}`} style={l.destaque ? { fontWeight: 600 } : undefined}>{l.href ? <Link href={l.href}>{l.texto}</Link> : l.texto.replace(/^✓ /, '')}</div>)}</div>

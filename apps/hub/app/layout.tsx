@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#0D1117' },
+    { media: '(prefers-color-scheme: dark)', color: '#0B0D10' },
     { media: '(prefers-color-scheme: light)', color: '#F5F6F8' },
   ],
   width: 'device-width',
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap"
           rel="stylesheet"
         />
       </head>
