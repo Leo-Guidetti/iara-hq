@@ -89,7 +89,7 @@ function NovoCompromisso({ desde, fim, lugares }: { desde: string; fim: string; 
   )
 }
 
-function ExpedienteCard({ expediente, lugares }: { expediente: Expediente; lugares: Lugar[] }) {
+export function ExpedienteCard({ expediente, lugares, titulo = 'Expediente' }: { expediente: Expediente; lugares: Lugar[]; titulo?: string }) {
   const { busy, erro, salvar } = useSalvar()
   const [aberto, setAberto] = useState(!expediente)
   const [e, setE] = useState({ dias: expediente?.dias ?? [1, 2, 3, 4, 5], inicio: expediente?.inicio ?? '09:00', fim: expediente?.fim ?? '18:00', local: expediente?.local ?? '' })
@@ -97,7 +97,7 @@ function ExpedienteCard({ expediente, lugares }: { expediente: Expediente; lugar
   return (
     <section className="card stack" style={{ gap: 10 }}>
       <div className="row between">
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>Expediente</h2>
+        <h2 style={{ margin: 0, fontSize: '1rem' }}>{titulo}</h2>
         {expediente && !aberto && <button className="chip" onClick={() => setAberto(true)}>Editar</button>}
       </div>
       {expediente && !aberto && <p className="small" style={{ margin: 0 }}>{dias} · {expediente.inicio}–{expediente.fim}{expediente.local ? ` · ${expediente.local}` : ''}</p>}

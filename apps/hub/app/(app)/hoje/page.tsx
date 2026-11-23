@@ -10,14 +10,18 @@ import { Notificacoes } from '@/components/Notificacoes'
 import { Perguntas, type Aviso } from '@/components/Perguntas'
 import { Ouvir } from '@/components/Ouvir'
 import { PecaIara } from '@/components/PecaIara'
-import { Fila, type Item } from '../casa/Fila'
+import { Tabs } from '@/components/Tabs'
+import { ABAS_HOJE, type LogoKey } from '@/lib/apps'
+import { ExpedienteCard } from '../semana/Entrada'
+import type { Painel } from '../semana/tipos'
+import { Checklist, type ItemDia } from './Checklist'
 
 export const dynamic = 'force-dynamic'
 
 type Linha = { texto: string; destaque?: boolean; href?: string }
 type CasaResumo = {
   briefings: { id: number; tipo: string; data: string; texto: string | null; fala?: string | null; lido: boolean }[]
-  itens: { origem: string; titulo: string; minutos: number | null; status: string }[]
+  itens: { id: number; origem: string; titulo: string; data: string; minutos: number | null; status: string }[]
 } | null
 type SabiaResumo = {
   trilha: { tipo: string; minutos: number; hoje: boolean } | null
@@ -43,7 +47,7 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
   const me = (await currentUser())!
   const raw = me.sb as unknown as SupabaseClient
   const today = spDate()
-  const [sessoes, alertas, pend, mes, iara, sab, dia, semana, planosRaw, decRaw, avisosRaw] = await Promise.all([
+  const [sessoes, alertas, pend, mes, iara, sab, dia, semana, planosRaw, decRaw, avisosRaw, painelRaw] = await Promise.all([
     seguro(me.sb.from('plan_sessions').select('id, title, status, duration_min').eq('local_date', today).order('id')),
     seguro(raw.rpc('hub_alertas')),
     seguro(raw.schema('airton').rpc('review_counts', { p_user: me.user.id })),
@@ -55,7 +59,9 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
     seguro(raw.rpc('hub_planos')),
     seguro(raw.rpc('hub_decisoes')),
     seguro(raw.rpc('hub_avisos')),
+    seguro(raw.rpc('hub_semana_painel')),
   ])
+  const painel = painelRaw && painelRaw !== 'erro' ? (painelRaw as Painel) : null
   const avisos = avisosRaw && avisosRaw !== 'erro' ? ((avisosRaw as { itens?: Aviso[] }).itens ?? []) : []
   const decAbertas = Array.isArray(decRaw) ? decRaw.length : 0
   // Planos: só as metas fora do ritmo (atrasadas) aparecem; no ritmo, nada.
@@ -72,8 +78,7 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
     for (const s of sessoes) claudia.push({ texto: `${s.status === 'done' ? '✓ ' : 'Treino: '}${s.title}${s.duration_min ? ` · ${s.duration_min} min` : ''}`, destaque: s.status !== 'done' })
   }
   // Alertas da ClaudIA vêm de public.hub_alertas() (publicados pelo cron diário); o badge usa o total.
-  const al = alertas && alertas !== 'erro' ? (alertas as { total?: number; itens?: unknown[] }) : null
-  const alertaItens: Item[] = ((al?.itens ?? []) as Partial<Item>[]).map((i) => ({ origem: 'claudia', tipo: 'alerta', detalhe: null, minutos: null, acao: {}, ...i }) as Item)
+  const al = alertas && alertas !== 'erro' ? (alertas as { total?: number }) : null
   const alertasTotal = Number(al?.total) || 0
 
   // AIrton: lançamentos para revisar e quanto ainda cabe no mês.
@@ -93,6 +98,8 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
 
   // Briefing único do dia (IARA, todas as áreas) e IARA House só com o que é da casa.
   const c = iara && iara !== 'erro' ? (iara as CasaResumo) : null
+  // Checklist diário: a fila de hoje de todos os agentes (o que é de amanhã fica para amanhã).
+  const checklist: ItemDia[] = (c?.itens ?? []).filter((i) => i.data <= today).map((i) => ({ id: i.id, origem: i.origem, titulo: i.titulo, minutos: i.minutos }))
   const briefing = c?.briefings.find((b) => b.tipo === 'manha') ?? c?.briefings[0] ?? null
   const casa: Linha[] = (c?.itens ?? []).filter((i) => i.origem === 'iara').map((i) => ({ texto: i.titulo, destaque: true }))
 
@@ -142,14 +149,20 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
   const nome = (me.user.user_metadata?.name as string | undefined)?.split(' ')[0] ?? 'Leo'
 
   const conta = (l: Linha[]) => l.filter((x) => x.destaque).length
-  const total = conta(claudia) + alertasTotal + conta(airton) + conta(sabia) + conta(casa)
+
+  const apps: { app: LogoKey; href: string; nome: string; n: number }[] = [
+    { app: 'claudia', href: '/saude', nome: 'Saúde', n: conta(claudia) + alertasTotal },
+    { app: 'airton', href: '/financas', nome: 'Finanças', n: conta(airton) },
+    { app: 'sabia', href: '/aprender', nome: 'Conhecimento', n: conta(sabia) },
+    { app: 'casa', href: '/casa', nome: 'Casa', n: conta(casa) },
+  ]
 
   return (
     <div className="stack hoje">
+      <Tabs items={ABAS_HOJE} />
       <div className="hello">
-        <span className="tag" style={{ textTransform: 'capitalize' }}>{data}</span>
+        <span className="small muted" style={{ textTransform: 'capitalize' }}>{data}</span>
         <h1>{saudacao}, {nome}</h1>
-        <p className="muted small" style={{ margin: 0 }}>{total ? `${plural(total, 'missão pede', 'missões pedem')} você hoje.` : 'Nada pendente agora.'}</p>
       </div>
 
       {foco != null && <Perguntas avisos={avisos} foco={foco} falhou={avisosRaw === 'erro'} />}
@@ -157,66 +170,53 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
       {foco == null && <Perguntas avisos={avisos} foco={null} falhou={false} />}
       <Notificacoes compacto />
       {decAbertas > 0 && (
-        <Link href="/planos#decisoes" className="card ai row between" style={{ textDecoration: 'none' }}>
-          <span className="small"><strong>{plural(decAbertas, 'decisão espera', 'decisões esperam')} você</strong> · os agentes têm opinião</span>
-          <span className="small" style={{ color: 'var(--accent)' }}>Ver →</span>
+        <Link href="/planos#decisoes" className="card row between" style={{ color: 'inherit' }}>
+          <span className="small">{plural(decAbertas, 'decisão espera', 'decisões esperam')} você</span>
+          <span className="small" style={{ color: 'var(--accent)' }}>Ver</span>
         </Link>
       )}
-      <section className="card ai brief-card">
-        <span className="tag ai" style={{ color: 'var(--ai)' }}>Briefing do dia</span>
-        <div className="row between" style={{ marginTop: 10 }}>
-          <h2 style={{ margin: 0, fontSize: '1rem' }}>Seu dia</h2>
-          <span className="row" style={{ gap: 12 }}>
-            <Link className="small" href="/planos" style={{ color: 'var(--accent)' }}>Planos →</Link>
-            <Link className="small" href="/semana" style={{ color: 'var(--accent)' }}>Semana →</Link>
-          </span>
+
+      <section className="card" aria-label="Agenda de hoje">
+        <div className="row between">
+          <span className="small muted">Agenda</span>
+          <span className="small" style={{ color: 'var(--dim)' }}>agenda + plano</span>
         </div>
-        {blocos.length ? <SeuDia blocos={blocos} agora={agoraHHMM} /> : <p className="small muted" style={{ margin: '4px 0 0' }}>Nada agendado hoje.</p>}
-        <div className="row between" style={{ margin: '12px 0 4px' }}>
-          <h2 style={{ margin: 0, fontSize: '1rem' }}>O que importa</h2>
+        {blocos.length ? <SeuDia blocos={blocos} agora={agoraHHMM} /> : <p className="small muted" style={{ margin: '8px 0 0' }}>Nada agendado hoje.</p>}
+      </section>
+
+      {painel && <ExpedienteCard expediente={painel.expediente} lugares={painel.lugares} titulo="Expediente padrão" />}
+
+      <section className="card" aria-label="Checklist diário">
+        <div className="row between" style={{ marginBottom: 4 }}>
+          <span className="small muted">Checklist diário</span>
+          {atrasadas.length > 0 && <Link className="small" href="/planos" style={{ color: 'var(--alert)' }}>{plural(atrasadas.length, 'meta fora do ritmo', 'metas fora do ritmo')}</Link>}
+        </div>
+        {iara === 'erro' ? <p className="small muted" style={{ margin: 0 }}>Não consegui carregar agora.</p> : <Checklist itens={checklist} />}
+      </section>
+
+      <section className="card" aria-label="Briefing do dia">
+        <div className="row between">
+          <span className="small" style={{ color: 'var(--ai)' }}>Briefing do dia</span>
           {briefing?.texto && <Ouvir id={briefing.id} fala={briefing.fala} texto={briefing.texto} />}
         </div>
         {briefing?.texto ? (
           <>
-            <Md texto={briefing.texto.split('\n').slice(0, 7).join('\n')} />
-            {briefing.texto.split('\n').length > 7 && (
-              <details className="brief"><summary>Ver o briefing inteiro</summary><Md texto={briefing.texto.split('\n').slice(7).join('\n')} /></details>
+            <Md texto={briefing.texto.split('\n').slice(0, 5).join('\n')} />
+            {briefing.texto.split('\n').length > 5 && (
+              <details className="brief"><summary>Ver o briefing inteiro</summary><Md texto={briefing.texto.split('\n').slice(5).join('\n')} /></details>
             )}
           </>
-        ) : <p className="small muted" style={{ margin: 0 }}>O briefing sai todo dia às 07:00.</p>}
+        ) : <p className="small muted" style={{ margin: '6px 0 0' }}>O briefing sai todo dia às 07:00.</p>}
       </section>
 
-      {atrasadas.length > 0 && <Bloco app="hq" nome="Planos" papel="Fora do ritmo" href="/planos" rotulo="Ver os planos"
-        linhas={atrasadas} falhou={false} vazio="" />}
-      <Bloco app="claudia" nome="ClaudIA" papel="Saúde" href="/saude" rotulo="Abrir Saúde"
-        linhas={claudia} falhou={sessoes === 'erro' && alertas === 'erro'} vazio={alertaItens.length ? 'Sem treino hoje.' : 'Sem alertas da ClaudIA.'} />
-      {alertas === 'erro' && sessoes !== 'erro' && <p className="small muted">Não consegui carregar os alertas da ClaudIA.</p>}
-      {alertaItens.length > 0 && <Fila itens={alertaItens} />}
-      <Bloco app="airton" nome="AIrton" papel="Finanças" href="/financas" rotulo="Abrir Finanças"
-        linhas={airton} falhou={pend === 'erro' && mes === 'erro'} vazio="Nada pendente nas finanças." />
-      <Bloco app="sabia" nome="SabIA" papel="Conhecimento" href="/aprender" rotulo="Abrir Conhecimento"
-        linhas={sabia} falhou={sab === 'erro'} vazio="A trilha de hoje ainda não saiu." />
-      <Bloco app="casa" nome="IARA House" papel="Casa" href="/casa" rotulo="Abrir Casa"
-        linhas={casa} falhou={iara === 'erro'} vazio="Nenhuma tarefa da casa hoje." />
+      <nav className="apps-linha" aria-label="Seus apps">
+        {apps.map((a) => (
+          <Link key={a.app} href={a.href} data-app={a.app} aria-label={`${a.nome}${a.n ? `, ${plural(a.n, 'pendência', 'pendências')}` : ''}`}>
+            <Logo app={a.app} tamanho={30} />
+            {a.n > 0 && <b>{a.n}</b>}
+          </Link>
+        ))}
+      </nav>
     </div>
-  )
-}
-
-function Bloco({ app, nome, papel, href, rotulo, linhas, falhou, vazio }: {
-  app: 'hq' | 'claudia' | 'airton' | 'sabia' | 'casa'; nome: string; papel: string; href: string; rotulo: string
-  linhas: Linha[]; falhou: boolean; vazio: string
-}) {
-  const pend = linhas.filter((l) => l.destaque).length
-  return (
-    <section className="card module" data-app={app}>
-      <div className="row between">
-        <span className="row" style={{ gap: 10 }}><Logo app={app === 'hq' ? 'planos' : app} tamanho={28} /><span className="small muted">{papel}</span></span>
-        <span className="small muted">{pend ? plural(pend, 'pendência', 'pendências') : ''}</span>
-      </div>
-      {falhou ? <p className="small muted" style={{ margin: 0 }}>Não consegui carregar agora.</p>
-        : linhas.length ? <div className="stack small" style={{ gap: 6 }}>{linhas.map((l, i) => <div key={i} className={`missao${l.texto.startsWith('✓') ? ' feita' : ''}`} style={l.destaque ? { fontWeight: 600 } : undefined}>{l.href ? <Link href={l.href}>{l.texto}</Link> : l.texto.replace(/^✓ /, '')}</div>)}</div>
-        : <p className="small muted" style={{ margin: 0 }}>{vazio}</p>}
-      <Link className="go" href={href}>{rotulo} →</Link>
-    </section>
   )
 }

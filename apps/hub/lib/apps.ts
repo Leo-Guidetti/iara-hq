@@ -27,3 +27,9 @@ export const LOGO = {
   casa: { app: 'casa', icon: ICON.casa, dica: 'IARA · casa' },
 } as const
 export type LogoKey = keyof typeof LOGO
+
+/** Subabas da Hoje (a Semana mora em /semana por causa dos avisos antigos). */
+export const ABAS_HOJE = [
+  { href: '/hoje', label: 'Dia', exact: true },
+  { href: '/semana', label: 'Semana' },
+]
