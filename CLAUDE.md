@@ -65,7 +65,7 @@ Como começar: `docs/cowork/GUIA.md`. Estado e próximos passos: `docs/PROGRESSO
 | --- | --- |
 | AIrton | `airton-ai` (chat, categorização, resposta da Siri por push), `airton-market` (preços, news, plano), `airton-pluggy` (Open Finance), `airton-notify` (push) |
 | SabIA | `sabia-trilha` |
-| IARA | `iara-briefing` |
+| IARA | `iara-briefing`, `iara-mercado` |
 | ClaudIA | `claudia-food-parse`, `claudia-diet`, `claudia-coach`, `claudia-coach-session`, `claudia-coach-review`, `claudia-checkin`, `claudia-photo-review`, `claudia-strava`, `claudia-ingest` |
 
 Várias foram publicadas fora do repo antes da migração: a etapa 0 do docs/PROGRESSO.md sincroniza todas
