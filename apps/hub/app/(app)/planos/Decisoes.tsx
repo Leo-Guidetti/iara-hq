@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { callFunction } from '@/lib/functions'
 import { appDoAgent } from '@/components/SeuDia'
+import { marcaIara } from '@/lib/tela'
 
 export type Opcao = { id: string; rotulo: string; efeito?: unknown }
 export type Posicao = { agent: string; posicao: 'favor' | 'contra' | 'neutro'; confianca: number; argumento: string; condicao: string | null }
@@ -48,7 +49,7 @@ function Cartao({ d }: { d: Decisao }) {
 
   const rec = d.sintese?.opcao_recomendada ?? null
   return (
-    <section className="card stack" style={{ gap: 10 }}>
+    <section className="card stack" style={{ gap: 10 }} {...marcaIara('decisao', d.id, d.pergunta, `opções: ${d.opcoes.map((o) => `${o.id}=${o.rotulo}`).join(' | ')}`)}>
       <div className="row between">
         <span className="tag">Decisão{d.plano ? ` · ${d.plano}` : ''}</span>
         <span className="tag alert">{d.status === 'aberta' ? 'Aberta' : 'Aguardando você'}</span>

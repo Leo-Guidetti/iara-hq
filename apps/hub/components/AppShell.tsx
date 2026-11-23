@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { Nav, type NavItem } from '@iara/ui'
 import { ICON } from '@/lib/icons'
 import { TemaRapido } from './ThemeToggle'
+import { PecaIara } from './PecaIara'
 
 // Superapp: a barra de baixo é a mesma em todo o site (nunca troca ao entrar num app).
 // Cada app mantém a sua cor; as seções internas viram abas no topo do módulo.
@@ -32,7 +33,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/perfil" className="avatar" aria-label="Perfil" aria-current={perfil ? 'page' : undefined}>L</Link>
         </div>
       </header>
-      <main className="shell">{children}</main>
+      {/* UX-23: "Peça à IARA" (texto e voz) em todas as telas; na /hoje ela fica no lugar próprio, entre os avisos. */}
+      <main className="shell">{!path.startsWith('/hoje') && <div style={{ marginBottom: 14 }}><PecaIara /></div>}{children}</main>
       <Nav items={NAV} />
     </div>
   )

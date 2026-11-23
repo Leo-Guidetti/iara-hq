@@ -15,6 +15,11 @@ const semMarkdown = (t: string) => t
 
 export const temVoz = () => typeof window !== 'undefined' && 'speechSynthesis' in window
 export function pararVoz() { try { window.speechSynthesis?.cancel() } catch { /* sem voz */ } }
+/** iOS Safari só fala depois de um toque: chame no gesto (clique do microfone) para liberar a fala que vem depois da rede. */
+export function destravarVoz() {
+  if (!temVoz()) return
+  try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; window.speechSynthesis.speak(u) } catch { /* sem voz */ }
+}
 /** Fala o texto em pt-BR com a voz do navegador; sem voz, não faz nada. */
 export function falar(texto: string, aoFim?: () => void) {
   if (!temVoz() || !texto.trim()) { aoFim?.(); return }

@@ -3,7 +3,10 @@
 Atualize este arquivo ao fim de cada etapa e antes de parar. Formato: marque `[x]`, anote a data,
 o PR e o que foi conferido em produção. "Próximo passo" sempre preenchido.
 
-**Próximo passo (23/11):** onda 4 do plano de UX registrada (voz em todo lugar: UX-23 microfone no hub, UX-24 edição
+**Próximo passo (23/11, noite):** UX-23 (microfone e contexto da tela) no PR #61; seguem UX-24 (edição de planos por voz) e
+UX-25 (Atalho "IARA" + push), um PR cada. Teste do Leo para UX-23: guia, seção UX-23.
+
+**Antes (23/11):** onda 4 do plano de UX registrada (voz em todo lugar: UX-23 microfone no hub, UX-24 edição
 100% por voz, UX-25 Atalho "IARA" + push, UX-26 iPad com "Ei IARA" via Picovoice, UX-21 protótipo Gemini Live × OpenAI
 Realtime). Guia de testes de todos os itens em `docs/ux-audit/guia-testes.md`. Produção 18–22/11: crons sem falha,
 briefing com fala todo dia, 1 aparelho com push, 1 token da Siri, 0 comandos pela barra/Siri, 0 planos, US$ 1,25 no mês.
@@ -44,7 +47,7 @@ Lista única do que está parado. Ao resolver um item, risque aqui e registre no
 - [ ] UX-26: conta no Picovoice, treinar "Ei IARA" (Portuguese, Web/WASM), enviar o `.ppn` e cadastrar `PICOVOICE_ACCESS_KEY` no Supabase. Conferir limites do plano Free e suporte a português/Safari.
 - [ ] UX-21: chave comum do Gemini `IARA_GEMINI_KEY_VOZ` (resolve também o 403 das buscas Gemini) e chave da OpenAI `IARA_OPENAI_KEY_VOZ` com limite de gasto.
 - [ ] UX-21: confirmar o teto de voz de US$ 15/mês (D4 revista; antes US$ 5).
-- [ ] Dar o sinal para UX-23, UX-24 e UX-25 (não dependem de chave).
+- [x] Dar o sinal para UX-23, UX-24 e UX-25 (23/11). UX-23 no ar pelo #61.
 
 **Do Leo — fora do plano de UX**
 - [ ] Autorizar apagar o bucket público `airton-deploy` (8 arquivos antigos de 02–03/11).

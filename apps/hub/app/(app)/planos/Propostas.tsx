@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase/client'
 import { Falar } from './Falar'
 import { ddmm } from '../semana/tipos'
+import { marcaIara } from '@/lib/tela'
 
 export type Proposta = {
   id: number; plano_id: number; plano: string; meta_id: number; meta: string
@@ -49,7 +50,7 @@ function Cartao({ p }: { p: Proposta }) {
   }
 
   return (
-    <section className="card stack" style={{ gap: 8 }}>
+    <section className="card stack" style={{ gap: 8 }} {...marcaIara('proposta', p.id, `${p.plano} › ${p.meta}`, `${p.campo}: ${de} → ${para}`)}>
       <span className="tag ai">{p.plano} › {p.meta}</span>
       {p.fala ? (
         <>

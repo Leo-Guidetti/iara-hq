@@ -16,6 +16,28 @@ export type Contexto = {
   compromissos?: { id: number; titulo: string; data: string }[];
   lancamentos?: { id: string; descricao: string; valor: number }[]; categorias?: { id: string; nome: string }[];
 };
+/** UX-23: itens marcados na tela do hub (data-iara-*), na ordem da página, visíveis primeiro. Os ids são dica do cliente:
+ *  só servem de candidatos e toda escrita roda como o usuário (RLS), então id alheio não acha nada. */
+export type ItemTela = { tipo: string; id: string; titulo: string; detalhe?: string; visivel: boolean };
+export type Tela = { rota: string; itens: ItemTela[] };
+const TIPOS_TELA = ['plano', 'meta', 'meta_financeira', 'semana_item', 'decisao', 'proposta', 'compromisso', 'item', 'trilha'];
+const curto = (v: unknown, n: number) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
+/** Corpo do cliente (qualquer lixo) -> Tela segura: até 25 itens, tipos conhecidos, id numérico ou slug curto. */
+export function lerTela(bruto: unknown): Tela | null {
+  if (!bruto || typeof bruto !== 'object' || Array.isArray(bruto)) return null;
+  const b = bruto as Record<string, unknown>;
+  const rota = curto(b.rota, 60);
+  const itens = (Array.isArray(b.itens) ? b.itens : []).flatMap((x): ItemTela[] => {
+    if (!x || typeof x !== 'object') return [];
+    const i = x as Record<string, unknown>;
+    const tipo = curto(i.tipo, 20), id = curto(i.id, 40), titulo = curto(i.titulo, 80);
+    if (!TIPOS_TELA.includes(tipo) || !/^[A-Za-z0-9_-]{1,40}$/.test(id) || !titulo) return [];
+    const detalhe = curto(i.detalhe, 120);
+    return [{ tipo, id, titulo, ...(detalhe ? { detalhe } : {}), visivel: i.visivel === true }];
+  }).slice(0, 25);
+  return rota || itens.length ? { rota, itens } : null;
+}
+
 export type Rota = { intencao: string; slots: Record<string, unknown>; confianca: number; pergunta: string | null; opcoes: string[] };
 export type Destino = { via: 'rpc'; schema: string | null; nome: string } | { via: 'fn'; funcao: string; acao: string };
 export type Desfazer = { acao_id: number; ate: string };
@@ -50,14 +72,22 @@ Regras:
 - Valor em dinheiro, peso, página e prazo NUNCA se adivinham: se não foi dito, omita o slot.
 - confianca de 0 a 1. Ambíguo (dois itens possíveis, intenção duvidosa): confianca baixa, "pergunta_esclarecimento" com UMA pergunta curta e "opcoes" com até 3 respostas curtas. Senão pergunta_esclarecimento null e opcoes [].
 - Use os turnos recentes para entender respostas curtas ("a segunda", "sim", "essa").
+- "Na tela" lista o que o Leo está vendo agora, numerado na ordem da página (os visíveis primeiro). "essa", "esse", "isso", "a primeira", "o segundo" e o nome de um item se referem a esses itens: use o id dele (tipo meta -> p.id de meta.salvar_plano; plano -> plano; semana_item -> p_id de semana.*; meta_financeira -> p.id de meta.salvar; decisao/proposta -> p_id). Se mais de um item visível servir, pergunte qual.
+- Para EDITAR uma meta que já existe (meta.salvar_plano ou meta.salvar com id), mande só o id e os campos que mudam. Nas outras intenções, mande todos os campos obrigatórios.
 Catálogo:
 ${linhas.join('\n')}`;
 }
 
-export function montarUsuario(texto: string, hoje: string, dow: string, turnos: Turno[], ctx: Contexto): string {
+export function montarUsuario(texto: string, hoje: string, dow: string, turnos: Turno[], ctx: Contexto, tela: Tela | null = null): string {
   const hist = turnos.map((t) => `${t.papel === 'leo' ? 'Leo' : 'IARA'}: ${t.texto}${t.pendente ? ` [pendente: ${JSON.stringify(t.pendente).slice(0, 300)}]` : ''}`).join('\n');
   const cand = Object.fromEntries(Object.entries(ctx).filter(([, v]) => v != null && (!Array.isArray(v) || v.length)));
-  return `Hoje é ${hoje} (${dow}).\n${hist ? `Turnos recentes:\n${hist}\n` : ''}Candidatos: ${JSON.stringify(cand)}\nLeo disse: ${texto}`;
+  return `Hoje é ${hoje} (${dow}).\n${hist ? `Turnos recentes:\n${hist}\n` : ''}Candidatos: ${JSON.stringify(cand)}\n${descreverTela(tela)}Leo disse: ${texto}`;
+}
+/** Bloco "Na tela" da mensagem do roteador (vazio sem tela). */
+export function descreverTela(tela: Tela | null): string {
+  if (!tela || !tela.itens.length) return tela?.rota ? `Na tela (${tela.rota}): nada marcado.\n` : '';
+  const linhas = tela.itens.map((i, n) => `${n + 1}. ${i.tipo} id=${i.id} ${JSON.stringify(i.titulo)}${i.detalhe ? ` (${JSON.stringify(i.detalhe)})` : ''}${i.visivel ? '' : ' [fora da vista]'}`);
+  return `Na tela (${tela.rota || '?'}):\n${linhas.join('\n')}\n`;
 }
 
 const ouNulo = (t: Record<string, unknown>) => ({ anyOf: [t, { type: 'null' }] });
@@ -128,7 +158,10 @@ export function numerosDoTexto(texto: string): number[] {
   return out;
 }
 
-type Ctx = { numeros: number[]; faltando: string[]; invalidos: string[] };
+type Ctx = { numeros: number[]; faltando: string[]; invalidos: string[]; edicao: boolean };
+/** UX-23: intenções cuja RPC mantém o que não veio (coalesce por campo): com id, só o id é obrigatório.
+ *  hub_compromisso_salvar NÃO entra: exige título e data e grava os campos direto. */
+export const EDICAO_PARCIAL = new Set(['meta.salvar_plano', 'meta.salvar']);
 function validarValor(spec: Spec, v: unknown, nome: string, c: Ctx, guardaNumero: boolean): { ok: boolean; valor?: unknown } {
   if (spec.lista) {
     if (!Array.isArray(v) || !v.length) return { ok: false };
@@ -165,7 +198,11 @@ function validarValor(spec: Spec, v: unknown, nome: string, c: Ctx, guardaNumero
     case 'jsonb': {
       if (!v || typeof v !== 'object' || Array.isArray(v)) return { ok: false };
       if (spec.campos == null) return { ok: true, valor: v };
-      const r = validarObjeto(camposDe(spec.campos), v as Record<string, unknown>, c, nome + '.');
+      const campos = camposDe(spec.campos);
+      const obj = v as Record<string, unknown>;
+      // UX-23: com id (editar algo que já existe), só o id é obrigatório; a RPC mantém o que não veio (coalesce).
+      const edicao = c.edicao && 'id?' in campos && obj.id != null && obj.id !== '';
+      const r = validarObjeto(edicao ? Object.fromEntries(Object.entries(campos).map(([k, t]) => [k.endsWith('?') ? k : `${k}?`, t])) : campos, obj, c, nome + '.');
       return r ? { ok: true, valor: r } : { ok: false };
     }
     default: return { ok: false };
@@ -187,9 +224,9 @@ function validarObjeto(campos: Record<string, string>, obj: Record<string, unkno
 }
 
 /** Valida e normaliza os slots contra a spec do catálogo. Só passam os nomes que o catálogo declara. */
-export function validarSlots(spec: Record<string, string>, slots: Record<string, unknown>, textoLeo: string):
+export function validarSlots(spec: Record<string, string>, slots: Record<string, unknown>, textoLeo: string, edicao = false):
   { ok: true; args: Record<string, unknown> } | { ok: false; faltando: string[]; invalidos: string[] } {
-  const c: Ctx = { numeros: numerosDoTexto(textoLeo), faltando: [], invalidos: [] };
+  const c: Ctx = { numeros: numerosDoTexto(textoLeo), faltando: [], invalidos: [], edicao };
   const args: Record<string, unknown> = {};
   for (const [nome, txt] of Object.entries(spec)) {
     const s = parseSpec(txt);
@@ -203,21 +240,41 @@ export function validarSlots(spec: Record<string, string>, slots: Record<string,
 
 // ---------- ids que o modelo cita: só valem se estiverem nos candidatos ----------
 
-const IDS: Record<string, { slot: string; lista?: boolean; cand: (c: Contexto) => (string | number)[] }> = {
-  'casa.item_status': { slot: 'p_id', cand: (c) => (c.itens ?? []).map((i) => i.id) },
+const IDS: Record<string, { slot: string; lista?: boolean; tela?: string; semCand?: string; cand: (c: Contexto) => (string | number)[] }> = {
+  'casa.item_status': { slot: 'p_id', tela: 'item', cand: (c) => (c.itens ?? []).map((i) => i.id) },
   'sabia.item': { slot: 'p_id', cand: (c) => (c.trilha ?? []).map((i) => i.id) },
-  'agenda.compromisso_cancelar': { slot: 'p_id', cand: (c) => (c.compromissos ?? []).map((i) => i.id) },
+  'agenda.compromisso_cancelar': { slot: 'p_id', tela: 'compromisso', cand: (c) => (c.compromissos ?? []).map((i) => i.id) },
   'semana.confirmar': { slot: 'p_plano', cand: (c) => (c.semana ? [c.semana.id] : []) },
   'semana.responder': { slot: 'p_plano', cand: (c) => (c.semana ? [c.semana.id] : []) },
-  'plano.confirmar': { slot: 'p_id', cand: (c) => (c.planos ?? []).map((i) => i.id) },
+  'plano.confirmar': { slot: 'p_id', tela: 'plano', cand: (c) => (c.planos ?? []).map((i) => i.id) },
+  'decisao.decidir': { slot: 'p_id', tela: 'decisao', semCand: 'Abra Planos e me diga de novo: assim eu vejo de qual decisão você fala.', cand: () => [] },
+  'proposta.decidir': { slot: 'p_id', tela: 'proposta', semCand: 'Abra Planos e me diga de novo: assim eu vejo de qual proposta você fala.', cand: () => [] },
   'lancamento.categorizar': { slot: 'p_ids', lista: true, cand: (c) => (c.lancamentos ?? []).map((i) => i.id) },
   'lancamento.confirmar': { slot: 'p_ids', lista: true, cand: (c) => (c.lancamentos ?? []).map((i) => i.id) },
 };
-/** Completa o id quando só há um candidato; descarta id que o modelo inventou (vira slot faltando -> pergunta). */
-export function conferirIds(slug: string, slots: Record<string, unknown>, ctx: Contexto): Record<string, unknown> {
+/** Edição por id dentro de `p` (jsonb{id?:...}): o id só vale se estiver na tela; sem ele, `p` é um item novo. */
+const IDS_P: Record<string, { tela: string; cand: (c: Contexto) => (string | number)[] }> = {
+  'meta.salvar_plano': { tela: 'meta', cand: () => [] },
+  'meta.salvar': { tela: 'meta_financeira', cand: () => [] },
+  'agenda.compromisso_salvar': { tela: 'compromisso', cand: (c) => (c.compromissos ?? []).map((i) => i.id) },
+};
+const idsTela = (tela: Tela | null | undefined, tipo: string | undefined) => (tipo && tela ? tela.itens.filter((i) => i.tipo === tipo).map((i) => i.id) : []);
+
+/** Completa o id quando só há um candidato; descarta id que o modelo inventou (vira slot faltando -> pergunta).
+ *  UX-23: os ids da tela entram como candidatos (de contexto do servidor + tela). */
+export function conferirIds(slug: string, slots: Record<string, unknown>, ctx: Contexto, tela: Tela | null = null): Record<string, unknown> {
+  const tipoP = IDS_P[slug];
+  if (tipoP && slots.p && typeof slots.p === 'object' && !Array.isArray(slots.p)) {
+    const p = { ...(slots.p as Record<string, unknown>) };
+    // id que não está na tela nem no contexto do servidor: não edita às cegas (vira item novo, que pede os campos obrigatórios).
+    if (p.id != null && ![...tipoP.cand(ctx).map(String), ...idsTela(tela, tipoP.tela)].includes(String(p.id))) delete p.id;
+    if (p.id != null && tipoP.tela !== 'meta_financeira' && /^\d+$/.test(String(p.id))) p.id = Number(p.id);
+    return { ...slots, p };
+  }
   const r = IDS[slug];
   if (!r) return slots;
-  const cand = r.cand(ctx).map(String);
+  const daTela = idsTela(tela, r.tela);
+  const cand = [...new Set([...r.cand(ctx).map(String), ...daTela])];
   const out = { ...slots };
   const dado = out[r.slot];
   if (r.lista) {
@@ -225,11 +282,11 @@ export function conferirIds(slug: string, slots: Record<string, unknown>, ctx: C
     if (ids.length) out[r.slot] = ids; else delete out[r.slot];
   } else if (dado == null || !cand.includes(String(dado))) {
     if (cand.length === 1) out[r.slot] = Number(cand[0]); else delete out[r.slot];
-  }
+  } else if (typeof dado === 'string' && /^\d+$/.test(dado)) out[r.slot] = Number(dado);
   return out;
 }
-export function idCandidatos(slug: string, ctx: Contexto): number {
-  return IDS[slug] ? IDS[slug].cand(ctx).length : 1;
+export function idCandidatos(slug: string, ctx: Contexto, tela: Tela | null = null): number {
+  return IDS[slug] ? new Set([...IDS[slug].cand(ctx).map(String), ...idsTela(tela, IDS[slug].tela)]).size : 1;
 }
 
 // ---------- destino, plano de ação e risco ----------
@@ -277,7 +334,7 @@ export function resolverSlug(rota: Rota, catalogo: Intencao[]): string {
 }
 
 /** Decide o que fazer com a rota: perguntar, pedir "sim" (risco alto) ou executar (baixo/médio). Nunca lança. */
-export function planejar(rota: Rota, catalogo: Intencao[], ctx: Contexto, textoLeo: string, textosAnteriores: string[] = []): Plano {
+export function planejar(rota: Rota, catalogo: Intencao[], ctx: Contexto, textoLeo: string, textosAnteriores: string[] = [], tela: Tela | null = null): Plano {
   let slots = rota.slots;
   const intencao = catalogo.find((c) => c.slug === resolverSlug(rota, catalogo));
   if (!intencao) return pergunta(rota.pergunta ?? MENU_FORA, rota.pergunta ? rota.opcoes : []);
@@ -286,16 +343,17 @@ export function planejar(rota: Rota, catalogo: Intencao[], ctx: Contexto, textoL
     return pergunta(rota.pergunta ?? `Quer dizer "${intencao.exemplos[0] ?? intencao.slug}"? Me conte de outro jeito.`, op);
   }
   if (intencao.slots.pergunta && slots.pergunta == null) slots = { ...slots, pergunta: textoLeo };
-  slots = conferirIds(intencao.slug, slots, ctx);
-  const v = validarSlots(intencao.slots, slots, [textoLeo, ...textosAnteriores].join(' '));
+  slots = conferirIds(intencao.slug, slots, ctx, tela);
+  const v = validarSlots(intencao.slots, slots, [textoLeo, ...textosAnteriores].join(' '), EDICAO_PARCIAL.has(intencao.slug));
   if (!v.ok) {
     const alvo = v.faltando[0] ?? v.invalidos[0];
     const aviso = !v.faltando.length && v.invalidos.length ? ` Não achei ${rotulo(alvo)} com segurança.` : '';
-    const q = rota.pergunta ?? (idCandidatos(intencao.slug, ctx) === 0 ? `Não achei ${rotulo(alvo)} aberto agora. Pode dizer qual?` : `Qual é ${rotulo(alvo)}?${aviso}`);
+    const semCand = idCandidatos(intencao.slug, ctx, tela) === 0;
+    const q = semCand && IDS[intencao.slug]?.semCand ? IDS[intencao.slug].semCand! : rota.pergunta ?? (semCand ? `Não achei ${rotulo(alvo)} aberto agora. Pode dizer qual?` : `Qual é ${rotulo(alvo)}?${aviso}`);
     return pergunta(q, rota.opcoes);
   }
   if (exigeSim(intencao)) {
-    const q = `Vou ${descreverAcao(intencao.slug, v.args)}. Confirma?`;
+    const q = `Vou ${descreverAcao(intencao.slug, v.args, tela)}. Confirma?`;
     return { tipo: 'confirmar', resposta: { fala: q, tela: { intencao: intencao.slug, risco: intencao.risco, executou: false }, pendente: { tipo: 'confirmacao', intencao: intencao.slug, slots: v.args, pergunta: q } } };
   }
   return { tipo: 'executar', intencao, args: v.args, destino: resolverDestino(intencao.rpc) };
@@ -311,8 +369,39 @@ const dataBR = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
 const horaBR = (h: string) => (h.endsWith(':00') || /:00$/.test(h) ? `${Number(h.slice(0, 2))}h` : h.replace(':', 'h'));
 const nomeKg = (n: unknown) => Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 
-export function descreverAcao(slug: string, a: Record<string, unknown>): string {
+const tituloTela = (tela: Tela | null | undefined, tipo: string, id: unknown) => tela?.itens.find((i) => i.tipo === tipo && i.id === String(id))?.titulo;
+const STATUS_META: Record<string, string> = { pausada: 'pausar', ativa: 'retomar', concluida: 'concluir', cancelada: 'cancelar' };
+const HORIZONTE: Record<string, string> = { curto: 'curto prazo', medio: 'médio prazo', longo: 'longo prazo' };
+/** "mudar o prazo para 31/12/2028 e o dono para AIrton" a partir dos campos que vieram numa edição. */
+function mudancas(p: Record<string, any>): string {
+  const m: string[] = [];
+  if (p.titulo) m.push(`o nome para "${p.titulo}"`);
+  if (p.prazo) m.push(`o prazo para ${dataBR(String(p.prazo))}/${String(p.prazo).slice(0, 4)}`);
+  if (p.horizonte) m.push(`o horizonte para ${HORIZONTE[p.horizonte] ?? p.horizonte}`);
+  if (p.dono) m.push(`o dono para ${p.dono}`);
+  if (p.cadencia) m.push(`a cadência para ${p.cadencia}`);
+  if (p.medida && typeof p.medida === 'object' && p.medida.alvo != null) m.push(`o alvo para ${p.medida.alvo}`);
+  return m.length ? `mudar ${m.join(' e ')}` : '';
+}
+
+export function descreverAcao(slug: string, a: Record<string, unknown>, tela: Tela | null = null): string {
   const p = (a.p ?? {}) as Record<string, any>;
+  if (slug === 'meta.salvar_plano' && p.id != null) {
+    const nome = tituloTela(tela, 'meta', p.id) ?? p.titulo ?? 'essa meta';
+    const st = p.status ? STATUS_META[p.status] : null;
+    const mud = mudancas(p);
+    if (st && mud) return `${st} a meta "${nome}" e ${mud}`;
+    if (st) return `${st} a meta "${nome}"`;
+    return mud ? `${mud} da meta "${nome}"` : `salvar a meta "${nome}"`;
+  }
+  if (slug === 'meta.salvar' && p.id != null && !p.name) {
+    const nome = tituloTela(tela, 'meta_financeira', p.id) ?? 'essa meta';
+    if (p.status === 'cancelada') return `cancelar a meta "${nome}"`;
+    const m: string[] = [];
+    if (p.target_date) m.push(`o prazo para ${dataBR(String(p.target_date))}/${String(p.target_date).slice(0, 4)}`);
+    if (p.target_amount) m.push(`o valor para R$ ${Number(p.target_amount).toLocaleString('pt-BR')}`);
+    return m.length ? `mudar ${m.join(' e ')} da meta "${nome}"` : `salvar a meta "${nome}"`;
+  }
   switch (slug) {
     case 'semana.confirmar': return 'confirmar o plano da semana';
     case 'plano.salvar': return `salvar o plano "${p.titulo ?? ''}"${p.status ? ` como ${p.status}` : ''}`;
@@ -353,6 +442,7 @@ export function falaExecucao(intencao: Intencao, args: Record<string, unknown>, 
     case 'semana.item_editar': return `Passei o item para ${dataBR(String(args.p_data))} às ${horaBR(String(args.p_hora))}.`;
     case 'lancamento.categorizar': return `Categorizei ${(args.p_ids as unknown[]).length} lançamento(s) como ${ctx.categorias?.find((c) => c.id === args.p_category)?.nome ?? args.p_category}.`;
     case 'lancamento.confirmar': return `Confirmei ${(args.p_ids as unknown[]).length} lançamento(s).`;
+    case 'meta.salvar_plano': return p.id != null ? 'Pronto, atualizei a meta.' : `Criei a meta "${p.titulo ?? ''}".`;
     case 'livro.salvar': return `Salvei o livro "${p.titulo ?? ''}".`;
     case 'financas.quanto_posso_gastar': return limparFala(String(r.reply ?? 'Não consegui calcular agora.'));
     case 'planos.status': {
@@ -397,6 +487,8 @@ export function estimarRotaUsd(systemChars: number, usuarioChars: number, saidaT
 
 export type Deps = {
   catalogo: Intencao[]; turnos: Turno[]; contexto: Contexto; hoje: string;
+  /** UX-23: o que o Leo vê na tela do hub (null fora do hub). */
+  tela?: Tela | null;
   rotear: (system: string, usuario: string) => Promise<unknown>;
   chamar: (destino: Destino, args: Record<string, unknown>, textoLeo: string, intencao: string) => Promise<unknown>;
   acoes: Acoes;
@@ -452,9 +544,9 @@ export async function processar(texto: string, d: Deps, opts: { dryRun?: boolean
     }
   }
   const system = montarSystem(d.catalogo);
-  const usuario = montarUsuario(texto, d.hoje, diaSemana(d.hoje), d.turnos, d.contexto);
+  const usuario = montarUsuario(texto, d.hoje, diaSemana(d.hoje), d.turnos, d.contexto, d.tela ?? null);
   const rota = normalizarRota(await d.rotear(system, usuario), d.catalogo);
-  const plano = planejar(rota, d.catalogo, d.contexto, texto, d.turnos.filter((t) => t.papel === 'leo').map((t) => t.texto));
+  const plano = planejar(rota, d.catalogo, d.contexto, texto, d.turnos.filter((t) => t.papel === 'leo').map((t) => t.texto), d.tela ?? null);
   const base = { intencao: resolverSlug(rota, d.catalogo), slots: rota.slots };
   if (plano.tipo === 'confirmar') {
     // Grava a ação pendente (expira em 10 min); o "sim" seguinte executa a ação GRAVADA, não o que o modelo disser de novo.
@@ -475,7 +567,7 @@ export async function processar(texto: string, d: Deps, opts: { dryRun?: boolean
     const bruto = await d.chamar(plano.destino, plano.args, texto, plano.intencao.slug);
     const { resultado, desfazer, acao } = desempacotar(bruto);
     if (acao?.status === 'pendente') { // o banco exigiu "sim" (política única): vira confirmação, não execução
-      const q = acao.pergunta ?? `Vou ${descreverAcao(plano.intencao.slug, plano.args)}. Confirma?`;
+      const q = acao.pergunta ?? `Vou ${descreverAcao(plano.intencao.slug, plano.args, d.tela ?? null)}. Confirma?`;
       return { fala: limparFala(q), tela: { intencao: plano.intencao.slug, risco: plano.intencao.risco, executou: false }, pendente: pendenteConfirmacao(plano.intencao.slug, plano.args, q, acao), ...base, slots: plano.args, rota };
     }
     const fala = falaExecucao(plano.intencao, plano.args, resultado, d.contexto);
