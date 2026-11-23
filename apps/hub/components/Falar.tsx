@@ -2,9 +2,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { PecaIara } from './PecaIara'
+import { Logo } from './Logo'
 
 // Botão "Falar com a IARA" no topo (protótipo aprovado, 23/11): substitui o card "Peça à IARA" no alto das telas.
-// Abre uma folha com o mesmo canal de texto e voz. O orbe de voz entra depois nesta mesma folha.
+// Abre uma folha com o orbe de voz (toque e fale) e, se preferir, o campo de texto.
 export function Falar() {
   const [aberto, setAberto] = useState(false)
   const ref = useRef<HTMLDialogElement>(null)
@@ -26,9 +27,11 @@ export function Falar() {
       <dialog ref={ref} className="folha" aria-label="Falar com a IARA" onClose={() => setAberto(false)}
         onClick={(e) => { if (e.target === e.currentTarget) setAberto(false) }}>
         <div className="folha-corpo">
-          <div className="row between" style={{ marginBottom: 12 }}>
-            <strong style={{ color: 'var(--hq)' }}>IARA</strong>
-            <button type="button" className="chip" onClick={() => setAberto(false)}>Fechar</button>
+          <div className="row between" style={{ marginBottom: 4 }}>
+            <span className="row small" style={{ gap: 8, color: 'var(--hq)' }}><Logo app="iara" tamanho={22} />IARA</span>
+            <button type="button" className="falar-btn" aria-label="Fechar" onClick={() => setAberto(false)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+            </button>
           </div>
           {aberto && <PecaIara />}
         </div>
