@@ -10,11 +10,29 @@ export type ItemDia = { id: number; origem: string; titulo: string; minutos: num
 
 const LOGO_DA_ORIGEM: Record<string, LogoKey> = { iara: 'casa', claudia: 'claudia', airton: 'airton', sabia: 'sabia' }
 
-/** Checklist diário: a fila de hoje (core.itens). Marcar = feito; desmarcar na hora volta para pendente. */
-export function Checklist({ itens }: { itens: ItemDia[] }) {
+/** Checklist diário: a fila de hoje (core.itens). Marcar = feito; desmarcar na hora volta para pendente.
+ * `adicionar` (data de hoje): campo "Adicionar ao checklist…", só no desktop (cria uma tarefa da IARA para o dia). */
+export function Checklist({ itens, adicionar }: { itens: ItemDia[]; adicionar?: string }) {
   const router = useRouter()
   const [feitos, setFeitos] = useState<Set<number>>(new Set())
   const [erro, setErro] = useState<string | null>(null)
+  const [novo, setNovo] = useState('')
+  const [salvando, setSalvando] = useState(false)
+
+  async function criar() {
+    const t = novo.trim()
+    if (!t || salvando || !adicionar) return
+    setSalvando(true); setErro(null)
+    const { error } = await (supabaseBrowser() as unknown as SupabaseClient).rpc('hub_tarefa_criar', { p_titulo: t, p_data: adicionar })
+    setSalvando(false)
+    if (error) { setErro('Não deu para adicionar. Tente de novo.'); return }
+    setNovo(''); router.refresh()
+  }
+  const campo = adicionar ? (
+    <form className="so-desktop" onSubmit={(e) => { e.preventDefault(); criar() }} style={{ marginTop: 8 }}>
+      <input aria-label="Adicionar ao checklist" placeholder="Adicionar ao checklist…" value={novo} disabled={salvando} onChange={(e) => setNovo(e.target.value)} />
+    </form>
+  ) : null
 
   async function marcar(id: number, feito: boolean) {
     setErro(null)
@@ -26,8 +44,9 @@ export function Checklist({ itens }: { itens: ItemDia[] }) {
     else router.refresh()
   }
 
-  if (!itens.length) return <p className="small muted" style={{ margin: 0 }}>Nada no checklist de hoje.</p>
+  if (!itens.length) return <><p className="small muted" style={{ margin: 0 }}>Nada no checklist de hoje.</p>{campo}</>
   return (
+    <>
     <div className="checklist">
       {itens.map((i) => {
         const on = feitos.has(i.id)
@@ -42,5 +61,7 @@ export function Checklist({ itens }: { itens: ItemDia[] }) {
       })}
       {erro && <p className="error">{erro}</p>}
     </div>
+    {campo}
+    </>
   )
 }

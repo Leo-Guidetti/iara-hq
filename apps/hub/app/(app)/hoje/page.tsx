@@ -150,47 +150,54 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ p
         </Link>
       )}
 
-      <section className="card" aria-label="Agenda de hoje">
-        <div className="row between">
-          <span className="small muted">Agenda</span>
-          <span className="small" style={{ color: 'var(--dim)' }}>agenda + plano</span>
+      {/* Desktop largo: duas colunas (agenda e checklist | expediente, briefing e apps). No celular, uma só. */}
+      <div className="hoje-cols">
+        <div className="hoje-col">
+          <section className="card" aria-label="Agenda de hoje">
+            <div className="row between">
+              <span className="small muted">Agenda</span>
+              <span className="small" style={{ color: 'var(--dim)' }}>agenda + plano</span>
+            </div>
+            {blocos.length ? <SeuDia blocos={blocos} agora={agoraHHMM} /> : <p className="small muted" style={{ margin: '8px 0 0' }}>Nada agendado hoje.</p>}
+          </section>
+
+          <section className="card" aria-label="Checklist diário">
+            <div className="row between" style={{ marginBottom: 4 }}>
+              <span className="small muted">Checklist diário</span>
+              {atrasadas.length > 0 && <Link className="small" href="/planos" style={{ color: 'var(--alert)' }}>{plural(atrasadas.length, 'meta fora do ritmo', 'metas fora do ritmo')}</Link>}
+            </div>
+            {iara === 'erro' ? <p className="small muted" style={{ margin: 0 }}>Não consegui carregar agora.</p> : <Checklist itens={checklist} adicionar={today} />}
+          </section>
+
         </div>
-        {blocos.length ? <SeuDia blocos={blocos} agora={agoraHHMM} /> : <p className="small muted" style={{ margin: '8px 0 0' }}>Nada agendado hoje.</p>}
-      </section>
+        <div className="hoje-col">
+          {painel && <ExpedienteCard expediente={painel.expediente} lugares={painel.lugares} titulo="Expediente padrão" />}
 
-      {painel && <ExpedienteCard expediente={painel.expediente} lugares={painel.lugares} titulo="Expediente padrão" />}
+          <section className="card" aria-label="Briefing do dia">
+            <div className="row between">
+              <span className="small" style={{ color: 'var(--ai)' }}>Briefing do dia</span>
+              {briefing?.texto && <Ouvir id={briefing.id} fala={briefing.fala} texto={briefing.texto} />}
+            </div>
+            {briefing?.texto ? (
+              <>
+                <Md texto={briefing.texto.split('\n').slice(0, 3).join('\n')} />
+                {briefing.texto.split('\n').length > 3 && (
+                  <details className="brief"><summary>Ver o briefing inteiro</summary><Md texto={briefing.texto.split('\n').slice(3).join('\n')} /></details>
+                )}
+              </>
+            ) : <p className="small muted" style={{ margin: '6px 0 0' }}>O briefing sai todo dia às 07:00.</p>}
+          </section>
 
-      <section className="card" aria-label="Checklist diário">
-        <div className="row between" style={{ marginBottom: 4 }}>
-          <span className="small muted">Checklist diário</span>
-          {atrasadas.length > 0 && <Link className="small" href="/planos" style={{ color: 'var(--alert)' }}>{plural(atrasadas.length, 'meta fora do ritmo', 'metas fora do ritmo')}</Link>}
+          <nav className="apps-linha" aria-label="Seus apps">
+            {apps.map((a) => (
+              <Link key={a.app} href={a.href} data-app={a.app} aria-label={`${a.nome}${a.n ? `, ${plural(a.n, 'pendência', 'pendências')}` : ''}`}>
+                <Logo app={a.app} tamanho={30} />
+                {a.n > 0 && <b>{a.n}</b>}
+              </Link>
+            ))}
+          </nav>
         </div>
-        {iara === 'erro' ? <p className="small muted" style={{ margin: 0 }}>Não consegui carregar agora.</p> : <Checklist itens={checklist} />}
-      </section>
-
-      <section className="card" aria-label="Briefing do dia">
-        <div className="row between">
-          <span className="small" style={{ color: 'var(--ai)' }}>Briefing do dia</span>
-          {briefing?.texto && <Ouvir id={briefing.id} fala={briefing.fala} texto={briefing.texto} />}
-        </div>
-        {briefing?.texto ? (
-          <>
-            <Md texto={briefing.texto.split('\n').slice(0, 3).join('\n')} />
-            {briefing.texto.split('\n').length > 3 && (
-              <details className="brief"><summary>Ver o briefing inteiro</summary><Md texto={briefing.texto.split('\n').slice(3).join('\n')} /></details>
-            )}
-          </>
-        ) : <p className="small muted" style={{ margin: '6px 0 0' }}>O briefing sai todo dia às 07:00.</p>}
-      </section>
-
-      <nav className="apps-linha" aria-label="Seus apps">
-        {apps.map((a) => (
-          <Link key={a.app} href={a.href} data-app={a.app} aria-label={`${a.nome}${a.n ? `, ${plural(a.n, 'pendência', 'pendências')}` : ''}`}>
-            <Logo app={a.app} tamanho={30} />
-            {a.n > 0 && <b>{a.n}</b>}
-          </Link>
-        ))}
-      </nav>
+      </div>
     </div>
   )
 }

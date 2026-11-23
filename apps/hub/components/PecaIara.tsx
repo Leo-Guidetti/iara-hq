@@ -37,14 +37,14 @@ const MSG: Record<number, string> = {
 }
 
 /** Falar com a IARA: canal único de comando em linguagem natural (UX-23). Voz primeiro, pelo orbe (protótipo de 23/11); texto em "Digitar". */
-export function PecaIara() {
+export function PecaIara({ texto: comecarNoTexto = false }: { texto?: boolean } = {}) {
   const router = useRouter()
   const ditado = useDitado()
   const [texto, setTexto] = useState('')
   const [busy, setBusy] = useState(false)
   const [historico, setHistorico] = useState<Turno[]>([])
   const [falando, setFalando] = useState(false)
-  const [digitar, setDigitar] = useState(false)
+  const [digitar, setDigitar] = useState(comecarNoTexto)
   useEffect(() => () => pararVoz(), [])
   const [pendente, setPendente] = useState<Pendente>(null)
   const [desfazer, setDesfazer] = useState<Desfazer>(null)
