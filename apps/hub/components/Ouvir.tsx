@@ -20,28 +20,51 @@ export function destravarVoz() {
   if (!temVoz()) return
   try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; window.speechSynthesis.speak(u) } catch { /* sem voz */ }
 }
-/** Fala o texto em pt-BR com a voz do navegador; sem voz, não faz nada. */
+/**
+ * A voz padrão do navegador costuma ser a mais robótica (Microsoft Maria no Windows, Luciana compacta no iPhone).
+ * Escolhe a melhor voz pt-BR instalada: neurais/online (Edge "Francisca Online (Natural)", "Google português do Brasil")
+ * e as versões Premium/Enhanced do iOS e do macOS vêm antes das compactas.
+ */
+export function melhorVoz(vozes: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
+  const nota = (v: SpeechSynthesisVoice) => {
+    const lang = v.lang.toLowerCase().replace('_', '-')
+    const nome = v.name.toLowerCase()
+    let n = lang.startsWith('pt-br') ? 100 : lang.startsWith('pt') ? 40 : -1000
+    if (/natural|neural|online/.test(nome)) n += 50
+    if (/premium/.test(nome)) n += 45
+    if (/enhanced|aprimorad|melhorad/.test(nome)) n += 35
+    if (/google/.test(nome)) n += 30
+    if (/compact|espeak|maria\b/.test(nome)) n -= 20
+    if (v.localService === false) n += 5
+    return n
+  }
+  return [...vozes].sort((a, b) => nota(b) - nota(a)).find((v) => nota(v) > 0)
+}
+
+/** Fala o texto em pt-BR com a melhor voz do aparelho; sem voz, não faz nada. */
 export function falar(texto: string, aoFim?: () => void) {
   if (!temVoz() || !texto.trim()) { aoFim?.(); return }
   const ss = window.speechSynthesis
   const u = new SpeechSynthesisUtterance(texto.trim())
   u.lang = 'pt-BR'
-  const v = ss.getVoices().find((x) => x.lang.toLowerCase().startsWith('pt-br')) ?? ss.getVoices().find((x) => x.lang.toLowerCase().startsWith('pt'))
-  if (v) u.voice = v
+  const v = melhorVoz(ss.getVoices())
+  if (v) { u.voice = v; u.lang = v.lang }
   u.onend = () => aoFim?.()
   u.onerror = () => aoFim?.()
   ss.cancel()
   ss.speak(u)
 }
 
-/** Lê o briefing em voz alta com a voz do navegador (sem custo). Segundo toque para. */
+/** Lê o briefing em voz alta com a melhor voz do aparelho (sem custo). Segundo toque para. */
 export function Ouvir({ id, fala, texto }: { id: number; fala?: string | null; texto: string }) {
   const [ok, setOk] = useState(false)
   const [lendo, setLendo] = useState(false)
   const marcado = useRef(false)
 
   useEffect(() => {
-    setOk(typeof window !== 'undefined' && 'speechSynthesis' in window)
+    setOk(temVoz())
+    // O Chrome carrega a lista de vozes depois da página: pedir agora deixa a melhor pronta no toque.
+    if (temVoz()) { window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices() }
     return () => { try { window.speechSynthesis?.cancel() } catch { /* sem voz */ } }
   }, [])
 
@@ -55,17 +78,9 @@ export function Ouvir({ id, fala, texto }: { id: number; fala?: string | null; t
   }
 
   const alternar = () => {
-    const ss = window.speechSynthesis
-    if (lendo) { ss.cancel(); fim(); return }
-    const u = new SpeechSynthesisUtterance(fala?.trim() || semMarkdown(texto))
-    u.lang = 'pt-BR'
-    const v = ss.getVoices().find((x) => x.lang.toLowerCase().startsWith('pt-br')) ?? ss.getVoices().find((x) => x.lang.toLowerCase().startsWith('pt'))
-    if (v) u.voice = v
-    u.onend = fim
-    u.onerror = () => setLendo(false)
-    ss.cancel()
+    if (lendo) { pararVoz(); fim(); return }
     setLendo(true)
-    ss.speak(u)
+    falar(fala?.trim() || semMarkdown(texto), fim)
   }
 
   return <button type="button" className="chip" onClick={alternar} aria-pressed={lendo}>{lendo ? 'Parar' : 'Ouvir'}</button>
