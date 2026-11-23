@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export default async function MercadoPage() {
   const me = (await currentUser())!
   const { data, error } = await (me.sb as unknown as SupabaseClient).rpc('hub_mercado')
-  const lista = (data ?? { itens: [], falta: 0, carrinho: 0, sem_preco: 0 }) as Lista
+  const lista = (data ?? { itens: [], falta: 0, falta_min: 0, falta_max: 0, carrinho: 0, sem_preco: 0, sugestoes: [] }) as Lista
   return (
     <>
       {error && <div className="card alert"><p className="small" style={{ margin: 0 }}>Não consegui carregar agora.</p></div>}

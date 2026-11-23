@@ -9,7 +9,7 @@ import type { Tarefa } from './proximas'
 export type { Tarefa } from './proximas'
 export type Recorrencia = { id: number; titulo: string; freq: Freq; dias: number[]; dia_mes: number | null; intervalo: number | null; inicio: string; hora: string | null }
 type Freq = 'diaria' | 'semanal' | 'mensal' | 'intervalo'
-type Nova = { titulo: string; data: string; hora: string; freq: '' | Freq; dias: number[]; intervalo: string }
+type Nova = { titulo: string; data: string; hora: string; repete: boolean; dias: number[]; semanas: number }
 
 const sb = () => supabaseBrowser() as unknown as SupabaseClient
 const DIA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
@@ -25,9 +25,15 @@ function quando(data: string, hoje: string) {
   return dias === 1 ? 'amanhã' : DIA[d.getUTCDay()]
 }
 
+function diasTxt(dias: number[]) {
+  if (dias.length === 7) return 'todos os dias'
+  if (dias.join() === '1,2,3,4,5') return 'dias úteis'
+  return dias.map((d) => ISO.find(([n]) => n === d)?.[1]).join(', ')
+}
+
 function regra(r: Recorrencia) {
   const base = r.freq === 'diaria' ? 'todo dia'
-    : r.freq === 'semanal' ? `toda ${r.dias.length === 7 ? 'semana' : r.dias.map((d) => ISO.find(([n]) => n === d)?.[1]).join(', ')}`
+    : r.freq === 'semanal' ? `${diasTxt(r.dias)} · ${r.intervalo && r.intervalo > 1 ? `a cada ${r.intervalo} semanas` : 'toda semana'}`
     : r.freq === 'mensal' ? `todo dia ${r.dia_mes}` : `a cada ${r.intervalo} dias`
   return r.hora ? `${base} · ${r.hora}` : base
 }
@@ -54,7 +60,7 @@ export function Tarefas({ itens, recs, hoje }: { itens: Tarefa[]; recs: Recorren
   })
   function criar(e: React.FormEvent) {
     e.preventDefault(); if (!nova) return
-    const repetir = nova.freq ? { freq: nova.freq, dias: nova.dias, intervalo: nova.freq === 'intervalo' ? Number(nova.intervalo) || 2 : undefined } : null
+    const repetir = nova.repete ? { freq: 'semanal', dias: nova.dias, semanas: nova.semanas } : null
     rodar('hub_tarefa_salvar', { p: { titulo: nova.titulo, data: nova.data || null, hora: nova.hora || null, repetir } }, (d) => {
       setFala(String((d as { fala?: string } | null)?.fala ?? 'Anotado.')); setNova(null)
     })
@@ -102,46 +108,48 @@ export function Tarefas({ itens, recs, hoje }: { itens: Tarefa[]; recs: Recorren
         <form className="card stack" style={{ gap: 10 }} onSubmit={criar}>
           <input required autoFocus placeholder="Ex.: Trocar o filtro de água" maxLength={200} value={nova.titulo} onChange={(e) => setNova({ ...nova, titulo: e.target.value })} aria-label="Tarefa" />
           <div className="grid2">
-            <label className="small muted stack" style={{ gap: 4 }}>{nova.freq ? 'Começa em' : 'Quando'}
+            <label className="small muted stack" style={{ gap: 4 }}>{nova.repete ? 'Começa em' : 'Quando'}
               <input type="date" min={hoje} value={nova.data} onChange={(e) => setNova({ ...nova, data: e.target.value })} />
             </label>
             <label className="small muted stack" style={{ gap: 4 }}>Lembrar às (opcional)
               <input type="time" step={900} value={nova.hora} onChange={(e) => setNova({ ...nova, hora: e.target.value })} />
             </label>
           </div>
-          <label className="small muted stack" style={{ gap: 4 }}>Repetir
-            <select value={nova.freq} onChange={(e) => {
-              const freq = e.target.value as Nova['freq']
-              setNova({ ...nova, freq, dias: freq === 'semanal' && !nova.dias.length ? [dow(nova.data)] : nova.dias })
-            }}>
-              <option value="">Não repete</option>
-              <option value="diaria">Todo dia</option>
-              <option value="semanal">Toda semana</option>
-              <option value="mensal">Todo mês (mesmo dia)</option>
-              <option value="intervalo">A cada alguns dias</option>
-            </select>
-          </label>
-          {nova.freq === 'semanal' && (
-            <div className="chips" role="group" aria-label="Dias da semana">
-              {ISO.map(([n, nome]) => {
-                const on = nova.dias.includes(n)
-                return <button key={n} type="button" className={on ? 'chip on' : 'chip'} aria-pressed={on}
-                  onClick={() => setNova({ ...nova, dias: on ? nova.dias.filter((d) => d !== n) : [...nova.dias, n] })}>{nome}</button>
-              })}
+          <div className="row between" style={{ gap: 8 }}>
+            <span className="small muted">Repetir</span>
+            <div className="chips" role="group" aria-label="Repetir">
+              <button type="button" className={nova.repete ? 'chip' : 'chip on'} aria-pressed={!nova.repete} onClick={() => setNova({ ...nova, repete: false })}>Não repete</button>
+              <button type="button" className={nova.repete ? 'chip on' : 'chip'} aria-pressed={nova.repete}
+                onClick={() => setNova({ ...nova, repete: true, dias: nova.dias.length ? nova.dias : [dow(nova.data)] })}>Repete</button>
+            </div>
+          </div>
+          {nova.repete && (
+            <div className="stack" style={{ gap: 10, padding: 12, borderRadius: 14, background: 'var(--surface-2)' }}>
+              <span className="small muted">Em quais dias</span>
+              <div role="group" aria-label="Dias da semana" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+                {ISO.map(([n, nome]) => {
+                  const on = nova.dias.includes(n)
+                  return <button key={n} type="button" className={on ? 'chip on' : 'chip'} aria-pressed={on} style={{ padding: '8px 0', justifyContent: 'center' }}
+                    onClick={() => setNova({ ...nova, dias: on ? nova.dias.filter((d) => d !== n) : [...nova.dias, n].sort() })}>{nome}</button>
+                })}
+              </div>
+              <div className="row between" style={{ gap: 8 }}>
+                <span className="small muted">A cada</span>
+                <div className="row" style={{ gap: 8 }}>
+                  <button type="button" className="chip" aria-label="Menos semanas" disabled={nova.semanas <= 1} onClick={() => setNova({ ...nova, semanas: nova.semanas - 1 })}>−</button>
+                  <strong style={{ minWidth: 92, textAlign: 'center' }}>{nova.semanas === 1 ? '1 semana' : `${nova.semanas} semanas`}</strong>
+                  <button type="button" className="chip" aria-label="Mais semanas" disabled={nova.semanas >= 12} onClick={() => setNova({ ...nova, semanas: nova.semanas + 1 })}>+</button>
+                </div>
+              </div>
+              {nova.dias.length > 0 && <span className="small" style={{ color: 'var(--dim)' }}>{diasTxt([...nova.dias].sort())}{nova.semanas > 1 ? `, a cada ${nova.semanas} semanas` : ', toda semana'}{nova.data ? `, a partir de ${nova.data.split('-').reverse().slice(0, 2).join('/')}` : ''}.</span>}
             </div>
           )}
-          {nova.freq === 'intervalo' && (
-            <label className="small muted row" style={{ gap: 8 }}>A cada
-              <input type="number" min={2} max={365} inputMode="numeric" value={nova.intervalo} onChange={(e) => setNova({ ...nova, intervalo: e.target.value })} style={{ maxWidth: 90 }} />
-              dias
-            </label>
-          )}
           <div className="grid2">
-            <button className="btn" disabled={busy || !nova.titulo.trim() || (nova.freq === 'semanal' && !nova.dias.length)}>{busy ? 'Salvando…' : 'Adicionar'}</button>
+            <button className="btn" disabled={busy || !nova.titulo.trim() || (nova.repete && !nova.dias.length)}>{busy ? 'Salvando…' : 'Adicionar'}</button>
             <button type="button" className="btn ghost" onClick={() => setNova(null)}>Cancelar</button>
           </div>
         </form>
-      ) : <button className="btn ghost" onClick={() => { setNova({ titulo: '', data: '', hora: '', freq: '', dias: [], intervalo: '7' }); setFala(null) }}>Nova tarefa</button>}
+      ) : <button className="btn ghost" onClick={() => { setNova({ titulo: '', data: '', hora: '', repete: false, dias: [], semanas: 1 }); setFala(null) }}>Nova tarefa</button>}
       {recs.length > 0 && (
         <Mais rotulo={`Repetem (${recs.length})`}>
           <div className="checklist">
