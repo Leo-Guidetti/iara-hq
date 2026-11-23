@@ -18,6 +18,13 @@ wake word do iPad é só "IARA". Perf (#65) no ar. Fila de PRs: (1) identidade e
 patrimônio, Gastos com gasto por mês, Revisar, Metas, atalhos para o AIrton completo); (3) Hoje e Planos; (4) Saúde;
 (5) Conhecimento/livros; (6) Casa e Perfil; (7) orbe de voz; (8) iPad; (9) desktop.
 
+**Começo oficial (23/11, pedido do Leo):** IARA e SabIA começam do zero em 23/11/2026. O que veio antes foi
+catalogado e arquivado (migration `20261123090000_inicio_oficial_arquivo`): cópia no schema `arquivo` (catálogo em
+`arquivo.catalogo`), marca `arquivado_em` em `core.planos_semana` e `sabia.livros`, fila antiga da IARA/SabIA como
+`ignorado` (com `retorno.arquivado`), e as telas filtram por `core.inicio_oficial()` (perfil `config.inicio_oficial`).
+Nada foi apagado. ClaudIA e AIrton seguem como estão. Rascunho da semana arquivado volta sozinho se a IARA refizer a
+sugestão (o `iara-semana` reaproveita a linha e põe `created_at = now()`).
+
 **Antes (23/11):** onda 4 do plano de UX registrada (voz em todo lugar: UX-23 microfone no hub, UX-24 edição
 100% por voz, UX-25 Atalho "IARA" + push, UX-26 iPad com "Ei IARA" via Picovoice, UX-21 protótipo Gemini Live × OpenAI
 Realtime). Guia de testes de todos os itens em `docs/ux-audit/guia-testes.md`. Produção 18–22/11: crons sem falha,
